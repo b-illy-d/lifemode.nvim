@@ -45,6 +45,18 @@ T18 COMPLETE
 None
 
 ## Just Completed
+- [x] T19 - Backlinks view buffer for current node/page
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 12/12) → REFACTOR
+  - Tests: 12/12 backlinks_spec.lua + 11/11 manual acceptance
+  - Files: lua/lifemode/backlinks.lua (created), lua/lifemode/init.lua (modified)
+  - Functions: get_target_for_backlinks(), format_backlink_entry(), render_backlinks_view(), show_backlinks()
+  - Command: :LifeModeBacklinks
+  - Keymap: <Space>vb in vault files
+  - Target detection: wikilink/Bible ref under cursor, fallback to filename
+  - View features: context snippets, relative paths, navigable (gd/gr/q)
+  - Acceptance: Backlinks view shows all references with context, updates with index rebuild
+
+## Previously Completed
 - [x] T18 - Multi-file index (vault scan MVP)
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 11/11) → REFACTOR
   - Tests: 11/11 index_spec.lua + 9/9 manual acceptance
@@ -348,6 +360,14 @@ None
 | Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
 | Manual Test | `nvim -l tests/manual_t12_test.lua` | 0 | All acceptance criteria met (10/10 tests pass) |
 
+### T19
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Backlinks Tests | `nvim -l tests/backlinks_spec.lua` | 0 | **PASS (12/12)** |
+| Regression: Index | `nvim -l tests/index_spec.lua` | 0 | **PASS (11/11)** |
+| Regression: References | `nvim -l tests/references_spec.lua` | 0 | **PASS (18/18)** |
+| Manual Test | `nvim -l tests/manual_t19_test.lua` | 0 | All acceptance criteria met (11/11 tests pass) |
+
 ### T18
 | Check | Command | Exit Code | Result |
 |-------|---------|-----------|--------|
@@ -510,6 +530,16 @@ None
 | Bible ref navigation | Message stub for MVP | Provider deferred to T24 |
 | gd keymap | View buffers + markdown in vault | FileType autocmd checks file path |
 | All T08 requirements | All implemented + 19 tests + 9 manual tests + command | No deviation |
+
+### T19
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Backlinks view rendering | Compiled view buffer with context snippets | MVP approach - text rendering, not expandable instances |
+| Target detection | Priority: cursor target → filename | Checks wikilink/Bible ref under cursor first, falls back to page-level |
+| Context display | Shows file path and reference line | Simple text format with relative paths for readability |
+| View navigation | gd, gr, q keymaps | Standard navigation, q closes window |
+| Update mechanism | Updates via index rebuild | Manual rebuild with :LifeModeRebuildIndex, no auto-refresh |
+| All T19 requirements | All implemented + 12 tests + 11 manual tests | Core backlinks view functionality complete |
 
 ### T09
 | Planned | Actual | Deviation Reason |

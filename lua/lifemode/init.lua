@@ -495,6 +495,14 @@ function M.setup(user_config)
     desc = 'Rebuild vault-wide index'
   })
 
+  -- Create :LifeModeBacklinks command
+  vim.api.nvim_create_user_command('LifeModeBacklinks', function()
+    local backlinks = require('lifemode.backlinks')
+    backlinks.show_backlinks()
+  end, {
+    desc = 'Show backlinks for current node/page'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -545,6 +553,12 @@ function M.setup(user_config)
           local tasks = require('lifemode.tasks')
           tasks.set_due_interactive()
         end, { buffer = args.buf, noremap = true, silent = true, desc = 'Set due date on task' })
+
+        -- <Space>vb: show backlinks
+        vim.keymap.set('n', config.leader .. 'vb', function()
+          local backlinks = require('lifemode.backlinks')
+          backlinks.show_backlinks()
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Show backlinks for current node/page' })
       end
     end,
   })
@@ -659,6 +673,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModePageView')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeBacklinks')
   end)
 end
 

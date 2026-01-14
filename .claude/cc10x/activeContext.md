@@ -1,10 +1,20 @@
 # Active Context
 
 ## Current Focus
-T18: Multi-file index (vault scan MVP) COMPLETE
+T19: Backlinks view buffer for current node/page COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T19] Created lua/lifemode/backlinks.lua module for backlinks view - lua/lifemode/backlinks.lua:1
+- [T19] Added get_target_for_backlinks(bufnr, line, col) to extract target - lua/lifemode/backlinks.lua:12
+- [T19] Added format_backlink_entry(file, line, content, vault_root) - lua/lifemode/backlinks.lua:35
+- [T19] Added render_backlinks_view(target, vault_index) for view creation - lua/lifemode/backlinks.lua:50
+- [T19] Added show_backlinks() main entry point - lua/lifemode/backlinks.lua:153
+- [T19] Added :LifeModeBacklinks command - lua/lifemode/init.lua:497
+- [T19] Added <Space>vb keymap for backlinks in vault files - lua/lifemode/init.lua:544
+- [T19] Updated _reset_for_testing() to include :LifeModeBacklinks cleanup - lua/lifemode/init.lua:686
+- [T19] Created tests/backlinks_spec.lua (12 tests, all passing)
+- [T19] Created manual acceptance test - tests/manual_t19_test.lua (11 tests, all passing)
 - [T18] Created lua/lifemode/index.lua module for vault-wide indexing - lua/lifemode/index.lua:1
 - [T18] Added scan_vault(vault_root) to find all .md files recursively - lua/lifemode/index.lua:8
 - [T18] Added build_vault_index(vault_root) to parse all files and build global index - lua/lifemode/index.lua:35
@@ -280,6 +290,18 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Backlinks View (T19)
+- Target detection uses priority: extract_target_at_cursor → filename fallback
+- Relative path display improves readability: strip vault_root prefix from file paths
+- Read-only view buffers prevent accidental edits: set modifiable=false after content
+- Context snippets show reference line: one-line preview sufficient for navigation
+- Missing file handling: skip silently in view render (files may move/delete after index)
+- View buffer keymaps: gd/gr/q provide standard navigation + close window
+- Format pattern: "  path:line\n    content\n" creates scannable list
+- File reading for context: simple line-by-line iteration until target line reached
+- Backlinks update via index rebuild: manual :LifeModeRebuildIndex, no auto-refresh
+- Test autocmd issues: avoid triggering FileType autocmd in tests (pattern/buffer conflict)
 
 ### Multi-file Indexing (T18)
 - vim.loop.fs_stat() checks if path exists and gets type (directory/file)

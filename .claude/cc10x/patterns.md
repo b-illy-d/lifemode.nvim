@@ -160,6 +160,100 @@ When adding new configuration options, always test:
    - Config accessed before setup()
    - Long strings (test output rendering)
 
+## Backlinks View Patterns (T19)
+
+### Target Detection Priority
+```lua
+-- Priority order for backlinks target detection:
+-- 1. Wikilink/Bible ref under cursor (extract_target_at_cursor)
+-- 2. Node ID at cursor (future enhancement)
+-- 3. Filename (page-level backlinks)
+
+function M.get_target_for_backlinks(bufnr, line, col)
+  -- Try cursor target first
+  local target, target_type = references.extract_target_at_cursor(bufnr, line, col)
+  if target then
+    return target, target_type
+  end
+
+  -- Fall back to filename
+  local filename = vim.api.nvim_buf_get_name(bufnr)
+  if filename and #filename > 0 then
+    local name = filename:match("([^/]+)$")
+    if name and #name > 0 then
+      return name, "page"
+    end
+  end
+
+  return nil, nil
+end
+```
+
+### Context Display Format
+```lua
+-- Format backlink entry with relative path and content
+function M.format_backlink_entry(file, line, content, vault_root)
+  -- Make path relative to vault root
+  local display_path = file
+  if vault_root and file:sub(1, #vault_root) == vault_root then
+    display_path = file:sub(#vault_root + 2)  -- +2 to skip vault_root and slash
+  end
+
+  local entry = {}
+  table.insert(entry, string.format("  %s:%d", display_path, line))
+  table.insert(entry, string.format("    %s", content:gsub("^%s+", "")))  -- Trim leading whitespace
+  table.insert(entry, "")
+
+  return entry
+end
+```
+
+### View Buffer Setup for Backlinks
+```lua
+-- Create read-only view buffer with navigation keymaps
+local bufnr = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_buf_set_option(bufnr, 'buftype', 'nofile')
+vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)
+vim.api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe')
+vim.api.nvim_buf_set_option(bufnr, 'filetype', 'lifemode')
+vim.api.nvim_buf_set_option(bufnr, 'modifiable', false)  -- Read-only after content set
+
+-- Standard navigation keymaps
+vim.keymap.set('n', 'gr', references.find_references_at_cursor, { buffer = bufnr })
+vim.keymap.set('n', 'gd', navigation.goto_definition, { buffer = bufnr })
+vim.keymap.set('n', 'q', '<cmd>close<CR>', { buffer = bufnr })  -- Close window
+```
+
+### Reading File Context
+```lua
+-- Read specific line from file for backlink context
+local f = io.open(loc.file, "r")
+if f then
+  local line_num = 1
+  for line in f:lines() do
+    if line_num == loc.line then
+      -- Process line
+      break
+    end
+    line_num = line_num + 1
+  end
+  f:close()
+end
+```
+
+### Error Handling for Missing Files
+```lua
+-- Backlinks view should handle missing files gracefully
+-- (Files may have been moved/deleted since index was built)
+if f then
+  -- Process file
+  f:close()
+else
+  -- Skip silently - don't crash the view
+  -- User can rebuild index to get current state
+end
+```
+
 ## Multi-file Indexing Patterns (T18)
 
 ### Vault Scanning
