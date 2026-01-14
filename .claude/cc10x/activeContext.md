@@ -1,10 +1,16 @@
 # Active Context
 
 ## Current Focus
-T03: Minimal Markdown block parser COMPLETE
+T04: Ensure IDs for indexable blocks COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T04] Created lua/lifemode/uuid.lua for UUID v4 generation - lua/lifemode/uuid.lua:1
+- [T04] Created lua/lifemode/blocks.lua with ensure_ids_in_buffer() - lua/lifemode/blocks.lua:1
+- [T04] Added :LifeModeEnsureIDs command - lua/lifemode/init.lua:115
+- [T04] Created tests/uuid_spec.lua (5 tests, all passing)
+- [T04] Created tests/ensure_id_spec.lua (12 tests, all passing)
+- [T04] Created manual acceptance test - tests/manual_t04_test.lua
 - [T03] Created lua/lifemode/parser.lua with parse_buffer() function - lua/lifemode/parser.lua:1
 - [T03] Added :LifeModeParse command - lua/lifemode/init.lua:86
 - [T03] Created tests/parser_spec.lua (22 tests, all passing)
@@ -26,9 +32,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T04: Ensure IDs for indexable blocks
-2. T05: Build in-memory Node model
-3. T06: Basic wikilink extraction
+1. T05: Build in-memory Node model
+2. T06: Basic wikilink extraction
+3. T07: Bible reference extraction and parsing
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -38,6 +44,8 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Leader default | `<Space>` | Spec default, user-configurable |
 | ID format | UUID v4 | Spec requirement for stable, globally unique IDs |
 | TDD cycle | RED → GREEN → REFACTOR | Strict adherence to TDD principles |
+| UUID generation (T04) | vim.fn.system('uuidgen') | Simple, reliable, available on macOS/Linux |
+| ID scope (T04) | Tasks only initially | Per spec - can expand to headings later |
 | Buffer naming (T01) | `[LifeMode]` with collision handling | Use unique buffer numbers if name exists |
 | View buffer options (T01) | `buftype=nofile`, `swapfile=false`, `bufhidden=wipe` | Per SPEC.md requirement |
 | Extmark metadata storage (T02) | Separate table indexed by bufnr:mark_id | Neovim extmarks don't allow arbitrary keys |
@@ -47,6 +55,18 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | ID extraction pattern (T03) | `^[%w%-_]+` at end of line | Matches UUID and simple IDs |
 
 ## Learnings This Session
+
+### UUID Generation (T04)
+- vim.fn.system('uuidgen') returns UUID with newline - must strip with :gsub('%s+', '')
+- UUIDs from uuidgen are uppercase by default - need :lower() for consistent format
+- Generated UUIDs are 36 characters (8-4-4-4-12 format with hyphens)
+- Each call generates unique UUID - suitable for concurrent ID generation
+
+### Buffer Line Manipulation (T04)
+- nvim_buf_get_lines returns 1-indexed table but line numbers are 0-indexed for set_lines
+- Must track line changes when modifying buffer in loop - lines table becomes stale
+- nvim_buf_set_lines replaces lines in-place - update local copy for subsequent iterations
+- Line modification pattern: get all lines, update each, track changes, set back
 
 ### Extmark API (T02)
 - Neovim extmarks don't support arbitrary key-value pairs in details
@@ -103,4 +123,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 19:45 EST
+2026-01-14 20:15 EST

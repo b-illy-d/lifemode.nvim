@@ -126,6 +126,18 @@ function M.setup(user_config)
   end, {
     desc = 'Parse current buffer and show block count + task count'
   })
+
+  -- Create :LifeModeEnsureIDs command
+  vim.api.nvim_create_user_command('LifeModeEnsureIDs', function()
+    local blocks = require('lifemode.blocks')
+    local bufnr = vim.api.nvim_get_current_buf()
+    local ids_added = blocks.ensure_ids_in_buffer(bufnr)
+
+    local msg = string.format('Added %d ID%s to tasks', ids_added, ids_added == 1 and '' or 's')
+    vim.api.nvim_echo({{msg, 'Normal'}}, true, {})
+  end, {
+    desc = 'Ensure all tasks in current buffer have IDs'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -151,6 +163,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeParse')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeEnsureIDs')
   end)
 end
 

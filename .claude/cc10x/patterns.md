@@ -15,6 +15,8 @@
 - `lua/lifemode/view.lua` - view buffer creation and management
 - `lua/lifemode/extmarks.lua` - extmark-based span metadata tracking
 - `lua/lifemode/parser.lua` - minimal Markdown block parser (headings, list items, tasks)
+- `lua/lifemode/uuid.lua` - UUID v4 generation using system uuidgen
+- `lua/lifemode/blocks.lua` - block ID management (ensure_ids_in_buffer)
 - `lua/lifemode/config.lua` - configuration management (future)
 - `lua/lifemode/engine/` - parsing, indexing, query logic (future)
 - `tests/lifemode/` - test files using plenary (future)
@@ -44,6 +46,10 @@
 - **Function order matters in Lua**: local functions must be defined before use
 - **Markdown heading syntax**: Must have space after # symbols (`# Heading` not `#Heading`)
 - **Parser ignores non-block lines**: Regular text/paragraphs not parsed, only headings and lists
+- **UUID generation output includes newline**: vim.fn.system('uuidgen') returns string with \n, must strip with :gsub('%s+', '')
+- **UUID case sensitivity**: uuidgen returns uppercase by default, use :lower() for consistent formatting
+- **Buffer line indexing**: nvim_buf_get_lines returns 1-indexed table, but nvim_buf_set_lines uses 0-indexed positions
+- **Buffer modification in loops**: Lines table becomes stale after nvim_buf_set_lines, update local copy for subsequent iterations
 
 ## Dependencies
 - plenary.nvim (async, utilities, testing)

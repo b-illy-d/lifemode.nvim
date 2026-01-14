@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T03 COMPLETE
+T04 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -25,6 +25,11 @@ T03 COMPLETE
   - Tests: 22/22 passing
   - Files: lua/lifemode/parser.lua (created), lua/lifemode/init.lua (modified)
   - Acceptance: :LifeModeParse parses current buffer and prints block + task count
+- [x] T04 - Ensure IDs for indexable blocks
+  - TDD: RED (exit 1) → GREEN (exit 0) → REFACTOR
+  - Tests: 17/17 passing (5 UUID tests + 12 ensure_id tests)
+  - Files: lua/lifemode/uuid.lua (created), lua/lifemode/blocks.lua (created), lua/lifemode/init.lua (modified)
+  - Acceptance: :LifeModeEnsureIDs adds UUIDs to tasks and preserves content
 
 ## In Progress
 None
@@ -33,7 +38,6 @@ None
 None
 
 ## Remaining
-- [ ] T04: Ensure IDs for indexable blocks
 - [ ] T05: Build in-memory Node model
 - [ ] T06: Basic wikilink extraction
 - [ ] T07: Bible reference extraction and parsing
@@ -73,6 +77,17 @@ None
 | Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
 | Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
 | Manual Test | `nvim -l tests/manual_t03_test.lua` | 0 | All acceptance criteria met |
+
+### T04
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| UUID Tests | `nvim -l tests/uuid_spec.lua` | 0 | **PASS (5/5)** |
+| Ensure ID Tests | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Manual Test | `nvim -l tests/manual_t04_test.lua` | 0 | All acceptance criteria met |
 
 ## Known Issues (T00)
 
@@ -118,3 +133,10 @@ None
 | Parse headings + list items | Implemented with task detection | Added task type per SPEC.md requirements |
 | Extract task state + IDs | Implemented with pattern matching | No deviation |
 | All T03 requirements | All implemented + 22 tests + manual test | No deviation |
+
+### T04
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| UUID generation | vim.fn.system('uuidgen') | Simplest approach for macOS/Linux |
+| ensure_id for tasks | Implemented in blocks.lua module | Separate module for block operations |
+| All T04 requirements | All implemented + 17 tests + manual test + command | No deviation |
