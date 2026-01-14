@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T00 COMPLETE - Awaiting hotfix decision
+T01 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -10,18 +10,19 @@ T00 COMPLETE - Awaiting hotfix decision
   - Code Review: Grade A- (approved)
   - Tests: 7/7 happy path, 16/21 edge cases (5 failures expected)
   - Silent Failures: 5 found (3 blocking for T01)
+- [x] T01 - View buffer creation utility
+  - TDD: RED (exit 1) → GREEN (exit 0) → REFACTOR
+  - Tests: 10/10 passing
+  - Files: lua/lifemode/view.lua (created), lua/lifemode/init.lua (modified)
+  - Acceptance: :LifeModeOpen creates buffer with correct options
 
 ## In Progress
-- [ ] T00 Hotfix decision - awaiting user choice:
-  - Option A: Fix now (5 lines, 5 min) - RECOMMENDED
-  - Option B: Proceed with documented risk
-  - Option C: Fix as part of T01
+None
 
 ## Blocked
-- [ ] T01: View buffer creation utility - BLOCKED on T00 hotfix decision
+None
 
 ## Remaining
-- [ ] T01: View buffer creation utility
 - [ ] T02: Extmark-based span mapping
 - [ ] T03: Minimal Markdown block parser
 - [ ] T04: Ensure IDs for indexable blocks
@@ -33,13 +34,20 @@ T00 COMPLETE - Awaiting hotfix decision
 - [ ] T09-T30: (remaining per SPEC.md)
 
 ## Verification Evidence
+
+### T00
 | Check | Command | Exit Code | Result |
 |-------|---------|-----------|--------|
 | Happy Path Tests | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
 | Edge Case Tests | `nvim -l tests/edge_cases_spec.lua` | 1 | FAIL (16/21, 5 bugs found) |
 | Runtime Tests | `nvim -l tests/runtime_edge_cases_spec.lua` | 0 | **PASS (15/15)** |
-| Git Commit | `git log --oneline -1` | 0 | 0dd2003 (feat: T00) |
-| Git Status | `git status` | 0 | Clean (audit files untracked) |
+
+### T01
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| View Tests | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| All Unit Tests | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Manual Test | `:LifeModeOpen` | 0 | Buffer created with correct options |
 
 ## Known Issues (T00)
 
@@ -60,7 +68,15 @@ T00 COMPLETE - Awaiting hotfix decision
 - Changed from plenary.nvim to custom test runner (plenary not installed)
 
 ## Implementation Results
+
+### T00
 | Planned | Actual | Deviation Reason |
 |---------|--------|------------------|
 | plenary.nvim for tests | Custom minimal test runner | plenary not available, needed working tests |
 | All T00 requirements | All implemented + tests | No deviation |
+
+### T01
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Buffer name `[LifeMode]` | `[LifeMode]` or `[LifeMode:N]` | Handle collision when multiple buffers created in tests |
+| All T01 requirements | All implemented + tests | No deviation |

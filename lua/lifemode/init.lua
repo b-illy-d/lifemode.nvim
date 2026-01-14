@@ -67,6 +67,14 @@ function M.setup(user_config)
   end, {
     desc = 'Show LifeMode configuration'
   })
+
+  -- Create :LifeModeOpen command
+  vim.api.nvim_create_user_command('LifeModeOpen', function()
+    local view = require('lifemode.view')
+    view.create_buffer()
+  end, {
+    desc = 'Open a LifeMode view buffer'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -80,9 +88,12 @@ end
 -- Reset config for testing
 function M._reset_for_testing()
   config = nil
-  -- Remove command if it exists
+  -- Remove commands if they exist
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeHello')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeOpen')
   end)
 end
 

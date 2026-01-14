@@ -1,10 +1,14 @@
 # Active Context
 
 ## Current Focus
-Silent failure audit of T00 implementation COMPLETE
-Found 5 critical and 2 high severity issues through systematic edge case testing
+T01: View buffer creation utility COMPLETE
+Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T01] Created lua/lifemode/view.lua with create_buffer() function - lua/lifemode/view.lua:1
+- [T01] Added :LifeModeOpen command registration - lua/lifemode/init.lua:49
+- [T01] Created tests/view_spec.lua (10 tests, all passing)
+- [T01] Updated _reset_for_testing() to clean up :LifeModeOpen command
 - [AUDIT] Created tests/edge_cases_spec.lua (21 tests, 5 failures = 5 bugs found)
 - [AUDIT] Created tests/runtime_edge_cases_spec.lua (15 tests, all pass but expose risks)
 - [AUDIT] Created SILENT_FAILURE_AUDIT.md with comprehensive findings
@@ -12,13 +16,11 @@ Found 5 critical and 2 high severity issues through systematic edge case testing
 - [T00] Implemented config validation (required: vault_root, optional: leader/max_depth/bible_version)
 - [T00] Created minimal test runner (tests/run_tests.lua) - 7/7 tests passing
 - [T00] Initialized git repository and created initial commit (0dd2003)
-- [T00] Added README.md and .gitignore
 
 ## Next Steps
-1. DECISION: Fix critical issues (#1, #2, #3) before T01, or document and proceed?
-2. T01: View buffer creation utility (lifemode.view.create_buffer())
-3. T02: Extmark-based span mapping
-4. T03: Minimal Markdown block parser
+1. T02: Extmark-based span mapping
+2. T03: Minimal Markdown block parser
+3. T04: Ensure IDs for indexable blocks
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -28,6 +30,8 @@ Found 5 critical and 2 high severity issues through systematic edge case testing
 | Leader default | `<Space>` | Spec default, user-configurable |
 | ID format | UUID v4 | Spec requirement for stable, globally unique IDs |
 | TDD cycle | RED → GREEN → REFACTOR | Strict adherence to TDD principles |
+| Buffer naming (T01) | `[LifeMode]` with collision handling | Use unique buffer numbers if name exists |
+| View buffer options (T01) | `buftype=nofile`, `swapfile=false`, `bufhidden=wipe` | Per SPEC.md requirement |
 
 ## Learnings This Session
 
@@ -43,6 +47,9 @@ Found 5 critical and 2 high severity issues through systematic edge case testing
 - Config merging: vim.tbl_extend('force', defaults, user_config)
 - Command creation: vim.api.nvim_create_user_command()
 - Test isolation requires _reset_for_testing() helper
+- Buffer creation: vim.api.nvim_create_buf(false, true) for scratch buffers
+- Buffer options set via: vim.api.nvim_buf_set_option(bufnr, key, value)
+- Buffer names may include full path - check with vim.fn.bufnr() for collisions
 
 ### Testing Insights
 - Edge case testing catches what happy path tests miss
@@ -69,4 +76,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 16:15 EST
+2026-01-14 17:30 EST
