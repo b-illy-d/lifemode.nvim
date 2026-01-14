@@ -344,6 +344,91 @@ local content = [[Link to Page link here.]]
 content = content:gsub("Page link here%.", "[[Page]]")
 ```
 
+## Lens System Patterns (T11)
+
+### Lens Registry
+```lua
+-- Ordered array enables simple cycling with wraparound
+local lens_order = {
+  "task/brief",
+  "task/detail",
+  "node/raw",
+}
+
+function M.get_available_lenses()
+  return vim.deepcopy(lens_order)
+end
+```
+
+### Lens Renderers
+```lua
+-- Renderers are pure functions: node → string or table of strings
+local renderers = {}
+
+renderers["task/brief"] = function(node)
+  local body = node.body_md or ""
+  -- Strip ID for clean display
+  local line = body:gsub("%s*%^[%w%-_]+%s*$", "")
+  return line
+end
+
+renderers["node/raw"] = function(node)
+  return node.body_md or ""
+end
+```
+
+### Render Function with Fallback
+```lua
+function M.render(node, lens_name)
+  local renderer = renderers[lens_name]
+
+  -- Fall back to node/raw if lens not found
+  if not renderer then
+    renderer = renderers["node/raw"]
+  end
+
+  return renderer(node)
+end
+```
+
+### Lens Cycling with Wraparound
+```lua
+function M.cycle_lens(current_lens, direction)
+  direction = direction or 1
+
+  -- Find current index
+  local current_idx = nil
+  for i, lens_name in ipairs(lens_order) do
+    if lens_name == current_lens then
+      current_idx = i
+      break
+    end
+  end
+
+  -- Default to first lens if not found
+  if not current_idx then
+    return lens_order[1]
+  end
+
+  -- Calculate next index with wrapping
+  local next_idx = current_idx + direction
+  if next_idx > #lens_order then
+    next_idx = 1
+  elseif next_idx < 1 then
+    next_idx = #lens_order
+  end
+
+  return lens_order[next_idx]
+end
+```
+
+### Return Type Flexibility
+```lua
+-- Lens render can return string or table of lines
+local result = lens.render(node, "task/detail")
+local text = type(result) == "table" and table.concat(result, "\n") or result
+```
+
 ## Test Template for New Features
 
 ```lua

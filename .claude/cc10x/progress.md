@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T10 COMPLETE
+T11 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,6 +45,17 @@ T10 COMPLETE
 None
 
 ## Just Completed
+- [x] T11 - Basic lens system + lens cycling
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 23/23) → REFACTOR
+  - Tests: 23/23 lens_spec.lua + 15/15 manual acceptance
+  - Files: lua/lifemode/lens.lua (created), lua/lifemode/init.lua (modified), lua/lifemode/view.lua (modified)
+  - Functions: get_available_lenses(), render(node, lens_name), cycle_lens(current, direction)
+  - Lenses: task/brief (hide ID), task/detail (show all metadata), node/raw (exact markdown)
+  - Commands: :LifeModeLensNext, :LifeModeLensPrev
+  - Keymaps: <Space>ml (next), <Space>mL (prev) in view buffers
+  - Acceptance: Same task displays differently in brief vs detail lens
+
+## Previously Completed
 - [x] T10 - Task priority bump
   - TDD: RED (exit 1, function not found) → GREEN (exit 0, 24/24) → REFACTOR
   - Tests: 24/24 priority_spec.lua + 9/9 manual acceptance
@@ -230,6 +241,17 @@ None
 | Regression: Tasks | `nvim -l tests/tasks_spec.lua` | 0 | **PASS (17/17)** |
 | Manual Test | `nvim -l tests/manual_t10_test.lua` | 0 | All acceptance criteria met (9/9 tests pass) |
 
+### T11
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Lens Tests | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Tasks | `nvim -l tests/tasks_spec.lua` | 0 | **PASS (17/17)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Manual Test | `nvim -l tests/manual_t11_test.lua` | 0 | All acceptance criteria met (15/15 tests pass) |
+
 ## Known Issues (T00)
 
 ### BLOCKING for T01 (Must Fix)
@@ -344,3 +366,17 @@ None
 | <Space>tp and <Space>tP | Added to vault files + view buffers | Per SPEC.md keybinding |
 | :LifeModeIncPriority / DecPriority | Added for manual testing | Useful debug/test commands |
 | All T10 requirements | All implemented + 24 tests + 9 manual tests | No deviation from core requirements |
+
+### T11
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Lens registry with 3 lenses | task/brief, task/detail, node/raw | Per SPEC.md requirements |
+| Lens render functions | Implemented with fallback to node/raw | Graceful degradation for unknown lenses |
+| cycle_lens() | Forward/backward with wraparound | Seamless UX - no dead ends |
+| task/brief | Hides ID, shows title + priority | Clean display for quick scanning |
+| task/detail | Shows all metadata (ID, tags) | Can return string or table for multiline |
+| node/raw | Returns body_md as-is | Simplest lens - exact markdown |
+| <Space>ml / <Space>mL keymaps | Added to view buffers | Per SPEC.md requirement |
+| :LifeModeLensNext / Prev commands | Show message, no re-render | MVP: lens system first, view integration later (T12-T14) |
+| Re-render span on lens change | Deferred | Core lens rendering complete, view integration in T12-T14 |
+| All T11 requirements | All implemented + 23 tests + 15 manual tests | Core functionality complete, view integration deferred to T12-T14 |

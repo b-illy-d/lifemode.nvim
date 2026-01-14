@@ -466,6 +466,30 @@ function M.setup(user_config)
       end
     end,
   })
+
+  -- Create :LifeModeLensNext command
+  vim.api.nvim_create_user_command('LifeModeLensNext', function()
+    local lens = require('lifemode.lens')
+    -- For MVP, just show message about lens cycling
+    -- In future: get current lens from active instance, cycle, re-render
+    local current = "task/brief"  -- default for MVP
+    local next_lens = lens.cycle_lens(current, 1)
+    vim.api.nvim_echo({{'Next lens: ' .. next_lens, 'Normal'}}, false, {})
+  end, {
+    desc = 'Cycle to next lens for active instance'
+  })
+
+  -- Create :LifeModeLensPrev command
+  vim.api.nvim_create_user_command('LifeModeLensPrev', function()
+    local lens = require('lifemode.lens')
+    -- For MVP, just show message about lens cycling
+    -- In future: get current lens from active instance, cycle, re-render
+    local current = "task/brief"  -- default for MVP
+    local prev_lens = lens.cycle_lens(current, -1)
+    vim.api.nvim_echo({{'Previous lens: ' .. prev_lens, 'Normal'}}, false, {})
+  end, {
+    desc = 'Cycle to previous lens for active instance'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -515,6 +539,12 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeDecPriority')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeLensNext')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeLensPrev')
   end)
 end
 

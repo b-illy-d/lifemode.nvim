@@ -1,10 +1,24 @@
 # Active Context
 
 ## Current Focus
-T10: Task priority bump COMPLETE
+T11: Basic lens system + lens cycling COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T11] Created lua/lifemode/lens.lua with lens registry and render functions - lua/lifemode/lens.lua:1
+- [T11] Added get_available_lenses() returning lens_order array - lua/lifemode/lens.lua:12
+- [T11] Added render(node, lens_name) with fallback to node/raw - lua/lifemode/lens.lua:59
+- [T11] Added cycle_lens(current_lens, direction) with wrapping - lua/lifemode/lens.lua:74
+- [T11] Implemented task/brief lens (hides ID, shows title + priority) - lua/lifemode/lens.lua:21
+- [T11] Implemented task/detail lens (shows all metadata including tags) - lua/lifemode/lens.lua:30
+- [T11] Implemented node/raw lens (exact body_md) - lua/lifemode/lens.lua:50
+- [T11] Added :LifeModeLensNext command - lua/lifemode/init.lua:472
+- [T11] Added :LifeModeLensPrev command - lua/lifemode/init.lua:483
+- [T11] Added <Space>ml keymap for lens cycle next in view buffers - lua/lifemode/view.lua:129
+- [T11] Added <Space>mL keymap for lens cycle prev in view buffers - lua/lifemode/view.lua:139
+- [T11] Updated _reset_for_testing() to include :LifeModeLensNext and :LifeModeLensPrev cleanup
+- [T11] Created tests/lens_spec.lua (23 tests, all passing)
+- [T11] Created manual acceptance test - tests/manual_t11_test.lua (15 tests, all passing)
 - [T10] Added get_priority(line) to extract priority from task line - lua/lifemode/tasks.lua:83
 - [T10] Added set_priority(line, priority) to update/add/remove priority - lua/lifemode/tasks.lua:93
 - [T10] Added inc_priority(bufnr, node_id) to increase priority (toward !1) - lua/lifemode/tasks.lua:117
@@ -93,6 +107,14 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Lens order (T11) | task/brief, task/detail, node/raw | Simple progression from brief to detailed to raw |
+| Lens render return type (T11) | string or table of lines | Allows multiline rendering for detail lens |
+| Lens fallback (T11) | node/raw for unknown lenses | Graceful degradation - always show something |
+| Lens cycling wrap (T11) | Wrap at boundaries | UX: cycle continuously, no dead ends |
+| Lens commands MVP (T11) | Show message, no re-render | Core lens system first, view integration later (T12-T14) |
+| Lens keymaps (T11) | <Space>ml (next), <Space>mL (prev) | Per SPEC.md requirement |
+| task/brief display (T11) | Hide ID, show title + priority | Brief lens for quick scanning |
+| task/detail display (T11) | Show all metadata including ID and tags | Full context for detailed inspection |
 | Testing approach | Custom minimal test runner | plenary not installed, needed working tests for TDD |
 | Config validation | Assert vault_root required | Spec requirement |
 | Leader default | `<Space>` | Spec default, user-configurable |
@@ -132,6 +154,17 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Priority boundary behavior (T10) | Stop at !1 and !5 | Don't wrap around - stay at boundaries |
 
 ## Learnings This Session
+
+### Lens System (T11)
+- Lens registry as ordered array enables simple cycling with wraparound
+- Return type flexibility (string or table) allows single-line and multiline rendering
+- Fallback to node/raw ensures lens.render() always returns something
+- MVP approach: build lens rendering first, defer view integration to T12-T14
+- task/brief: strip ID with gsub pattern `%s*%^[%w%-_]+%s*$` for clean display
+- task/detail: multiline rendering for rich metadata display (tags, etc.)
+- node/raw: simplest lens - just return body_md as-is
+- Lens cycling: modulo arithmetic with wraparound for seamless UX
+- Commands and keymaps registered even if re-render not yet implemented
 
 ### Task Priority Bump (T10)
 - Priority pattern `!([1-5])` validates range at extraction time - invalid values return nil
@@ -273,4 +306,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 23:15 EST
+2026-01-14 23:45 EST

@@ -125,6 +125,26 @@ function M.create_buffer()
     end
   end, vim.tbl_extend('force', opts, { desc = 'Decrease task priority' }))
 
+  -- <Space>ml: Cycle to next lens
+  vim.keymap.set('n', '<Space>ml', function()
+    local lens = require('lifemode.lens')
+    -- For MVP, just show message about lens cycling
+    -- In future: get current lens from active instance, cycle, re-render
+    local current = "task/brief"  -- default for MVP
+    local next_lens = lens.cycle_lens(current, 1)
+    vim.api.nvim_echo({{'Next lens: ' .. next_lens, 'Normal'}}, false, {})
+  end, vim.tbl_extend('force', opts, { desc = 'Cycle to next lens' }))
+
+  -- <Space>mL: Cycle to previous lens
+  vim.keymap.set('n', '<Space>mL', function()
+    local lens = require('lifemode.lens')
+    -- For MVP, just show message about lens cycling
+    -- In future: get current lens from active instance, cycle, re-render
+    local current = "task/brief"  -- default for MVP
+    local prev_lens = lens.cycle_lens(current, -1)
+    vim.api.nvim_echo({{'Previous lens: ' .. prev_lens, 'Normal'}}, false, {})
+  end, vim.tbl_extend('force', opts, { desc = 'Cycle to previous lens' }))
+
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 
