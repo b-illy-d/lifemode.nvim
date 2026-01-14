@@ -15,16 +15,24 @@
 - `lua/lifemode/config.lua` - configuration management
 - `lua/lifemode/engine/` - parsing, indexing, query logic
 - `tests/lifemode/` - test files using plenary
+- `tests/*_spec.lua` - edge case and runtime tests
 
 ## Testing Patterns
-- Use plenary.nvim test harness
+- Use plenary.nvim test harness (when available)
+- Custom minimal test runner for MVP (tests/run_tests.lua)
 - File naming: `*_spec.lua`
 - TDD cycle: RED → GREEN → REFACTOR
+- Edge case testing: test empty strings, wrong types, boundary values
+- Runtime testing: test command registration, config merging, path handling
 
 ## Common Gotchas
 - vault_root must be provided by user (required config)
 - Leader key is configurable, default is `<Space>`
 - Bible references are first-class features
+- **Lua treats empty string as truthy**: `if not ""` is false, string passes check
+- **vim.tbl_extend does not validate types**: accepts any type, validate after merge
+- **Config merge replaces, doesn't accumulate**: second setup() resets unspecified keys
+- **Path normalization not automatic**: ~, trailing slashes, // not handled by default
 
 ## Dependencies
 - plenary.nvim (async, utilities, testing)
@@ -34,3 +42,121 @@
 ## Error Handling
 - Validate required config (vault_root)
 - Provide clear error messages for missing config
+- Validate types for all config options (not just vault_root)
+- Check for empty strings, not just nil
+- Validate boundary values for numeric configs
+
+## Silent Failure Prevention (Learned from T00 Audit)
+
+### Type Validation Pattern
+```lua
+-- BAD: Only validates vault_root type
+if type(user_config.vault_root) ~= 'string' then
+  error('vault_root must be a string')
+end
+config = vim.tbl_extend('force', defaults, user_config)
+
+-- GOOD: Validates all types after merge
+config = vim.tbl_extend('force', defaults, user_config)
+if type(config.leader) ~= 'string' then
+  error('leader must be a string')
+end
+if type(config.max_depth) ~= 'number' then
+  error('max_depth must be a number')
+end
+```
+
+### Empty String Check Pattern
+```lua
+-- BAD: Empty string passes
+if not user_config.vault_root then
+  error('vault_root is required')
+end
+
+-- GOOD: Rejects empty and whitespace
+if not user_config.vault_root or user_config.vault_root:match('^%s*$') then
+  error('vault_root is required and cannot be empty')
+end
+```
+
+### Boundary Validation Pattern
+```lua
+-- BAD: Accepts any number
+if type(config.max_depth) ~= 'number' then
+  error('max_depth must be a number')
+end
+
+-- GOOD: Enforces reasonable bounds
+if type(config.max_depth) ~= 'number' or config.max_depth < 1 or config.max_depth > 100 then
+  error('max_depth must be a number between 1 and 100')
+end
+```
+
+### Path Normalization Pattern
+```lua
+local function normalize_path(path)
+  -- Expand home directory
+  path = vim.fn.expand(path)
+  -- Remove trailing slash (unless root /)
+  if path ~= '/' then
+    path = path:gsub('/$', '')
+  end
+  return path
+end
+
+config.vault_root = normalize_path(user_config.vault_root)
+```
+
+## Edge Cases to Test
+
+When adding new configuration options, always test:
+
+1. **Type validation**
+   - Wrong type (number for string, string for number, table, function)
+   - nil (should use default or error if required)
+
+2. **Empty/boundary values**
+   - Empty string: ''
+   - Whitespace: '   '
+   - Zero: 0
+   - Negative: -1
+   - Very large: 999999
+
+3. **Special characters**
+   - Paths with spaces: '/path with spaces/'
+   - Unicode: '/path/with/日本語/'
+   - Special chars: '/path-with_special.chars/'
+
+4. **Runtime edge cases**
+   - Multiple calls to setup()
+   - Command registration conflicts
+   - Config accessed before setup()
+   - Long strings (test output rendering)
+
+## Test Template for New Features
+
+```lua
+describe("Edge Cases: [feature name]", function()
+  before_each(function()
+    lifemode._reset_for_testing()
+  end)
+
+  test("rejects wrong type", function()
+    assert_error(function()
+      lifemode.setup({ vault_root = '/test', [option] = 123 })
+    end, "must be a")
+  end)
+
+  test("rejects empty string", function()
+    assert_error(function()
+      lifemode.setup({ vault_root = '/test', [option] = '' })
+    end)
+  end)
+
+  test("handles boundary values", function()
+    assert_no_error(function()
+      lifemode.setup({ vault_root = '/test', [option] = [boundary_value] })
+    end)
+  end)
+end)
+```

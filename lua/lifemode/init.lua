@@ -26,8 +26,31 @@ function M.setup(user_config)
     error('vault_root must be a string')
   end
 
+  -- Check for empty/whitespace vault_root
+  if user_config.vault_root:match('^%s*$') then
+    error('vault_root cannot be empty or whitespace')
+  end
+
   -- Merge user config with defaults
   config = vim.tbl_extend('force', defaults, user_config)
+
+  -- Validate types after merge
+  if type(config.leader) ~= 'string' then
+    error('leader must be a string')
+  end
+
+  if type(config.max_depth) ~= 'number' then
+    error('max_depth must be a number')
+  end
+
+  if type(config.bible_version) ~= 'string' then
+    error('bible_version must be a string')
+  end
+
+  -- Validate boundaries
+  if config.max_depth < 1 or config.max_depth > 100 then
+    error('max_depth must be between 1 and 100')
+  end
 
   -- Create :LifeModeHello command
   vim.api.nvim_create_user_command('LifeModeHello', function()
