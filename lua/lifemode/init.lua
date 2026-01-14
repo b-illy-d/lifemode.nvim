@@ -10,6 +10,7 @@ local config = nil
 local defaults = {
   leader = '<Space>',
   max_depth = 10,
+  max_nodes_per_action = 100,
   bible_version = 'ESV',
 }
 
@@ -43,6 +44,10 @@ function M.setup(user_config)
     error('max_depth must be a number')
   end
 
+  if type(config.max_nodes_per_action) ~= 'number' then
+    error('max_nodes_per_action must be a number')
+  end
+
   if type(config.bible_version) ~= 'string' then
     error('bible_version must be a string')
   end
@@ -52,6 +57,10 @@ function M.setup(user_config)
     error('max_depth must be between 1 and 100')
   end
 
+  if config.max_nodes_per_action < 1 or config.max_nodes_per_action > 10000 then
+    error('max_nodes_per_action must be between 1 and 10000')
+  end
+
   -- Create :LifeModeHello command
   vim.api.nvim_create_user_command('LifeModeHello', function()
     local lines = {
@@ -59,6 +68,7 @@ function M.setup(user_config)
       '  vault_root: ' .. config.vault_root,
       '  leader: ' .. config.leader,
       '  max_depth: ' .. config.max_depth,
+      '  max_nodes_per_action: ' .. config.max_nodes_per_action,
       '  bible_version: ' .. config.bible_version,
     }
     for _, line in ipairs(lines) do

@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T14 COMPLETE
+T15 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,6 +45,17 @@ T14 COMPLETE
 None
 
 ## Just Completed
+- [x] T15 - Expansion budget + cycle stub
+  - TDD: RED (exit 1, 4 failures) → GREEN (exit 0, 6/6) → REFACTOR
+  - Tests: 6/6 expansion_limits_spec.lua + 6/6 manual acceptance
+  - Files: lua/lifemode/init.lua (modified), lua/lifemode/render.lua (modified)
+  - Config: Added max_nodes_per_action (default 100, range 1-10000)
+  - Cycle detection: Tracks expansion_path, renders "↩ already shown" stub
+  - Depth tracking: Respects config.max_depth, checks before expanding
+  - Node limit: Enforces max_nodes_per_action during child rendering
+  - Acceptance: Cycle stub shown, depth limit respected, node count limit respected, same node in different branches allowed
+
+## Previously Completed
 - [x] T14 - Expand/collapse one level (children)
   - TDD: RED (exit 1, 6 failures) → GREEN (exit 0, 6/6) → REFACTOR
   - Tests: 6/6 expand_spec.lua + 11/11 manual acceptance
@@ -300,6 +311,15 @@ None
 | Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
 | Manual Test | `nvim -l tests/manual_t12_test.lua` | 0 | All acceptance criteria met (10/10 tests pass) |
 
+### T15
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Expansion Limits Tests | `nvim -l tests/expansion_limits_spec.lua` | 0 | **PASS (6/6)** |
+| Regression: Expand | `nvim -l tests/expand_spec.lua` | 0 | **PASS (6/6)** |
+| Regression: Render | `nvim -l tests/render_spec.lua` | 0 | **PASS (11/11)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Manual Test | `nvim -l tests/manual_t15_test.lua` | 0 | All acceptance criteria met (6/6 tests pass) |
+
 ### T14
 | Check | Command | Exit Code | Result |
 |-------|---------|-----------|--------|
@@ -446,6 +466,20 @@ None
 | :LifeModeLensNext / Prev commands | Show message, no re-render | MVP: lens system first, view integration later (T12-T14) |
 | Re-render span on lens change | Deferred | Core lens rendering complete, view integration in T12-T14 |
 | All T11 requirements | All implemented + 23 tests + 15 manual tests | Core functionality complete, view integration deferred to T12-T14 |
+
+### T15
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| max_nodes_per_action config | Added to defaults, default 100 | Configurable 1-10000, validated |
+| Cycle detection | Implemented with expansion_path tracking | Checks if child_id in ancestor path before rendering |
+| Cycle stub rendering | "↩ already shown" non-interactive line | Simple, clear indicator, no span metadata |
+| Max depth enforcement | Check before expanding children | Respects config.max_depth, avoids unnecessary work |
+| Node count limit | Enforced in child rendering loop | Breaks loop when max_nodes_per_action reached |
+| Depth tracking | Stored in expanded_instances metadata | Enables depth checking without tree traversal |
+| Expansion path tracking | Array of node_ids in expansion order | Simple structure for ancestor checking |
+| Cycle scope | Per-expansion-path, not global | Same node in different branches allowed |
+| Test structure | Manual cache manipulation for cycles | Markdown can't directly express cyclic references |
+| All T15 requirements | All implemented + 6 tests + 6 manual tests | Crafted cycle does not blow up buffer |
 
 ### T14
 | Planned | Actual | Deviation Reason |

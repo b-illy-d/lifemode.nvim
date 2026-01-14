@@ -1,10 +1,21 @@
 # Active Context
 
 ## Current Focus
-T14: Expand/collapse one level (children) COMPLETE
+T15: Expansion budget + cycle stub COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T15] Added max_nodes_per_action config option (default: 100) - lua/lifemode/init.lua:12
+- [T15] Added config validation for max_nodes_per_action (1-10000) - lua/lifemode/init.lua:47
+- [T15] Implemented cycle detection in expand_instance() - lua/lifemode/render.lua:90
+- [T15] Added expansion path tracking to detect cycles - lua/lifemode/render.lua:75
+- [T15] Cycle stub renders "↩ already shown" for detected cycles - lua/lifemode/render.lua:100
+- [T15] Added depth tracking in expanded_instances metadata - lua/lifemode/render.lua:12
+- [T15] Max depth check before expansion (respects config.max_depth) - lua/lifemode/render.lua:107
+- [T15] Max nodes per action limit enforced during child rendering - lua/lifemode/render.lua:118
+- [T15] Updated expanded_instances to include depth and expansion_path - lua/lifemode/render.lua:177
+- [T15] Created tests/expansion_limits_spec.lua (6 tests, all passing)
+- [T15] Created manual acceptance test - tests/manual_t15_test.lua (6 tests, all passing)
 - [T14] Added expand_instance(bufnr, line) to expand nodes with children - lua/lifemode/render.lua:23
 - [T14] Added collapse_instance(bufnr, line) to remove expanded children - lua/lifemode/render.lua:133
 - [T14] Added is_expanded(bufnr, instance_id) to track expansion state - lua/lifemode/render.lua:14
@@ -146,6 +157,13 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Cycle stub text (T15) | "↩ already shown" | Simple, clear indicator that node already in expansion path |
+| Cycle detection scope (T15) | Per-expansion-path, not global | Same node in different branches is OK, only detect in current path |
+| Max nodes per action default (T15) | 100 | Balance between performance and utility, configurable 1-10000 |
+| Max depth check timing (T15) | Before expanding children | Prevents unnecessary work when at depth limit |
+| Cycle stub interactivity (T15) | Non-interactive (no span metadata) | Stub is informational only, not expandable |
+| Depth tracking storage (T15) | In expanded_instances metadata | Enables depth checking without re-traversing tree |
+| Expansion path tracking (T15) | Array of node_ids in expansion order | Simple structure for cycle detection |
 | Expand/collapse keybindings (T14) | <Space>e (expand), <Space>E (collapse) | Per SPEC.md requirement |
 | Expansion state storage (T14) | Module-level expanded_instances table | Tracks which instances are expanded per buffer |
 | Node data access during expand (T14) | Module-level _node_cache populated by render_page_view | Enables expand to access node children without re-parsing |
@@ -204,6 +222,18 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Expansion Limits (T15)
+- Cycle detection checks if child_id appears in expansion_path array before rendering
+- Expansion path tracks node_ids from root to current node during expansion
+- Cycle stub is non-interactive (no span metadata) - just an informational line
+- Same node in different branches is NOT a cycle - only same path matters
+- max_nodes_per_action limits children rendered per expand action, not total nodes
+- Depth is tracked per-instance in expanded_instances metadata
+- Check depth BEFORE expanding to avoid unnecessary work
+- Manual cache manipulation in tests simulates cyclic references not expressible in markdown
+- Unique IDs mean markdown can't directly express cycles (A→B→A creates single "a" node)
+- Cycle detection: check if child is in ancestors, not if current node was seen before
 
 ### Expand/Collapse (T14)
 - Module-level state (_node_cache and expanded_instances) enables expand/collapse without re-parsing

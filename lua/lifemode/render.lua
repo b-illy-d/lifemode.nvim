@@ -4,11 +4,12 @@
 local node = require('lifemode.node')
 local lens = require('lifemode.lens')
 local extmarks = require('lifemode.extmarks')
+local lifemode = require('lifemode')
 
 local M = {}
 
 -- Track which instances are expanded
--- Format: {[bufnr] = {[instance_id] = {child_instance_ids = {...}, node_id = "..."}}}
+-- Format: {[bufnr] = {[instance_id] = {child_instance_ids = {...}, node_id = "...", depth = N, expansion_path = {...}}}}
 local expanded_instances = {}
 
 --- Check if an instance is expanded
@@ -45,6 +46,7 @@ end
 function M.expand_instance(bufnr, line)
   local extmarks = require('lifemode.extmarks')
   local node_mod = require('lifemode.node')
+  local config = lifemode.get_config()
 
   -- Get span at line
   local span = extmarks.get_span_at_line(bufnr, line)
@@ -56,10 +58,6 @@ function M.expand_instance(bufnr, line)
   if M.is_expanded(bufnr, span.instance_id) then
     return  -- Already expanded, do nothing
   end
-
-  -- Get source buffer from global state (for MVP, we'll need to track this)
-  -- For now, parse the view buffer itself to find nodes (simplified)
-  -- In real implementation, we'd track source_bufnr per view
 
   -- Get node data - we need to parse source buffer
   -- For MVP, retrieve from span metadata or re-parse
@@ -83,41 +81,99 @@ function M.expand_instance(bufnr, line)
     return  -- No children to expand
   end
 
+  -- Get expansion depth and path from parent (if expanding a child)
+  local current_depth = 0
+  local expansion_path = {}
+
+  -- Find parent's expansion info to get depth and path
+  if not expanded_instances[bufnr] then
+    expanded_instances[bufnr] = {}
+  end
+
+  for parent_instance_id, parent_expansion in pairs(expanded_instances[bufnr]) do
+    if parent_expansion.child_instance_ids then
+      for _, child_id in ipairs(parent_expansion.child_instance_ids) do
+        if child_id == span.instance_id then
+          -- This span is a child of parent_instance_id
+          current_depth = (parent_expansion.depth or 0) + 1
+          expansion_path = vim.deepcopy(parent_expansion.expansion_path or {})
+          break
+        end
+      end
+    end
+  end
+
+  -- Check depth limit BEFORE expanding
+  if current_depth >= config.max_depth then
+    -- At or exceeding max depth - don't expand further
+    return
+  end
+
+  -- Add current node to expansion path for tracking children
+  table.insert(expansion_path, node_id)
+
   -- Render children
   local child_lines = {}
   local child_spans = {}
+  local nodes_rendered = 0
 
   for _, child_id in ipairs(node_data.children) do
-    local child_node = M._node_cache[string.format("%d:%s", bufnr, child_id)]
-    if child_node then
-      -- Choose lens for child
-      local child_lens = choose_lens(child_node)
+    -- Check node count limit
+    if nodes_rendered >= config.max_nodes_per_action then
+      break
+    end
 
-      -- Render child
-      local rendered = lens.render(child_node, child_lens)
-
-      -- Handle both string and table return types
-      local lines_to_add = {}
-      if type(rendered) == "table" then
-        lines_to_add = rendered
-      else
-        lines_to_add = { rendered }
+    -- Check for cycle: if child_id is already in expansion_path
+    local cycle_detected = false
+    for _, ancestor_id in ipairs(expansion_path) do
+      if ancestor_id == child_id then
+        cycle_detected = true
+        break
       end
+    end
 
-      -- Store child lines and metadata
-      for _, child_line in ipairs(lines_to_add) do
-        table.insert(child_lines, child_line)
+    if cycle_detected then
+      -- Render cycle stub for this child
+      local stub_line = "  ↩ already shown"
+      table.insert(child_lines, stub_line)
+
+      -- Note: We don't create a span for the stub (it's not interactive)
+      -- Just add the line to the child_lines
+      nodes_rendered = nodes_rendered + 1
+    else
+      local child_node = M._node_cache[string.format("%d:%s", bufnr, child_id)]
+      if child_node then
+        -- Choose lens for child
+        local child_lens = choose_lens(child_node)
+
+        -- Render child
+        local rendered = lens.render(child_node, child_lens)
+
+        -- Handle both string and table return types
+        local lines_to_add = {}
+        if type(rendered) == "table" then
+          lines_to_add = rendered
+        else
+          lines_to_add = { rendered }
+        end
+
+        -- Store child lines and metadata
+        for _, child_line in ipairs(lines_to_add) do
+          table.insert(child_lines, child_line)
+        end
+
+        -- Store span metadata for child
+        local child_instance_id = generate_instance_id()
+        table.insert(child_spans, {
+          instance_id = child_instance_id,
+          node_id = child_id,
+          lens = child_lens,
+          start_offset = #child_lines - #lines_to_add,
+          line_count = #lines_to_add,
+        })
+
+        nodes_rendered = nodes_rendered + 1
       end
-
-      -- Store span metadata for child
-      local child_instance_id = generate_instance_id()
-      table.insert(child_spans, {
-        instance_id = child_instance_id,
-        node_id = child_id,
-        lens = child_lens,
-        start_offset = #child_lines - #lines_to_add,
-        line_count = #lines_to_add,
-      })
     end
   end
 
@@ -157,6 +213,8 @@ function M.expand_instance(bufnr, line)
     node_id = node_id,
     insert_line = insert_line,
     line_count = #child_lines,
+    depth = current_depth,
+    expansion_path = expansion_path,
   }
 end
 
