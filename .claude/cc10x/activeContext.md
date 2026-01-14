@@ -1,10 +1,23 @@
 # Active Context
 
 ## Current Focus
-T16: Tag add/remove (commanded edit) COMPLETE
+T17: Due date set/clear (commanded edit) COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T17] Added get_due(line) to extract @due(YYYY-MM-DD) from line - lua/lifemode/tasks.lua:408
+- [T17] Added set_due(line, date) to add/update/remove due dates - lua/lifemode/tasks.lua:416
+- [T17] Added set_due_buffer(bufnr, node_id, date) for buffer operations - lua/lifemode/tasks.lua:448
+- [T17] Added clear_due_buffer(bufnr, node_id) to remove due dates - lua/lifemode/tasks.lua:490
+- [T17] Added set_due_interactive() for prompted due date setting - lua/lifemode/tasks.lua:522
+- [T17] Added clear_due_interactive() for due date removal - lua/lifemode/tasks.lua:569
+- [T17] Added :LifeModeSetDue command - lua/lifemode/init.lua:458
+- [T17] Added :LifeModeClearDue command - lua/lifemode/init.lua:465
+- [T17] Added <Space>td keymap for due date in vault files - lua/lifemode/init.lua:516
+- [T17] Added <Space>td keymap for due date in view buffers - lua/lifemode/view.lua:134
+- [T17] Updated _reset_for_testing() to include :LifeModeSetDue and :LifeModeClearDue - lua/lifemode/init.lua:616-621
+- [T17] Created tests/due_spec.lua (21 tests, all passing)
+- [T17] Created manual acceptance test - tests/manual_t17_test.lua (10 tests, all passing)
 - [T16] Added get_tags(line) to extract all #tag and #tag/subtag from line - lua/lifemode/tasks.lua:221
 - [T16] Added add_tag(bufnr, node_id, tag) to add tags to task lines - lua/lifemode/tasks.lua:232
 - [T16] Added remove_tag(bufnr, node_id, tag) to remove tags from tasks - lua/lifemode/tasks.lua:291
@@ -168,6 +181,13 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Due date syntax (T17) | `@due(YYYY-MM-DD)` inline marker | Per SPEC.md requirement, strict format validation |
+| Due date pattern (T17) | `@due%((%d%d%d%d%-%d%d%-%d%d)%)` | Validates YYYY-MM-DD format at extraction time |
+| Due date placement (T17) | Before ^id if present, else end of line | Consistent with priority and tag placement patterns |
+| Due date validation (T17) | Format check only (YYYY-MM-DD) | MVP approach - semantic validation (valid dates, not in past) deferred |
+| Due date removal (T17) | set_due(line, nil) or empty string | Consistent API - nil removes, string sets |
+| Interactive prompt (T17) | vim.fn.input() with current due shown | Simple MVP approach, shows current date as default |
+| Keymap for due (T17) | <Space>td for set_due_interactive | Per SPEC.md requirement, mnemonic "task due" |
 | Tag syntax (T16) | `#tag/subtag` with slash for hierarchy | Per SPEC.md requirement, consistent with common tag conventions |
 | Tag pattern (T16) | `#([%w_/-]+)` | Matches word chars, underscore, slash, hyphen for flexible tagging |
 | Tag placement (T16) | Before ^id if present, else end of line | Consistent with priority placement pattern |
@@ -241,6 +261,18 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Due Date Operations (T17)
+- Due date pattern `@due%((%d%d%d%d%-%d%d%-%d%d)%)` strictly validates YYYY-MM-DD format
+- Lua pattern `%d%d%d%d` requires exactly 4 digits (validates year format)
+- Due date placement follows same pattern as priority and tags (before ^id)
+- set_due(line, nil) and set_due(line, '') both remove due date
+- Multiple gsub cleanup steps needed: remove due, clean double spaces, clean trailing spaces
+- Spacing cleanup pattern: `%s%s+` → ` ` collapses multiple spaces to single space
+- Format validation at both extraction (get_due) and setting (set_due_buffer) ensures consistency
+- Empty string handling: treat '' same as nil for removal operations
+- Interactive prompt shows current due date as default input for easy editing
+- Date format validation message guides user: "Use YYYY-MM-DD" when format invalid
 
 ### Expansion Limits (T15)
 - Cycle detection checks if child_id appears in expansion_path array before rendering

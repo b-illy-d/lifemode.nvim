@@ -461,4 +461,215 @@ function M.remove_tag_interactive()
   end
 end
 
+--- Extract due date from task line
+--- @param line string Line text to extract due date from
+--- @return string|nil Due date (YYYY-MM-DD) or nil if not present or invalid format
+function M.get_due(line)
+  -- Pattern: @due(YYYY-MM-DD) - strict format with 4-digit year, 2-digit month/day
+  local due_date = line:match("@due%((%d%d%d%d%-%d%d%-%d%d)%)")
+  return due_date
+end
+
+--- Set or clear due date in task line
+--- @param line string Task line text
+--- @param date string|nil Due date (YYYY-MM-DD) or nil/empty to remove
+--- @return string Updated line text
+function M.set_due(line, date)
+  -- Handle nil or empty string as removal
+  if not date or date == '' then
+    -- Remove due date
+    local new_line = line:gsub("%s*@due%(%d%d%d%d%-%d%d%-%d%d%)%s*", " ")
+    -- Clean up double spaces
+    new_line = new_line:gsub("%s%s+", " ")
+    -- Clean up trailing space before ID
+    new_line = new_line:gsub("%s+(%^[%w%-_]+%s*)$", " %1")
+    -- Clean up trailing space at end
+    new_line = new_line:gsub("%s+$", "")
+    return new_line
+  end
+
+  -- Check if due already exists
+  if line:match("@due%(%d%d%d%d%-%d%d%-%d%d%)") then
+    -- Update existing due
+    return line:gsub("@due%(%d%d%d%d%-%d%d%-%d%d%)", "@due(" .. date .. ")")
+  else
+    -- Add new due
+    -- If line has ID (^id), insert before it
+    if line:match("%^[%w%-_]+%s*$") then
+      return line:gsub("(%s*)(%^[%w%-_]+%s*)$", " @due(" .. date .. ")%1%2")
+    else
+      -- No ID, append at end
+      return line .. " @due(" .. date .. ")"
+    end
+  end
+end
+
+--- Set due date on a task in buffer
+--- @param bufnr number Buffer handle
+--- @param node_id string Node ID
+--- @param date string Due date (YYYY-MM-DD format)
+--- @return boolean True if successful, false if not found/not a task/invalid format
+function M.set_due_buffer(bufnr, node_id, date)
+  -- Validate date format
+  if not date:match("^%d%d%d%d%-%d%d%-%d%d$") then
+    return false
+  end
+
+  -- Parse buffer to find the task
+  local blocks = parser.parse_buffer(bufnr)
+
+  -- Find the block with matching ID
+  local target_block = nil
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      if block.type == "task" then
+        target_block = block
+        break
+      else
+        -- Found node but it's not a task
+        return false
+      end
+    end
+  end
+
+  if not target_block then
+    -- Node not found
+    return false
+  end
+
+  -- Get the line content
+  local line_num = target_block.line_num
+  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
+  if #lines == 0 then
+    return false
+  end
+
+  local line = lines[1]
+
+  -- Update the line
+  local new_line = M.set_due(line, date)
+  vim.api.nvim_buf_set_lines(bufnr, line_num - 1, line_num, false, {new_line})
+
+  return true
+end
+
+--- Clear due date from a task in buffer
+--- @param bufnr number Buffer handle
+--- @param node_id string Node ID
+--- @return boolean True if successful, false if not found/not a task
+function M.clear_due_buffer(bufnr, node_id)
+  -- Parse buffer to find the task
+  local blocks = parser.parse_buffer(bufnr)
+
+  -- Find the block with matching ID
+  local target_block = nil
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      if block.type == "task" then
+        target_block = block
+        break
+      else
+        -- Found node but it's not a task
+        return false
+      end
+    end
+  end
+
+  if not target_block then
+    -- Node not found
+    return false
+  end
+
+  -- Get the line content
+  local line_num = target_block.line_num
+  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
+  if #lines == 0 then
+    return false
+  end
+
+  local line = lines[1]
+
+  -- Update the line
+  local new_line = M.set_due(line, nil)
+  vim.api.nvim_buf_set_lines(bufnr, line_num - 1, line_num, false, {new_line})
+
+  return true
+end
+
+--- Interactive set due date - prompts user for date and sets it on task at cursor
+function M.set_due_interactive()
+  -- Get task at cursor
+  local node_id, bufnr = M.get_task_at_cursor()
+
+  if not node_id then
+    vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Get current due date if exists
+  local blocks = parser.parse_buffer(bufnr)
+  local current_due = nil
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      local lines = vim.api.nvim_buf_get_lines(bufnr, block.line_num - 1, block.line_num, false)
+      if #lines > 0 then
+        current_due = M.get_due(lines[1])
+      end
+      break
+    end
+  end
+
+  -- Prompt for date with current date as default
+  local prompt = 'Set due date (YYYY-MM-DD)'
+  if current_due then
+    prompt = prompt .. ' [current: ' .. current_due .. ']'
+  end
+  prompt = prompt .. ': '
+
+  local date = vim.fn.input(prompt, current_due or '')
+
+  -- Trim whitespace
+  date = date:match('^%s*(.-)%s*$')
+
+  if date == '' then
+    vim.api.nvim_echo({{'Date cannot be empty', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Validate format
+  if not date:match('^%d%d%d%d%-%d%d%-%d%d$') then
+    vim.api.nvim_echo({{'Invalid date format. Use YYYY-MM-DD', 'ErrorMsg'}}, true, {})
+    return
+  end
+
+  -- Set due date
+  local success = M.set_due_buffer(bufnr, node_id, date)
+
+  if success then
+    vim.api.nvim_echo({{'Set due date to ' .. date, 'Normal'}}, true, {})
+  else
+    vim.api.nvim_echo({{'Failed to set due date', 'ErrorMsg'}}, true, {})
+  end
+end
+
+--- Interactive clear due date - clears due date from task at cursor
+function M.clear_due_interactive()
+  -- Get task at cursor
+  local node_id, bufnr = M.get_task_at_cursor()
+
+  if not node_id then
+    vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Clear due date
+  local success = M.clear_due_buffer(bufnr, node_id)
+
+  if success then
+    vim.api.nvim_echo({{'Cleared due date', 'Normal'}}, true, {})
+  else
+    vim.api.nvim_echo({{'Failed to clear due date', 'ErrorMsg'}}, true, {})
+  end
+end
+
 return M

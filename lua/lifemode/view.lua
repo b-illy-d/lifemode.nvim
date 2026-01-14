@@ -131,6 +131,12 @@ function M.create_buffer()
     tasks.add_tag_interactive()
   end, vim.tbl_extend('force', opts, { desc = 'Add tag to task' }))
 
+  -- <Space>td: Set due date
+  vim.keymap.set('n', '<Space>td', function()
+    local tasks = require('lifemode.tasks')
+    tasks.set_due_interactive()
+  end, vim.tbl_extend('force', opts, { desc = 'Set due date on task' }))
+
   -- <Space>ml: Cycle to next lens
   vim.keymap.set('n', '<Space>ml', function()
     local lens = require('lifemode.lens')

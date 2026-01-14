@@ -451,6 +451,22 @@ function M.setup(user_config)
     desc = 'Remove tag from task at cursor'
   })
 
+  -- Create :LifeModeSetDue command
+  vim.api.nvim_create_user_command('LifeModeSetDue', function()
+    local tasks = require('lifemode.tasks')
+    tasks.set_due_interactive()
+  end, {
+    desc = 'Set due date on task at cursor'
+  })
+
+  -- Create :LifeModeClearDue command
+  vim.api.nvim_create_user_command('LifeModeClearDue', function()
+    local tasks = require('lifemode.tasks')
+    tasks.clear_due_interactive()
+  end, {
+    desc = 'Clear due date from task at cursor'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -495,6 +511,12 @@ function M.setup(user_config)
           local tasks = require('lifemode.tasks')
           tasks.add_tag_interactive()
         end, { buffer = args.buf, noremap = true, silent = true, desc = 'Add tag to task' })
+
+        -- <Space>td: set due date
+        vim.keymap.set('n', config.leader .. 'td', function()
+          local tasks = require('lifemode.tasks')
+          tasks.set_due_interactive()
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Set due date on task' })
       end
     end,
   })
@@ -591,6 +613,12 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeRemoveTag')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeSetDue')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeClearDue')
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeLensNext')
