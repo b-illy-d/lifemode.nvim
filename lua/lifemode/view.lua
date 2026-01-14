@@ -77,6 +77,22 @@ function M.create_buffer()
     navigation.goto_definition()
   end, vim.tbl_extend('force', opts, { desc = 'Go to definition' }))
 
+  -- <Space><Space>: Toggle task state at cursor
+  vim.keymap.set('n', '<Space><Space>', function()
+    local tasks = require('lifemode.tasks')
+    local node_id, buf = tasks.get_task_at_cursor()
+    if node_id then
+      local success = tasks.toggle_task_state(buf, node_id)
+      if success then
+        vim.api.nvim_echo({{'Task state toggled', 'Normal'}}, false, {})
+      else
+        vim.api.nvim_echo({{'Failed to toggle task state', 'WarningMsg'}}, false, {})
+      end
+    else
+      vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+    end
+  end, vim.tbl_extend('force', opts, { desc = 'Toggle task state' }))
+
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 

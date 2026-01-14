@@ -1,10 +1,18 @@
 # Active Context
 
 ## Current Focus
-T08: "Definition" jump for wikilinks and Bible refs COMPLETE
+T09: Minimal task state toggle COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T09] Created lua/lifemode/tasks.lua with toggle_task_state() - lua/lifemode/tasks.lua:1
+- [T09] Added get_task_at_cursor() helper function - lua/lifemode/tasks.lua:60
+- [T09] Added :LifeModeToggleTask command - lua/lifemode/init.lua:375
+- [T09] Added <leader><leader> keymap for task toggle in vault files - lua/lifemode/init.lua:353
+- [T09] Added <Space><Space> keymap for task toggle in view buffers - lua/lifemode/view.lua:77
+- [T09] Created tests/tasks_spec.lua (17 tests, all passing)
+- [T09] Created manual acceptance test - tests/manual_t09_test.lua (9 tests, all passing)
+- [T09] Updated _reset_for_testing() to include :LifeModeToggleTask cleanup
 - [T08] Created lua/lifemode/navigation.lua with goto_definition() - lua/lifemode/navigation.lua:1
 - [T08] Added parse_wikilink_target() to parse [[Page]], [[Page#Heading]], [[Page^id]] - lua/lifemode/navigation.lua:14
 - [T08] Added find_file_in_vault() to search vault recursively - lua/lifemode/navigation.lua:35
@@ -67,8 +75,7 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T09: Minimal task state toggle (commanded edit)
-2. Continue with remaining tasks per SPEC.md
+1. T10: Continue with remaining tasks per SPEC.md
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -100,8 +107,22 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Block ID jump (T08) | Pattern match for %^block_id in line | Escapes special chars in ID for pattern matching |
 | Bible ref navigation (T08) | Show message stub for MVP | Provider implementation deferred to T24 |
 | gd keymap scope (T08) | View buffers + markdown files in vault | FileType autocmd checks file path vs vault_root |
+| Task toggle scope (T09) | Direct buffer modification | MVP approach - reparse handled by application layer |
+| Task toggle keymap (T09) | <Space><Space> (leader+leader) | Per SPEC.md keybinding for task state cycle |
+| Task toggle implementation (T09) | Pattern-based gsub for checkbox | Simple, reliable, preserves all content except checkbox |
+| get_task_at_cursor (T09) | Parse buffer + match line_num | Uses existing parser - consistent with other features |
 
 ## Learnings This Session
+
+### Task State Toggle (T09)
+- gsub with pattern `%[ %]` and `%[[xX]%]` handles checkbox replacement reliably
+- Preserving indentation: no special handling needed, gsub operates on full line
+- Pattern-based toggle simpler than AST manipulation for MVP
+- get_task_at_cursor: parse full buffer to find task at cursor line_num
+- Return false for non-task nodes provides clear API contract
+- Both hyphen and asterisk list markers work with same toggle logic
+- Multiple toggles: state alternates correctly without special tracking
+- FileType autocmd: keymap added to markdown files in vault automatically
 
 ### Navigation (T08)
 - vim.fn.shellescape() required for paths with spaces in shell commands
@@ -223,4 +244,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 22:30 EST
+2026-01-14 23:15 EST

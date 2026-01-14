@@ -351,8 +351,42 @@ function M.setup(user_config)
           local navigation = require('lifemode.navigation')
           navigation.goto_definition()
         end, { buffer = bufnr, noremap = true, silent = true, desc = 'Go to definition' })
+
+        -- Add <leader><leader> keymap for task toggle
+        vim.keymap.set('n', config.leader .. config.leader, function()
+          local tasks = require('lifemode.tasks')
+          local node_id, buf = tasks.get_task_at_cursor()
+          if node_id then
+            local success = tasks.toggle_task_state(buf, node_id)
+            if success then
+              vim.api.nvim_echo({{'Task state toggled', 'Normal'}}, false, {})
+            else
+              vim.api.nvim_echo({{'Failed to toggle task state', 'WarningMsg'}}, false, {})
+            end
+          else
+            vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+          end
+        end, { buffer = bufnr, noremap = true, silent = true, desc = 'Toggle task state' })
       end
     end,
+  })
+
+  -- Create :LifeModeToggleTask command for manual testing
+  vim.api.nvim_create_user_command('LifeModeToggleTask', function()
+    local tasks = require('lifemode.tasks')
+    local node_id, bufnr = tasks.get_task_at_cursor()
+    if node_id then
+      local success = tasks.toggle_task_state(bufnr, node_id)
+      if success then
+        vim.api.nvim_echo({{'Task state toggled', 'Normal'}}, false, {})
+      else
+        vim.api.nvim_echo({{'Failed to toggle task state', 'WarningMsg'}}, false, {})
+      end
+    else
+      vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+    end
+  end, {
+    desc = 'Toggle task state at cursor'
   })
 end
 
@@ -394,6 +428,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeGotoDef')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeToggleTask')
   end)
 end
 

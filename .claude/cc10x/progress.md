@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T08 COMPLETE
+T09 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,13 +45,19 @@ T08 COMPLETE
 None
 
 ## Just Completed
+- [x] T09 - Minimal task state toggle (commanded edit)
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 17/17) → REFACTOR
+  - Tests: 17/17 tasks_spec.lua
+  - Files: lua/lifemode/tasks.lua (created), lua/lifemode/init.lua (modified), lua/lifemode/view.lua (modified)
+  - Acceptance: toggle_task_state() toggles [ ] ↔ [x]; <Space><Space> keymap works; :LifeModeToggleTask command works
+
+## Previously Completed
 - [x] T08 - "Definition" jump for wikilinks and Bible refs
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 19/19) → REFACTOR
   - Tests: 19/19 navigation_spec.lua
   - Files: lua/lifemode/navigation.lua (created), lua/lifemode/view.lua (modified), lua/lifemode/init.lua (modified)
   - Acceptance: gd works for [[Page]], [[Page#Heading]], [[Page^id]], Bible refs (stub); works in view buffers and markdown files in vault
 
-## Previous Completion
 - [x] T07a - Quickfix "references" view
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 18/18) → REFACTOR
   - Tests: 18/18 references_spec.lua
@@ -62,7 +68,6 @@ None
 None
 
 ## Remaining
-- [ ] T09: Minimal task state toggle (commanded edit)
 - [ ] T10-T30: (remaining per SPEC.md)
 
 ## Verification Evidence
@@ -180,6 +185,23 @@ None
 | Regression: Bible | `nvim -l tests/bible_spec.lua` | 0 | **PASS (19/19)** |
 | Manual Test | `nvim -l tests/manual_t08_test.lua` | 0 | All acceptance criteria met (9/9 tests pass) |
 
+### T09
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Task Tests | `nvim -l tests/tasks_spec.lua` | 0 | **PASS (17/17)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: UUID | `nvim -l tests/uuid_spec.lua` | 0 | **PASS (5/5)** |
+| Regression: Ensure ID | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Refs | `nvim -l tests/refs_spec.lua` | 0 | **PASS (18/18)** |
+| Regression: References | `nvim -l tests/references_spec.lua` | 0 | **PASS (18/18)** |
+| Regression: Navigation | `nvim -l tests/navigation_spec.lua` | 0 | **PASS (19/19)** |
+| Regression: Bible | `nvim -l tests/bible_spec.lua` | 0 | **PASS (19/19)** |
+| Manual Test | `nvim -l tests/manual_t09_test.lua` | 0 | All acceptance criteria met (9/9 tests pass) |
+
 ## Known Issues (T00)
 
 ### BLOCKING for T01 (Must Fix)
@@ -268,3 +290,14 @@ None
 | Bible ref navigation | Message stub for MVP | Provider deferred to T24 |
 | gd keymap | View buffers + markdown in vault | FileType autocmd checks file path |
 | All T08 requirements | All implemented + 19 tests + 9 manual tests + command | No deviation |
+
+### T09
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| toggle_task_state() | Pattern-based gsub for checkbox replacement | Simple, reliable, preserves content |
+| Checkbox toggle | `[ ]` ↔ `[x]` and `[X]` | Handles both lowercase and uppercase |
+| get_task_at_cursor() | Parse buffer + match line_num | Uses existing parser infrastructure |
+| <Space><Space> keymap | Added to vault files + view buffers | Per SPEC.md requirement |
+| :LifeModeToggleTask command | Added for manual testing | Useful debug/test command |
+| Reparse + refresh view | Not implemented in MVP | Deferred - application layer responsibility |
+| All T09 requirements | All implemented + 17 tests + 9 manual tests | No deviation from core requirements |

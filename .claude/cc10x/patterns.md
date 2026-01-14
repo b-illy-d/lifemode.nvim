@@ -248,6 +248,48 @@ end
 -- Bible refs participate in backlinks system same as wikilinks
 ```
 
+## Task Toggle Patterns (T09)
+
+### Checkbox Pattern Replacement
+```lua
+-- Toggle [ ] to [x]
+new_line = line:gsub("%[ %]", "[x]", 1)
+
+-- Toggle [x] or [X] to [ ]
+new_line = line:gsub("%[[xX]%]", "[ ]", 1)
+```
+
+### Get Task at Cursor
+```lua
+-- Parse buffer to find task at current line
+local bufnr = vim.api.nvim_get_current_buf()
+local cursor = vim.api.nvim_win_get_cursor(0)
+local row = cursor[1]  -- 1-indexed
+
+local blocks = parser.parse_buffer(bufnr)
+for _, block in ipairs(blocks) do
+  if block.line_num == row and block.type == "task" and block.id then
+    return block.id, bufnr
+  end
+end
+```
+
+### Keymap in FileType Autocmd
+```lua
+-- Add keymap to markdown files in vault
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'markdown',
+  callback = function(args)
+    local filepath = vim.api.nvim_buf_get_name(args.buf)
+    if filepath:match('^' .. vim.pesc(config.vault_root)) then
+      -- File is in vault - add keymap
+      vim.keymap.set('n', config.leader .. config.leader, handler,
+        { buffer = args.buf })
+    end
+  end,
+})
+```
+
 ## Navigation Patterns (T08)
 
 ### File Search in Vault
