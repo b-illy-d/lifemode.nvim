@@ -24,6 +24,44 @@ function M.create_buffer()
   end
   vim.api.nvim_buf_set_name(bufnr, bufname)
 
+  -- Add example content for testing
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+    '# Example LifeMode View',
+    '',
+    '- [ ] Task 1: First task',
+    '- [ ] Task 2: Second task',
+    '- [x] Task 3: Completed task',
+    '',
+    'Some additional text',
+  })
+
+  -- Set example span metadata for testing
+  local extmarks = require('lifemode.extmarks')
+
+  extmarks.set_span_metadata(bufnr, 0, 0, {
+    instance_id = 'inst-heading',
+    node_id = 'node-heading-1',
+    lens = 'node/raw',
+    span_start = 0,
+    span_end = 0,
+  })
+
+  extmarks.set_span_metadata(bufnr, 2, 2, {
+    instance_id = 'inst-task-1',
+    node_id = 'node-task-1',
+    lens = 'task/brief',
+    span_start = 2,
+    span_end = 2,
+  })
+
+  extmarks.set_span_metadata(bufnr, 3, 4, {
+    instance_id = 'inst-task-group',
+    node_id = 'node-task-2-3',
+    lens = 'task/detail',
+    span_start = 3,
+    span_end = 4,
+  })
+
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 

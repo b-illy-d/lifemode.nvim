@@ -1,10 +1,14 @@
 # Active Context
 
 ## Current Focus
-T01: View buffer creation utility COMPLETE
+T02: Extmark-based span mapping COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T02] Created lua/lifemode/extmarks.lua with namespace and span metadata helpers - lua/lifemode/extmarks.lua:1
+- [T02] Added :LifeModeDebugSpan command - lua/lifemode/init.lua:54
+- [T02] Updated view.create_buffer() with example spans - lua/lifemode/view.lua:27
+- [T02] Created tests/extmarks_spec.lua (15 tests, all passing)
 - [T01] Created lua/lifemode/view.lua with create_buffer() function - lua/lifemode/view.lua:1
 - [T01] Added :LifeModeOpen command registration - lua/lifemode/init.lua:49
 - [T01] Created tests/view_spec.lua (10 tests, all passing)
@@ -18,9 +22,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T02: Extmark-based span mapping
-2. T03: Minimal Markdown block parser
-3. T04: Ensure IDs for indexable blocks
+1. T03: Minimal Markdown block parser
+2. T04: Ensure IDs for indexable blocks
+3. T05: Build in-memory Node model
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -32,8 +36,17 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | TDD cycle | RED → GREEN → REFACTOR | Strict adherence to TDD principles |
 | Buffer naming (T01) | `[LifeMode]` with collision handling | Use unique buffer numbers if name exists |
 | View buffer options (T01) | `buftype=nofile`, `swapfile=false`, `bufhidden=wipe` | Per SPEC.md requirement |
+| Extmark metadata storage (T02) | Separate table indexed by bufnr:mark_id | Neovim extmarks don't allow arbitrary keys |
+| Multi-line span retrieval (T02) | Query with overlap detection | Check if extmark end_row covers target line |
 
 ## Learnings This Session
+
+### Extmark API (T02)
+- Neovim extmarks don't support arbitrary key-value pairs in details
+- Must store custom metadata separately and index by extmark ID
+- end_row in extmarks is exclusive (need to add 1 when setting, subtract 1 when checking)
+- Multi-line spans require overlap detection - query from buffer start and check if extmark covers line
+- Use `{details = true, overlap = true}` options in nvim_buf_get_extmarks for span queries
 
 ### Silent Failure Patterns Discovered
 1. **Type validation gaps**: vim.tbl_extend accepts any type, no post-merge validation
@@ -76,4 +89,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 17:30 EST
+2026-01-14 18:15 EST

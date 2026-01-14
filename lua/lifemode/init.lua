@@ -75,6 +75,30 @@ function M.setup(user_config)
   end, {
     desc = 'Open a LifeMode view buffer'
   })
+
+  -- Create :LifeModeDebugSpan command
+  vim.api.nvim_create_user_command('LifeModeDebugSpan', function()
+    local extmarks = require('lifemode.extmarks')
+    local metadata = extmarks.get_span_at_cursor()
+
+    if metadata then
+      local lines = {
+        'Span Metadata at Cursor:',
+        '  instance_id: ' .. (metadata.instance_id or 'nil'),
+        '  node_id: ' .. (metadata.node_id or 'nil'),
+        '  lens: ' .. (metadata.lens or 'nil'),
+        '  span_start: ' .. (metadata.span_start or 'nil'),
+        '  span_end: ' .. (metadata.span_end or 'nil'),
+      }
+      for _, line in ipairs(lines) do
+        vim.api.nvim_echo({{line, 'Normal'}}, true, {})
+      end
+    else
+      vim.api.nvim_echo({{'No span metadata at cursor', 'WarningMsg'}}, true, {})
+    end
+  end, {
+    desc = 'Debug: show span metadata at cursor'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -94,6 +118,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeOpen')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeDebugSpan')
   end)
 end
 

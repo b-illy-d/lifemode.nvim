@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T01 COMPLETE
+T02 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -15,6 +15,11 @@ T01 COMPLETE
   - Tests: 10/10 passing
   - Files: lua/lifemode/view.lua (created), lua/lifemode/init.lua (modified)
   - Acceptance: :LifeModeOpen creates buffer with correct options
+- [x] T02 - Extmark-based span mapping
+  - TDD: RED (exit 1) → GREEN (exit 0) → REFACTOR
+  - Tests: 15/15 passing
+  - Files: lua/lifemode/extmarks.lua (created), lua/lifemode/init.lua (modified), lua/lifemode/view.lua (modified)
+  - Acceptance: :LifeModeDebugSpan prints metadata at cursor
 
 ## In Progress
 None
@@ -23,7 +28,6 @@ None
 None
 
 ## Remaining
-- [ ] T02: Extmark-based span mapping
 - [ ] T03: Minimal Markdown block parser
 - [ ] T04: Ensure IDs for indexable blocks
 - [ ] T05: Build in-memory Node model
@@ -48,6 +52,14 @@ None
 | View Tests | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
 | All Unit Tests | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
 | Manual Test | `:LifeModeOpen` | 0 | Buffer created with correct options |
+
+### T02
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Extmarks Tests | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| View Tests | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| All Unit Tests | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Manual Test | `nvim -l tests/manual_t02_test.lua` | 0 | All acceptance criteria met |
 
 ## Known Issues (T00)
 
@@ -80,3 +92,9 @@ None
 |---------|--------|------------------|
 | Buffer name `[LifeMode]` | `[LifeMode]` or `[LifeMode:N]` | Handle collision when multiple buffers created in tests |
 | All T01 requirements | All implemented + tests | No deviation |
+
+### T02
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Store metadata in extmark | Store in separate table | Neovim extmarks don't allow arbitrary keys |
+| All T02 requirements | All implemented + tests + example spans | No deviation |

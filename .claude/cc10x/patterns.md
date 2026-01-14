@@ -12,10 +12,12 @@
 
 ## File Structure
 - `lua/lifemode/init.lua` - main entry point with setup()
-- `lua/lifemode/config.lua` - configuration management
-- `lua/lifemode/engine/` - parsing, indexing, query logic
-- `tests/lifemode/` - test files using plenary
-- `tests/*_spec.lua` - edge case and runtime tests
+- `lua/lifemode/view.lua` - view buffer creation and management
+- `lua/lifemode/extmarks.lua` - extmark-based span metadata tracking
+- `lua/lifemode/config.lua` - configuration management (future)
+- `lua/lifemode/engine/` - parsing, indexing, query logic (future)
+- `tests/lifemode/` - test files using plenary (future)
+- `tests/*_spec.lua` - test files using custom test runner
 
 ## Testing Patterns
 - Use plenary.nvim test harness (when available)
@@ -33,6 +35,9 @@
 - **vim.tbl_extend does not validate types**: accepts any type, validate after merge
 - **Config merge replaces, doesn't accumulate**: second setup() resets unspecified keys
 - **Path normalization not automatic**: ~, trailing slashes, // not handled by default
+- **Extmarks don't allow arbitrary keys**: must store custom metadata separately
+- **Extmark end_row is exclusive**: add 1 when setting, subtract 1 when checking range
+- **Multi-line span detection requires overlap checking**: query from buffer start and check if extmark covers target line
 
 ## Dependencies
 - plenary.nvim (async, utilities, testing)
