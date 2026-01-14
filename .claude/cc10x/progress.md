@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T04 COMPLETE
+T05 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -30,6 +30,11 @@ T04 COMPLETE
   - Tests: 17/17 passing (5 UUID tests + 12 ensure_id tests)
   - Files: lua/lifemode/uuid.lua (created), lua/lifemode/blocks.lua (created), lua/lifemode/init.lua (modified)
   - Acceptance: :LifeModeEnsureIDs adds UUIDs to tasks and preserves content
+- [x] T05 - Build in-memory Node model
+  - TDD: RED (exit 1) → GREEN (exit 0) → REFACTOR
+  - Tests: 15/15 passing (node_spec.lua)
+  - Files: lua/lifemode/node.lua (created), lua/lifemode/parser.lua (modified), lua/lifemode/init.lua (modified)
+  - Acceptance: :LifeModeShowNodes prints node tree with hierarchy
 
 ## In Progress
 None
@@ -38,7 +43,6 @@ None
 None
 
 ## Remaining
-- [ ] T05: Build in-memory Node model
 - [ ] T06: Basic wikilink extraction
 - [ ] T07: Bible reference extraction and parsing
 - [ ] T07a: Quickfix "references" view
@@ -88,6 +92,18 @@ None
 | Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
 | Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
 | Manual Test | `nvim -l tests/manual_t04_test.lua` | 0 | All acceptance criteria met |
+
+### T05
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Node Tests | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: UUID | `nvim -l tests/uuid_spec.lua` | 0 | **PASS (5/5)** |
+| Regression: Ensure ID | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
+| Manual Test | `nvim -l tests/manual_t05_test.lua` | 0 | All acceptance criteria met |
 
 ## Known Issues (T00)
 
@@ -140,3 +156,11 @@ None
 | UUID generation | vim.fn.system('uuidgen') | Simplest approach for macOS/Linux |
 | ensure_id for tasks | Implemented in blocks.lua module | Separate module for block operations |
 | All T04 requirements | All implemented + 17 tests + manual test + command | No deviation |
+
+### T05
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Node model structure | { id, type, body_md, children, props } | Per SPEC.md - refs deferred to T06/T07 |
+| Hierarchy detection | Stack-based for both headings and lists | Clean approach for nested structures |
+| Parser enhancement | Added `%s*` prefix to list patterns | Needed to support indented lists |
+| All T05 requirements | All implemented + 15 tests + manual test + command | No deviation |

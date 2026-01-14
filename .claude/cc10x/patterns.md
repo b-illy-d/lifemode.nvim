@@ -17,6 +17,7 @@
 - `lua/lifemode/parser.lua` - minimal Markdown block parser (headings, list items, tasks)
 - `lua/lifemode/uuid.lua` - UUID v4 generation using system uuidgen
 - `lua/lifemode/blocks.lua` - block ID management (ensure_ids_in_buffer)
+- `lua/lifemode/node.lua` - in-memory Node model with tree structure
 - `lua/lifemode/config.lua` - configuration management (future)
 - `lua/lifemode/engine/` - parsing, indexing, query logic (future)
 - `tests/lifemode/` - test files using plenary (future)
@@ -50,6 +51,9 @@
 - **UUID case sensitivity**: uuidgen returns uppercase by default, use :lower() for consistent formatting
 - **Buffer line indexing**: nvim_buf_get_lines returns 1-indexed table, but nvim_buf_set_lines uses 0-indexed positions
 - **Buffer modification in loops**: Lines table becomes stale after nvim_buf_set_lines, update local copy for subsequent iterations
+- **Parser indentation support**: List patterns must include `^%s*` prefix to match indented items
+- **Hierarchy tracking**: Stack-based approach works well for both heading levels and list indentation
+- **Node tree context switching**: Must reset list stack when encountering a heading (different hierarchy context)
 
 ## Dependencies
 - plenary.nvim (async, utilities, testing)

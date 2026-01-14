@@ -28,11 +28,11 @@ local function parse_line(line, line_num)
     }
   end
 
-  -- Check for list item or task (starts with - or *)
-  local list_prefix = line:match("^([%-%*]) ")
+  -- Check for list item or task (may have leading spaces for indentation)
+  local list_prefix = line:match("^%s*([%-%*]) ")
   if list_prefix then
     -- Check if it's a task (has [ ] or [x] after prefix)
-    local task_match = line:match("^[%-%*] %[([%sxX])%]")
+    local task_match = line:match("^%s*[%-%*] %[([%sxX])%]")
     if task_match then
       local state = (task_match:lower() == "x") and "done" or "todo"
       return {

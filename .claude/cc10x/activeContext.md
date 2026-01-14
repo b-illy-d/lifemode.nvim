@@ -1,10 +1,15 @@
 # Active Context
 
 ## Current Focus
-T04: Ensure IDs for indexable blocks COMPLETE
+T05: Build in-memory Node model COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T05] Created lua/lifemode/node.lua with build_nodes_from_buffer() - lua/lifemode/node.lua:1
+- [T05] Updated parser.lua to handle indented list items - lua/lifemode/parser.lua:32
+- [T05] Added :LifeModeShowNodes command - lua/lifemode/init.lua:136
+- [T05] Created tests/node_spec.lua (15 tests, all passing)
+- [T05] Created manual acceptance test - tests/manual_t05_test.lua
 - [T04] Created lua/lifemode/uuid.lua for UUID v4 generation - lua/lifemode/uuid.lua:1
 - [T04] Created lua/lifemode/blocks.lua with ensure_ids_in_buffer() - lua/lifemode/blocks.lua:1
 - [T04] Added :LifeModeEnsureIDs command - lua/lifemode/init.lua:115
@@ -32,9 +37,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T05: Build in-memory Node model
-2. T06: Basic wikilink extraction
-3. T07: Bible reference extraction and parsing
+1. T06: Basic wikilink extraction
+2. T07: Bible reference extraction and parsing
+3. T07a: Quickfix "references" view
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -48,6 +53,10 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | ID scope (T04) | Tasks only initially | Per spec - can expand to headings later |
 | Buffer naming (T01) | `[LifeMode]` with collision handling | Use unique buffer numbers if name exists |
 | View buffer options (T01) | `buftype=nofile`, `swapfile=false`, `bufhidden=wipe` | Per SPEC.md requirement |
+| Node ID generation (T05) | Auto-generate for blocks without explicit ID | Synthetic IDs using timestamp + random for uniqueness |
+| Heading hierarchy (T05) | Stack-based parent tracking by heading level | # is parent of ##, ## is parent of ###, etc. |
+| List hierarchy (T05) | Stack-based parent tracking by indentation | More indented items are children of less indented |
+| Parser indentation (T05) | Allow leading spaces in list/task patterns | Changed `^([%-%*])` to `^%s*([%-%*])` to support nested lists |
 | Extmark metadata storage (T02) | Separate table indexed by bufnr:mark_id | Neovim extmarks don't allow arbitrary keys |
 | Multi-line span retrieval (T02) | Query with overlap detection | Check if extmark end_row covers target line |
 | Parser block types (T03) | heading, list_item, task | Minimal set for MVP - ignore prose paragraphs |
@@ -55,6 +64,14 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | ID extraction pattern (T03) | `^[%w%-_]+` at end of line | Matches UUID and simple IDs |
 
 ## Learnings This Session
+
+### Node Model (T05)
+- Stack-based hierarchy tracking is clean for both heading levels and list indentation
+- Parser needed enhancement to support indented lists (added `%s*` prefix to patterns)
+- Node structure: { id, type, body_md, children, props }
+- Synthetic ID generation uses timestamp + random for uniqueness
+- Tree context must reset when switching between headings and lists
+- List items under a heading become children of that heading
 
 ### UUID Generation (T04)
 - vim.fn.system('uuidgen') returns UUID with newline - must strip with :gsub('%s+', '')

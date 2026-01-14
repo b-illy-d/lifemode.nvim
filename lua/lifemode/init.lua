@@ -138,6 +138,54 @@ function M.setup(user_config)
   end, {
     desc = 'Ensure all tasks in current buffer have IDs'
   })
+
+  -- Create :LifeModeShowNodes command
+  vim.api.nvim_create_user_command('LifeModeShowNodes', function()
+    local node = require('lifemode.node')
+    local bufnr = vim.api.nvim_get_current_buf()
+    local result = node.build_nodes_from_buffer(bufnr)
+
+    -- Helper to print tree recursively
+    local function print_tree(node_id, depth)
+      local n = result.nodes_by_id[node_id]
+      if not n then return end
+
+      local indent = string.rep('  ', depth)
+      local type_label = string.format('[%s]', n.type)
+      local body_preview = n.body_md:sub(1, 60)
+      if #n.body_md > 60 then
+        body_preview = body_preview .. '...'
+      end
+
+      vim.api.nvim_echo({{
+        string.format('%s%s %s: %s', indent, type_label, n.id, body_preview),
+        'Normal'
+      }}, true, {})
+
+      -- Print children
+      for _, child_id in ipairs(n.children) do
+        print_tree(child_id, depth + 1)
+      end
+    end
+
+    -- Print header
+    local lines = {
+      'Node Tree:',
+      '  Total nodes: ' .. vim.tbl_count(result.nodes_by_id),
+      '  Root nodes: ' .. #result.root_ids,
+      '',
+    }
+    for _, line in ipairs(lines) do
+      vim.api.nvim_echo({{line, 'Normal'}}, true, {})
+    end
+
+    -- Print tree for each root
+    for _, root_id in ipairs(result.root_ids) do
+      print_tree(root_id, 0)
+    end
+  end, {
+    desc = 'Show node tree structure for current buffer'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -166,6 +214,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeEnsureIDs')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeShowNodes')
   end)
 end
 
