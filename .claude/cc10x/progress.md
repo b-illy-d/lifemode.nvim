@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T13 COMPLETE
+T14 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,6 +45,18 @@ T13 COMPLETE
 None
 
 ## Just Completed
+- [x] T14 - Expand/collapse one level (children)
+  - TDD: RED (exit 1, 6 failures) → GREEN (exit 0, 6/6) → REFACTOR
+  - Tests: 6/6 expand_spec.lua + 11/11 manual acceptance
+  - Files: lua/lifemode/render.lua (modified)
+  - Functions: expand_instance(bufnr, line), collapse_instance(bufnr, line), is_expanded(bufnr, instance_id)
+  - State tracking: expanded_instances table (per-buffer, per-instance)
+  - Node cache: _node_cache populated during render for expand access
+  - Keymaps: <Space>e (expand), <Space>E (collapse) in view buffers
+  - Behavior: Idempotent expand, one level only (immediate children), extmarks auto-cleaned on collapse
+  - Acceptance: Expand/collapse works, no duplicate children on repeated expand, leaf nodes unchanged
+
+## Previously Completed
 - [x] T13 - Compiled view render of a page root (single file)
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 11/11) → REFACTOR
   - Tests: 11/11 render_spec.lua + 11/11 manual acceptance
@@ -288,6 +300,15 @@ None
 | Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
 | Manual Test | `nvim -l tests/manual_t12_test.lua` | 0 | All acceptance criteria met (10/10 tests pass) |
 
+### T14
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Expand Tests | `nvim -l tests/expand_spec.lua` | 0 | **PASS (6/6)** |
+| Regression: Render | `nvim -l tests/render_spec.lua` | 0 | **PASS (11/11)** |
+| Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Manual Test | `nvim -l tests/manual_t14_test.lua` | 0 | All acceptance criteria met (11/11 tests pass) |
+
 ### T13
 | Check | Command | Exit Code | Result |
 |-------|---------|-----------|--------|
@@ -425,6 +446,20 @@ None
 | :LifeModeLensNext / Prev commands | Show message, no re-render | MVP: lens system first, view integration later (T12-T14) |
 | Re-render span on lens change | Deferred | Core lens rendering complete, view integration in T12-T14 |
 | All T11 requirements | All implemented + 23 tests + 15 manual tests | Core functionality complete, view integration deferred to T12-T14 |
+
+### T14
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| expand_instance function | Implemented with line parameter (0-indexed) | Gets span at line, checks expanded state, renders children |
+| collapse_instance function | Implemented with line deletion | Removes child lines using nvim_buf_set_lines |
+| is_expanded tracking | Module-level expanded_instances table | Tracks per-buffer, per-instance with child metadata |
+| Node cache for expand | Module-level _node_cache | Populated during render_page_view for all nodes |
+| Repeated expand prevention | Early return if already expanded | Idempotent - no duplicate children |
+| Collapse cleanup | Buffer line deletion | Extmarks auto-removed when lines deleted |
+| Expansion depth | One level only (immediate children) | MVP approach - grandchildren not shown |
+| Keymaps <Space>e and <Space>E | Added to view buffers in render_page_view | Per SPEC.md requirement |
+| Cycle detection | Minimal (not implemented in T14) | Deferred - basic expansion working first |
+| All T14 requirements | All implemented + 6 tests + 11 manual tests | Core functionality complete, cycle detection deferred |
 
 ### T13
 | Planned | Actual | Deviation Reason |

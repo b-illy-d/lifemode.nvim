@@ -1,10 +1,24 @@
 # Active Context
 
 ## Current Focus
-T13: Compiled view render of a page root (single file) COMPLETE
+T14: Expand/collapse one level (children) COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T14] Added expand_instance(bufnr, line) to expand nodes with children - lua/lifemode/render.lua:23
+- [T14] Added collapse_instance(bufnr, line) to remove expanded children - lua/lifemode/render.lua:133
+- [T14] Added is_expanded(bufnr, instance_id) to track expansion state - lua/lifemode/render.lua:14
+- [T14] Added module-level expanded_instances table for state tracking - lua/lifemode/render.lua:7
+- [T14] Added module-level _node_cache for accessing node data during expand - lua/lifemode/render.lua:186
+- [T14] Node cache populated in render_page_view() for all nodes_by_id - lua/lifemode/render.lua:189
+- [T14] Expand renders children using choose_lens() and lens.render() - lua/lifemode/render.lua:72
+- [T14] Expand inserts child lines after parent span and sets extmarks - lua/lifemode/render.lua:95
+- [T14] Collapse deletes child lines using buffer line operations - lua/lifemode/render.lua:147
+- [T14] Expansion state includes child_instance_ids, insert_line, line_count - lua/lifemode/render.lua:119
+- [T14] Repeated expand is idempotent (early return if already expanded) - lua/lifemode/render.lua:37
+- [T14] Added keymaps <Space>e (expand) and <Space>E (collapse) to view buffers - lua/lifemode/render.lua:237
+- [T14] Created tests/expand_spec.lua (6 tests, all passing)
+- [T14] Created manual acceptance test - tests/manual_t14_test.lua (11 tests, all passing)
 - [T13] Created lua/lifemode/render.lua with render_page_view() function - lua/lifemode/render.lua:1
 - [T13] Added generate_instance_id() for unique instance identification - lua/lifemode/render.lua:11
 - [T13] Added choose_lens(node_data) to select appropriate lens (task/brief or node/raw) - lua/lifemode/render.lua:18
@@ -132,6 +146,12 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Expand/collapse keybindings (T14) | <Space>e (expand), <Space>E (collapse) | Per SPEC.md requirement |
+| Expansion state storage (T14) | Module-level expanded_instances table | Tracks which instances are expanded per buffer |
+| Node data access during expand (T14) | Module-level _node_cache populated by render_page_view | Enables expand to access node children without re-parsing |
+| Repeated expand behavior (T14) | Idempotent (early return if already expanded) | Prevents duplicate children per acceptance criteria |
+| Collapse implementation (T14) | Delete lines using nvim_buf_set_lines | Simple buffer manipulation, extmarks auto-removed |
+| Expansion depth (T14) | One level only | MVP approach - expand shows immediate children, not grandchildren |
 | Lens order (T11) | task/brief, task/detail, node/raw | Simple progression from brief to detailed to raw |
 | Lens render return type (T11) | string or table of lines | Allows multiline rendering for detail lens |
 | Lens fallback (T11) | node/raw for unknown lenses | Graceful degradation - always show something |
@@ -184,6 +204,17 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Expand/Collapse (T14)
+- Module-level state (_node_cache and expanded_instances) enables expand/collapse without re-parsing
+- Node cache must be populated during render_page_view for all nodes_by_id, not just roots
+- Expansion tracking per buffer: expanded_instances[bufnr][instance_id] = {child_instance_ids, insert_line, line_count}
+- Early return pattern for idempotent expand: check is_expanded before adding children
+- Collapse by deleting lines: nvim_buf_set_lines(bufnr, start, end, false, {}) removes child spans
+- Extmarks automatically cleaned up when lines deleted - no manual cleanup needed
+- One level expansion: only immediate children shown, grandchildren remain hidden until parent child is expanded
+- Keymaps must reference correct buffer in closure: use view_bufnr not dynamic buffer query
+- Cache key format: string.format("%d:%s", bufnr, node_id) for unique buffer+node identification
 
 ### Compiled View Rendering (T13)
 - Extmarks must be set AFTER buffer lines are populated, not before

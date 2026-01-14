@@ -7,6 +7,21 @@ local extmarks = require('lifemode.extmarks')
 
 local M = {}
 
+-- Track which instances are expanded
+-- Format: {[bufnr] = {[instance_id] = {child_instance_ids = {...}, node_id = "..."}}}
+local expanded_instances = {}
+
+--- Check if an instance is expanded
+--- @param bufnr number Buffer number
+--- @param instance_id string Instance ID
+--- @return boolean True if expanded
+function M.is_expanded(bufnr, instance_id)
+  if not expanded_instances[bufnr] then
+    return false
+  end
+  return expanded_instances[bufnr][instance_id] ~= nil
+end
+
 --- Generate a unique instance ID
 --- @return string Unique instance ID
 local function generate_instance_id()
@@ -22,6 +37,158 @@ local function choose_lens(node_data)
   else
     return "node/raw"
   end
+end
+
+--- Expand an instance to show its children
+--- @param bufnr number View buffer number
+--- @param line number Line number (0-indexed) where cursor is
+function M.expand_instance(bufnr, line)
+  local extmarks = require('lifemode.extmarks')
+  local node_mod = require('lifemode.node')
+
+  -- Get span at line
+  local span = extmarks.get_span_at_line(bufnr, line)
+  if not span then
+    return
+  end
+
+  -- Check if already expanded
+  if M.is_expanded(bufnr, span.instance_id) then
+    return  -- Already expanded, do nothing
+  end
+
+  -- Get source buffer from global state (for MVP, we'll need to track this)
+  -- For now, parse the view buffer itself to find nodes (simplified)
+  -- In real implementation, we'd track source_bufnr per view
+
+  -- Get node data - we need to parse source buffer
+  -- For MVP, retrieve from span metadata or re-parse
+  -- Simplified: assume we have node_id in metadata
+  local node_id = span.node_id
+  if not node_id then
+    return
+  end
+
+  -- Get node and its children from cached data
+  -- For MVP, we'll need to re-parse or cache node data
+  -- Let's use a module-level cache
+  if not M._node_cache then
+    M._node_cache = {}
+  end
+
+  local cache_key = string.format("%d:%s", bufnr, node_id)
+  local node_data = M._node_cache[cache_key]
+
+  if not node_data or not node_data.children or #node_data.children == 0 then
+    return  -- No children to expand
+  end
+
+  -- Render children
+  local child_lines = {}
+  local child_spans = {}
+
+  for _, child_id in ipairs(node_data.children) do
+    local child_node = M._node_cache[string.format("%d:%s", bufnr, child_id)]
+    if child_node then
+      -- Choose lens for child
+      local child_lens = choose_lens(child_node)
+
+      -- Render child
+      local rendered = lens.render(child_node, child_lens)
+
+      -- Handle both string and table return types
+      local lines_to_add = {}
+      if type(rendered) == "table" then
+        lines_to_add = rendered
+      else
+        lines_to_add = { rendered }
+      end
+
+      -- Store child lines and metadata
+      for _, child_line in ipairs(lines_to_add) do
+        table.insert(child_lines, child_line)
+      end
+
+      -- Store span metadata for child
+      local child_instance_id = generate_instance_id()
+      table.insert(child_spans, {
+        instance_id = child_instance_id,
+        node_id = child_id,
+        lens = child_lens,
+        start_offset = #child_lines - #lines_to_add,
+        line_count = #lines_to_add,
+      })
+    end
+  end
+
+  -- Insert child lines after parent span
+  local insert_line = span.span_end + 1
+  vim.api.nvim_buf_set_lines(bufnr, insert_line, insert_line, false, child_lines)
+
+  -- Set extmark metadata for children
+  local current_line = insert_line
+  for _, child_span_info in ipairs(child_spans) do
+    local child_start = current_line
+    local child_end = current_line + child_span_info.line_count - 1
+
+    extmarks.set_span_metadata(bufnr, child_start, child_end, {
+      instance_id = child_span_info.instance_id,
+      node_id = child_span_info.node_id,
+      lens = child_span_info.lens,
+      span_start = child_start,
+      span_end = child_end,
+    })
+
+    current_line = child_end + 1
+  end
+
+  -- Track expansion state
+  if not expanded_instances[bufnr] then
+    expanded_instances[bufnr] = {}
+  end
+
+  local child_instance_ids = {}
+  for _, child_span_info in ipairs(child_spans) do
+    table.insert(child_instance_ids, child_span_info.instance_id)
+  end
+
+  expanded_instances[bufnr][span.instance_id] = {
+    child_instance_ids = child_instance_ids,
+    node_id = node_id,
+    insert_line = insert_line,
+    line_count = #child_lines,
+  }
+end
+
+--- Collapse an expanded instance (remove its children)
+--- @param bufnr number View buffer number
+--- @param line number Line number (0-indexed) where cursor is
+function M.collapse_instance(bufnr, line)
+  local extmarks = require('lifemode.extmarks')
+
+  -- Get span at line
+  local span = extmarks.get_span_at_line(bufnr, line)
+  if not span then
+    return
+  end
+
+  -- Check if expanded
+  if not M.is_expanded(bufnr, span.instance_id) then
+    return  -- Not expanded, nothing to collapse
+  end
+
+  -- Get expansion info
+  local expansion = expanded_instances[bufnr][span.instance_id]
+
+  -- Delete child lines
+  local delete_start = expansion.insert_line
+  local delete_end = expansion.insert_line + expansion.line_count
+  vim.api.nvim_buf_set_lines(bufnr, delete_start, delete_end, false, {})
+
+  -- Clear extmarks for children (they're automatically removed when lines are deleted)
+
+  -- Clear expansion state
+  expanded_instances[bufnr][span.instance_id] = nil
 end
 
 --- Render a page view from source buffer
@@ -51,6 +218,15 @@ function M.render_page_view(source_bufnr)
     bufname = string.format('[LifeMode:PageView:%d]', view_bufnr)
   end
   vim.api.nvim_buf_set_name(view_bufnr, bufname)
+
+  -- Cache node data for expand/collapse
+  if not M._node_cache then
+    M._node_cache = {}
+  end
+  for node_id, node_data in pairs(nodes_by_id) do
+    local cache_key = string.format("%d:%s", view_bufnr, node_id)
+    M._node_cache[cache_key] = node_data
+  end
 
   -- Render root nodes
   local view_lines = {}
@@ -113,6 +289,23 @@ function M.render_page_view(source_bufnr)
   for _, span_info in ipairs(spans_to_mark) do
     extmarks.set_span_metadata(view_bufnr, span_info.span_start, span_info.span_end, span_info.metadata)
   end
+
+  -- Set up keymaps for expand/collapse
+  local opts = { buffer = view_bufnr, noremap = true, silent = true }
+
+  -- <Space>e: Expand instance under cursor
+  vim.keymap.set('n', '<Space>e', function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = cursor[1] - 1  -- Convert to 0-indexed
+    M.expand_instance(view_bufnr, line)
+  end, vim.tbl_extend('force', opts, { desc = 'Expand instance' }))
+
+  -- <Space>E: Collapse instance under cursor
+  vim.keymap.set('n', '<Space>E', function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = cursor[1] - 1  -- Convert to 0-indexed
+    M.collapse_instance(view_bufnr, line)
+  end, vim.tbl_extend('force', opts, { desc = 'Collapse instance' }))
 
   return view_bufnr
 end
