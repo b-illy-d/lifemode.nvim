@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T09 COMPLETE
+T10 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,6 +45,16 @@ T09 COMPLETE
 None
 
 ## Just Completed
+- [x] T10 - Task priority bump
+  - TDD: RED (exit 1, function not found) → GREEN (exit 0, 24/24) → REFACTOR
+  - Tests: 24/24 priority_spec.lua + 9/9 manual acceptance
+  - Files: lua/lifemode/tasks.lua (modified), lua/lifemode/init.lua (modified), lua/lifemode/view.lua (modified)
+  - Functions: get_priority(), set_priority(), inc_priority(), dec_priority()
+  - Commands: :LifeModeIncPriority, :LifeModeDecPriority
+  - Keymaps: <Space>tp (inc), <Space>tP (dec) in view buffers and vault files
+  - Acceptance: Priority syntax !1-!5, increment/decrement with boundaries, keymaps work
+
+## Previously Completed
 - [x] T09 - Minimal task state toggle (commanded edit)
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 17/17) → REFACTOR
   - Tests: 17/17 tasks_spec.lua
@@ -202,6 +212,24 @@ None
 | Regression: Bible | `nvim -l tests/bible_spec.lua` | 0 | **PASS (19/19)** |
 | Manual Test | `nvim -l tests/manual_t09_test.lua` | 0 | All acceptance criteria met (9/9 tests pass) |
 
+### T10
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Priority Tests | `nvim -l tests/priority_spec.lua` | 0 | **PASS (24/24)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: UUID | `nvim -l tests/uuid_spec.lua` | 0 | **PASS (5/5)** |
+| Regression: Ensure ID | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Refs | `nvim -l tests/refs_spec.lua` | 0 | **PASS (18/18)** |
+| Regression: References | `nvim -l tests/references_spec.lua` | 0 | **PASS (18/18)** |
+| Regression: Navigation | `nvim -l tests/navigation_spec.lua` | 0 | **PASS (19/19)** |
+| Regression: Bible | `nvim -l tests/bible_spec.lua` | 0 | **PASS (19/19)** |
+| Regression: Tasks | `nvim -l tests/tasks_spec.lua` | 0 | **PASS (17/17)** |
+| Manual Test | `nvim -l tests/manual_t10_test.lua` | 0 | All acceptance criteria met (9/9 tests pass) |
+
 ## Known Issues (T00)
 
 ### BLOCKING for T01 (Must Fix)
@@ -301,3 +329,18 @@ None
 | :LifeModeToggleTask command | Added for manual testing | Useful debug/test command |
 | Reparse + refresh view | Not implemented in MVP | Deferred - application layer responsibility |
 | All T09 requirements | All implemented + 17 tests + 9 manual tests | No deviation from core requirements |
+
+### T10
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Priority syntax !1-!5 | Pattern `!([1-5])` validates range | Simple extraction with built-in validation |
+| get_priority() | Returns number 1-5 or nil | Clean API - invalid values return nil |
+| set_priority() | Handles add/update/remove cases | Three modes: update, add (before ^id), remove (nil) |
+| inc_priority() | Decrements number toward !1 | Lower number = higher priority |
+| dec_priority() | Increments number toward !5 | Higher number = lower priority |
+| Default priority on inc | Add !5 when no priority | Start at lowest - user must explicitly increase |
+| Default priority on dec | Do nothing | Don't add priority on decrease - only remove |
+| Boundary behavior | Stop at !1 and !5 | No wraparound - stay at boundaries |
+| <Space>tp and <Space>tP | Added to vault files + view buffers | Per SPEC.md keybinding |
+| :LifeModeIncPriority / DecPriority | Added for manual testing | Useful debug/test commands |
+| All T10 requirements | All implemented + 24 tests + 9 manual tests | No deviation from core requirements |

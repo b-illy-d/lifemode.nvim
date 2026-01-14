@@ -388,6 +388,84 @@ function M.setup(user_config)
   end, {
     desc = 'Toggle task state at cursor'
   })
+
+  -- Create :LifeModeIncPriority command
+  vim.api.nvim_create_user_command('LifeModeIncPriority', function()
+    local tasks = require('lifemode.tasks')
+    local node_id, bufnr = tasks.get_task_at_cursor()
+    if node_id then
+      local success = tasks.inc_priority(bufnr, node_id)
+      if success then
+        vim.api.nvim_echo({{'Task priority increased', 'Normal'}}, false, {})
+      else
+        vim.api.nvim_echo({{'Failed to increase priority', 'WarningMsg'}}, false, {})
+      end
+    else
+      vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+    end
+  end, {
+    desc = 'Increase task priority (toward !1)'
+  })
+
+  -- Create :LifeModeDecPriority command
+  vim.api.nvim_create_user_command('LifeModeDecPriority', function()
+    local tasks = require('lifemode.tasks')
+    local node_id, bufnr = tasks.get_task_at_cursor()
+    if node_id then
+      local success = tasks.dec_priority(bufnr, node_id)
+      if success then
+        vim.api.nvim_echo({{'Task priority decreased', 'Normal'}}, false, {})
+      else
+        vim.api.nvim_echo({{'Failed to decrease priority', 'WarningMsg'}}, false, {})
+      end
+    else
+      vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+    end
+  end, {
+    desc = 'Decrease task priority (toward !5)'
+  })
+
+  -- Add priority keymaps to markdown files in vault
+  vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'markdown',
+    callback = function(args)
+      local filepath = vim.api.nvim_buf_get_name(args.buf)
+      -- Only add keymaps if file is in vault
+      if filepath:match('^' .. vim.pesc(config.vault_root)) then
+        -- <Space>tp: increment priority
+        vim.keymap.set('n', config.leader .. 'tp', function()
+          local tasks = require('lifemode.tasks')
+          local node_id, bufnr = tasks.get_task_at_cursor()
+          if node_id then
+            local success = tasks.inc_priority(bufnr, node_id)
+            if success then
+              vim.api.nvim_echo({{'Priority increased', 'Normal'}}, false, {})
+            else
+              vim.api.nvim_echo({{'Failed to increase priority', 'WarningMsg'}}, false, {})
+            end
+          else
+            vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+          end
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Increase task priority' })
+
+        -- <Space>tP: decrement priority
+        vim.keymap.set('n', config.leader .. 'tP', function()
+          local tasks = require('lifemode.tasks')
+          local node_id, bufnr = tasks.get_task_at_cursor()
+          if node_id then
+            local success = tasks.dec_priority(bufnr, node_id)
+            if success then
+              vim.api.nvim_echo({{'Priority decreased', 'Normal'}}, false, {})
+            else
+              vim.api.nvim_echo({{'Failed to decrease priority', 'WarningMsg'}}, false, {})
+            end
+          else
+            vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+          end
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Decrease task priority' })
+      end
+    end,
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -431,6 +509,12 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeToggleTask')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeIncPriority')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeDecPriority')
   end)
 end
 

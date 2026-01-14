@@ -93,6 +93,38 @@ function M.create_buffer()
     end
   end, vim.tbl_extend('force', opts, { desc = 'Toggle task state' }))
 
+  -- <Space>tp: Increase task priority
+  vim.keymap.set('n', '<Space>tp', function()
+    local tasks = require('lifemode.tasks')
+    local node_id, buf = tasks.get_task_at_cursor()
+    if node_id then
+      local success = tasks.inc_priority(buf, node_id)
+      if success then
+        vim.api.nvim_echo({{'Priority increased', 'Normal'}}, false, {})
+      else
+        vim.api.nvim_echo({{'Failed to increase priority', 'WarningMsg'}}, false, {})
+      end
+    else
+      vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+    end
+  end, vim.tbl_extend('force', opts, { desc = 'Increase task priority' }))
+
+  -- <Space>tP: Decrease task priority
+  vim.keymap.set('n', '<Space>tP', function()
+    local tasks = require('lifemode.tasks')
+    local node_id, buf = tasks.get_task_at_cursor()
+    if node_id then
+      local success = tasks.dec_priority(buf, node_id)
+      if success then
+        vim.api.nvim_echo({{'Priority decreased', 'Normal'}}, false, {})
+      else
+        vim.api.nvim_echo({{'Failed to decrease priority', 'WarningMsg'}}, false, {})
+      end
+    else
+      vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
+    end
+  end, vim.tbl_extend('force', opts, { desc = 'Decrease task priority' }))
+
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 

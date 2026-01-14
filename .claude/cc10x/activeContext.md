@@ -1,10 +1,23 @@
 # Active Context
 
 ## Current Focus
-T09: Minimal task state toggle COMPLETE
+T10: Task priority bump COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T10] Added get_priority(line) to extract priority from task line - lua/lifemode/tasks.lua:83
+- [T10] Added set_priority(line, priority) to update/add/remove priority - lua/lifemode/tasks.lua:93
+- [T10] Added inc_priority(bufnr, node_id) to increase priority (toward !1) - lua/lifemode/tasks.lua:117
+- [T10] Added dec_priority(bufnr, node_id) to decrease priority (toward !5) - lua/lifemode/tasks.lua:155
+- [T10] Added :LifeModeIncPriority command - lua/lifemode/init.lua:394
+- [T10] Added :LifeModeDecPriority command - lua/lifemode/init.lua:409
+- [T10] Added <Space>tp keymap for inc_priority in vault files - lua/lifemode/init.lua:427
+- [T10] Added <Space>tP keymap for dec_priority in vault files - lua/lifemode/init.lua:445
+- [T10] Added <Space>tp keymap for inc_priority in view buffers - lua/lifemode/view.lua:95
+- [T10] Added <Space>tP keymap for dec_priority in view buffers - lua/lifemode/view.lua:110
+- [T10] Created tests/priority_spec.lua (24 tests, all passing)
+- [T10] Created manual acceptance test - tests/manual_t10_test.lua (9 tests, all passing)
+- [T10] Updated _reset_for_testing() to include :LifeModeIncPriority and :LifeModeDecPriority cleanup
 - [T09] Created lua/lifemode/tasks.lua with toggle_task_state() - lua/lifemode/tasks.lua:1
 - [T09] Added get_task_at_cursor() helper function - lua/lifemode/tasks.lua:60
 - [T09] Added :LifeModeToggleTask command - lua/lifemode/init.lua:375
@@ -111,8 +124,24 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Task toggle keymap (T09) | <Space><Space> (leader+leader) | Per SPEC.md keybinding for task state cycle |
 | Task toggle implementation (T09) | Pattern-based gsub for checkbox | Simple, reliable, preserves all content except checkbox |
 | get_task_at_cursor (T09) | Parse buffer + match line_num | Uses existing parser - consistent with other features |
+| Priority syntax (T10) | !1 to !5 inline markers | Per SPEC.md - !1 highest, !5 lowest |
+| Priority extraction (T10) | Pattern match `!([1-5])` | Validates range 1-5, ignores invalid values |
+| Priority placement (T10) | Before ^id if present, else end of line | Keeps priority close to task content, before ID |
+| Inc priority default (T10) | Add !5 when no priority exists | Start at lowest when first adding priority |
+| Dec priority on no priority (T10) | Do nothing | Don't add priority when decreasing - only remove |
+| Priority boundary behavior (T10) | Stop at !1 and !5 | Don't wrap around - stay at boundaries |
 
 ## Learnings This Session
+
+### Task Priority Bump (T10)
+- Priority pattern `!([1-5])` validates range at extraction time - invalid values return nil
+- set_priority must handle three cases: update existing, add new, remove (nil)
+- Priority placement: before ^id with space preservation using capture groups `(%s+)(%^[%w%-_]+%s*)$`
+- inc_priority adds !5 as default when no priority - start at lowest when first adding
+- dec_priority does nothing when no priority - don't add priority on decrease
+- Boundary behavior: stop at !1 and !5, don't wrap around
+- Keymaps: <Space>tp (increase) and <Space>tP (decrease) work in view buffers and vault files
+- Normalized keymap lhs: Neovim stores `<Space>` as ` ` (space char) in keymap table
 
 ### Task State Toggle (T09)
 - gsub with pattern `%[ %]` and `%[[xX]%]` handles checkbox replacement reliably
