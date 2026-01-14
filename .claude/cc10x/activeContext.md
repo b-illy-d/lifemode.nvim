@@ -1,10 +1,16 @@
 # Active Context
 
 ## Current Focus
-T05: Build in-memory Node model COMPLETE
+T06: Basic wikilink extraction COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T06] Added extract_wikilinks() function to node.lua - lua/lifemode/node.lua:36
+- [T06] Updated build_nodes_from_buffer() to extract refs and build backlinks map - lua/lifemode/node.lua:63
+- [T06] Added :LifeModeRefs command - lua/lifemode/init.lua:194
+- [T06] Created tests/refs_spec.lua (18 tests, all passing)
+- [T06] Created manual acceptance test - tests/manual_t06_test.lua
+- [T06] Updated _reset_for_testing() to include :LifeModeRefs cleanup
 - [T05] Created lua/lifemode/node.lua with build_nodes_from_buffer() - lua/lifemode/node.lua:1
 - [T05] Updated parser.lua to handle indented list items - lua/lifemode/parser.lua:32
 - [T05] Added :LifeModeShowNodes command - lua/lifemode/init.lua:136
@@ -37,9 +43,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T06: Basic wikilink extraction
-2. T07: Bible reference extraction and parsing
-3. T07a: Quickfix "references" view
+1. T07: Bible reference extraction and parsing
+2. T07a: Quickfix "references" view
+3. T08: "Definition" jump for wikilinks and Bible refs
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -62,8 +68,21 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Parser block types (T03) | heading, list_item, task | Minimal set for MVP - ignore prose paragraphs |
 | Task checkbox syntax (T03) | `[ ]` for todo, `[x]` or `[X]` for done | Standard Markdown syntax |
 | ID extraction pattern (T03) | `^[%w%-_]+` at end of line | Matches UUID and simple IDs |
+| Wikilink pattern (T06) | `%[%[([^%]]+)%]%]` | Matches [[...]] with content between brackets |
+| Refs storage (T06) | Array in node.refs field | Each ref: { target, type = "wikilink" } |
+| Backlinks index (T06) | Map from target → array of source node IDs | Enables quick backlink lookup |
 
 ## Learnings This Session
+
+### Wikilink Extraction (T06)
+- Lua pattern `%[%[([^%]]+)%]%]` captures content between [[ and ]]
+- Pattern `[^%]]+` matches any character except ], stopping at first closing bracket
+- Empty wikilinks [[]] should be filtered out with target:match("%S") check
+- Backlinks map structure: { [target] = {source_id1, source_id2, ...} }
+- Node refs field: array of { target = "Page", type = "wikilink" }
+- Wikilink targets include full syntax: "Page", "Page#Heading", "Page^block-id"
+- Build backlinks during node creation to avoid second pass
+- :LifeModeRefs command requires cursor-to-node mapping (simplified for MVP)
 
 ### Node Model (T05)
 - Stack-based hierarchy tracking is clean for both heading levels and list indentation

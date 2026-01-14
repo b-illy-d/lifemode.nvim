@@ -34,14 +34,36 @@ local function get_indent_level(text)
   return #spaces
 end
 
+--- Extract wikilinks from text
+--- @param text string Text to search for wikilinks
+--- @return table Array of refs with format { target = "Page", type = "wikilink" }
+local function extract_wikilinks(text)
+  local refs = {}
+
+  -- Pattern to match [[...]] wikilinks
+  -- Captures content between [[ and ]]
+  for target in text:gmatch("%[%[([^%]]+)%]%]") do
+    -- Skip empty targets
+    if target and target:match("%S") then
+      table.insert(refs, {
+        target = target,
+        type = "wikilink"
+      })
+    end
+  end
+
+  return refs
+end
+
 --- Build nodes from buffer
 --- Converts parsed blocks into Node records with tree structure
 --- @param bufnr number Buffer handle
---- @return table Result with nodes_by_id (map) and root_ids (array)
+--- @return table Result with nodes_by_id (map), root_ids (array), and backlinks (map)
 function M.build_nodes_from_buffer(bufnr)
   local blocks = parser.parse_buffer(bufnr)
   local nodes_by_id = {}
   local root_ids = {}
+  local backlinks = {}  -- Map from target -> array of source node IDs
 
   -- Stack to track parent context for hierarchy
   -- For headings: stack of {id, level}
@@ -54,18 +76,30 @@ function M.build_nodes_from_buffer(bufnr)
     -- Generate ID if not present
     local node_id = block.id or generate_synthetic_id()
 
+    -- Extract wikilinks from body
+    local refs = extract_wikilinks(block.text)
+
     -- Create node record
     local node = {
       id = node_id,
       type = block.type,
       body_md = block.text,
       children = {},
-      props = {}  -- Empty for now, will be populated later (task_state, etc.)
+      props = {},  -- Empty for now, will be populated later (task_state, etc.)
+      refs = refs  -- Wikilinks extracted from body
     }
 
     -- Store task state in props if applicable
     if block.task_state then
       node.props.task_state = block.task_state
+    end
+
+    -- Build backlinks index
+    for _, ref in ipairs(refs) do
+      if not backlinks[ref.target] then
+        backlinks[ref.target] = {}
+      end
+      table.insert(backlinks[ref.target], node_id)
     end
 
     nodes_by_id[node_id] = node
@@ -126,6 +160,7 @@ function M.build_nodes_from_buffer(bufnr)
   return {
     nodes_by_id = nodes_by_id,
     root_ids = root_ids,
+    backlinks = backlinks,
   }
 end
 

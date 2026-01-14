@@ -36,6 +36,9 @@
 - vault_root must be provided by user (required config)
 - Leader key is configurable, default is `<Space>`
 - Bible references are first-class features
+- **Wikilink pattern captures full target**: [[Page#Heading]] target is "Page#Heading", not just "Page"
+- **Empty wikilinks [[]] should be filtered**: Use target:match("%S") to check for non-whitespace content
+- **Backlinks index by full target**: Index includes # and ^ suffixes for complete reference tracking
 - **Lua treats empty string as truthy**: `if not ""` is false, string passes check
 - **vim.tbl_extend does not validate types**: accepts any type, validate after merge
 - **Config merge replaces, doesn't accumulate**: second setup() resets unspecified keys

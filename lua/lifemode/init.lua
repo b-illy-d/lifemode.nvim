@@ -186,6 +186,92 @@ function M.setup(user_config)
   end, {
     desc = 'Show node tree structure for current buffer'
   })
+
+  -- Create :LifeModeRefs command
+  vim.api.nvim_create_user_command('LifeModeRefs', function()
+    local node = require('lifemode.node')
+    local extmarks = require('lifemode.extmarks')
+    local bufnr = vim.api.nvim_get_current_buf()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = cursor[1]
+
+    -- Build nodes from buffer
+    local result = node.build_nodes_from_buffer(bufnr)
+
+    -- Find node at cursor position
+    local current_node = nil
+    for node_id, n in pairs(result.nodes_by_id) do
+      -- Check if cursor is within node body
+      -- For simplicity, match by line number (assumes single-line nodes for MVP)
+      if n.body_md then
+        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+        for i, l in ipairs(lines) do
+          if l == n.body_md and i == line then
+            current_node = n
+            break
+          end
+        end
+        if current_node then break end
+      end
+    end
+
+    if not current_node then
+      vim.api.nvim_echo({{'No node found at cursor', 'WarningMsg'}}, true, {})
+      return
+    end
+
+    -- Display refs for this node
+    vim.api.nvim_echo({{'References for node: ' .. current_node.id, 'Title'}}, true, {})
+    vim.api.nvim_echo({{'', 'Normal'}}, true, {})
+
+    -- Show outbound refs
+    vim.api.nvim_echo({{'Outbound links (' .. #current_node.refs .. '):', 'Normal'}}, true, {})
+    if #current_node.refs == 0 then
+      vim.api.nvim_echo({{'  (none)', 'Comment'}}, true, {})
+    else
+      for _, ref in ipairs(current_node.refs) do
+        vim.api.nvim_echo({{
+          string.format('  -> %s (%s)', ref.target, ref.type),
+          'Normal'
+        }}, true, {})
+      end
+    end
+
+    vim.api.nvim_echo({{'', 'Normal'}}, true, {})
+
+    -- Show backlinks (inbound refs)
+    local backlink_count = 0
+    for target, sources in pairs(result.backlinks) do
+      if target == current_node.id then
+        backlink_count = #sources
+        break
+      end
+    end
+
+    vim.api.nvim_echo({{'Backlinks (' .. backlink_count .. '):', 'Normal'}}, true, {})
+    if backlink_count == 0 then
+      vim.api.nvim_echo({{'  (none)', 'Comment'}}, true, {})
+    else
+      for target, sources in pairs(result.backlinks) do
+        if target == current_node.id then
+          for _, source_id in ipairs(sources) do
+            local source_node = result.nodes_by_id[source_id]
+            local preview = source_node.body_md:sub(1, 60)
+            if #source_node.body_md > 60 then
+              preview = preview .. '...'
+            end
+            vim.api.nvim_echo({{
+              string.format('  <- %s: %s', source_id, preview),
+              'Normal'
+            }}, true, {})
+          end
+          break
+        end
+      end
+    end
+  end, {
+    desc = 'Show references (outbound + backlinks) for node at cursor'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -217,6 +303,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeShowNodes')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeRefs')
   end)
 end
 
