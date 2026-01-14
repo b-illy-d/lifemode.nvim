@@ -429,6 +429,63 @@ local result = lens.render(node, "task/detail")
 local text = type(result) == "table" and table.concat(result, "\n") or result
 ```
 
+## Active Node Tracking Patterns (T12)
+
+### Window-Local Winbar
+```lua
+-- Winbar is window-local, not buffer-local
+-- Set for all windows showing the buffer
+for _, win in ipairs(vim.api.nvim_list_wins()) do
+  if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == bufnr then
+    vim.api.nvim_win_set_option(win, 'winbar', winbar_text)
+  end
+end
+```
+
+### Highlight Group with User Override
+```lua
+-- Define highlight with default = true to allow user customization
+vim.api.nvim_set_hl(0, 'LifeModeActiveNode', {
+  bg = '#2d3436',  -- Subtle gray background
+  default = true,  -- Allow user overrides
+})
+```
+
+### Cursor Movement Tracking
+```lua
+-- Per-buffer autocmd group prevents conflicts
+local group = vim.api.nvim_create_augroup('LifeModeActiveNode_' .. bufnr, { clear = true })
+
+vim.api.nvim_create_autocmd({'CursorMoved', 'CursorMovedI'}, {
+  group = group,
+  buffer = bufnr,
+  callback = function()
+    update_active_node(bufnr)
+  end,
+})
+```
+
+### Type Extraction from Node ID
+```lua
+-- Extract type from node_id prefix if not in metadata
+local node_type = span.type
+if not node_type and span.node_id then
+  -- Match everything before first hyphen: "task-123" → "task"
+  node_type = span.node_id:match("^([^%-]+)")
+end
+```
+
+### Highlight Span with EOL Extension
+```lua
+-- Highlight extends to end of line even if text is shorter
+vim.api.nvim_buf_set_extmark(bufnr, ns, start_line, 0, {
+  end_row = end_line + 1,  -- Exclusive end
+  end_col = 0,
+  hl_group = 'LifeModeActiveNode',
+  hl_eol = true,  -- Extend to EOL
+})
+```
+
 ## Test Template for New Features
 
 ```lua

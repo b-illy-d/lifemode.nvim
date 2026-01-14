@@ -45,6 +45,18 @@ T11 COMPLETE
 None
 
 ## Just Completed
+- [x] T12 - Active node highlighting + statusline/winbar info
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 15/15) → REFACTOR
+  - Tests: 15/15 activenode_spec.lua + 10/10 manual acceptance
+  - Files: lua/lifemode/activenode.lua (created), lua/lifemode/view.lua (modified)
+  - Functions: highlight_active_span(), clear_active_highlight(), update_winbar(), update_active_node(), track_cursor_movement()
+  - Highlight: LifeModeActiveNode group (subtle gray background #2d3436)
+  - Winbar: "Type: X | ID: Y | Lens: Z" format, window-local
+  - Tracking: CursorMoved and CursorMovedI autocmds
+  - Integration: Automatic tracking enabled in view.create_buffer()
+  - Acceptance: Active node visually distinct, winbar updates on cursor movement, multi-line spans supported
+
+## Previously Completed
 - [x] T11 - Basic lens system + lens cycling
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 23/23) → REFACTOR
   - Tests: 23/23 lens_spec.lua + 15/15 manual acceptance
@@ -251,6 +263,18 @@ None
 | Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
 | Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
 | Manual Test | `nvim -l tests/manual_t11_test.lua` | 0 | All acceptance criteria met (15/15 tests pass) |
+
+### T12
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Active Node Tests | `nvim -l tests/activenode_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
+| Manual Test | `nvim -l tests/manual_t12_test.lua` | 0 | All acceptance criteria met (10/10 tests pass) |
 
 ## Known Issues (T00)
 

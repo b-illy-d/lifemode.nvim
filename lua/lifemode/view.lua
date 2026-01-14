@@ -148,6 +148,10 @@ function M.create_buffer()
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 
+  -- Enable active node tracking
+  local activenode = require('lifemode.activenode')
+  activenode.track_cursor_movement(bufnr)
+
   return bufnr
 end
 

@@ -1,10 +1,22 @@
 # Active Context
 
 ## Current Focus
-T11: Basic lens system + lens cycling COMPLETE
+T12: Active node highlighting + statusline/winbar info COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T12] Created lua/lifemode/activenode.lua with active node tracking - lua/lifemode/activenode.lua:1
+- [T12] Added highlight_active_span(bufnr, start_line, end_line) for visual distinction - lua/lifemode/activenode.lua:25
+- [T12] Added clear_active_highlight(bufnr) to remove highlights - lua/lifemode/activenode.lua:47
+- [T12] Added update_winbar(bufnr, node_info) to show type/ID/lens - lua/lifemode/activenode.lua:64
+- [T12] Added update_active_node(bufnr) to sync highlight + winbar with cursor - lua/lifemode/activenode.lua:102
+- [T12] Added track_cursor_movement(bufnr) with CursorMoved autocmd - lua/lifemode/activenode.lua:138
+- [T12] Defined LifeModeActiveNode highlight group (subtle gray background) - lua/lifemode/activenode.lua:14
+- [T12] Integrated active node tracking into view.create_buffer() - lua/lifemode/view.lua:153
+- [T12] Winbar is window-local, updates all windows showing buffer - lua/lifemode/activenode.lua:88
+- [T12] Type extracted from node_id prefix if not in metadata - lua/lifemode/activenode.lua:117
+- [T12] Created tests/activenode_spec.lua (15 tests, all passing)
+- [T12] Created manual acceptance test - tests/manual_t12_test.lua (10 tests, all passing)
 - [T11] Created lua/lifemode/lens.lua with lens registry and render functions - lua/lifemode/lens.lua:1
 - [T11] Added get_available_lenses() returning lens_order array - lua/lifemode/lens.lua:12
 - [T11] Added render(node, lens_name) with fallback to node/raw - lua/lifemode/lens.lua:59
@@ -152,8 +164,25 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Inc priority default (T10) | Add !5 when no priority exists | Start at lowest when first adding priority |
 | Dec priority on no priority (T10) | Do nothing | Don't add priority when decreasing - only remove |
 | Priority boundary behavior (T10) | Stop at !1 and !5 | Don't wrap around - stay at boundaries |
+| Active node highlight (T12) | Subtle gray background (#2d3436) | Visual distinction without distraction |
+| Winbar format (T12) | "Type: X \| ID: Y \| Lens: Z" | Pipe-separated for clarity |
+| Node type extraction (T12) | From node_id prefix if not in metadata | Extract before hyphen (task-123 → task) |
+| Highlight namespace (T12) | Separate from span metadata namespace | Different concerns, different namespaces |
+| Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Active Node Tracking (T12)
+- Winbar is window-local, not buffer-local - must use nvim_win_set_option not nvim_buf_set_option
+- Set winbar for ALL windows showing buffer using nvim_list_wins() + nvim_win_get_buf()
+- CursorMoved and CursorMovedI autocmds track both normal and insert mode cursor movement
+- Highlight group with `default = true` allows user overrides in their config
+- hl_eol = true extends highlight to end of line even if text is shorter
+- Type field can be extracted from node_id prefix with pattern matching (e.g., "task-123" → "task")
+- Extmark namespace for highlights is separate from span metadata namespace
+- Test module loading: require() fresh in each test when package.loaded is reset
+- Autocmd groups named per buffer prevent conflicts: 'LifeModeActiveNode_' .. bufnr
+- Integration point: call track_cursor_movement() in view.create_buffer() for automatic activation
 
 ### Lens System (T11)
 - Lens registry as ordered array enables simple cycling with wraparound
