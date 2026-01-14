@@ -1,0 +1,24 @@
+# Neovim plugin gitignore
+
+# Test artifacts
+*.log
+*.out
+
+# Lua bytecode
+*.luac
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Dependencies (if using luarocks)
+luarocks/

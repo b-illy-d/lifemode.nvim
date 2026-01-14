@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(cc10x:cc10x-router)"
+    ]
+  }
+}
