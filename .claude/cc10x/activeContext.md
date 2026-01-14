@@ -1,10 +1,22 @@
 # Active Context
 
 ## Current Focus
-T17: Due date set/clear (commanded edit) COMPLETE
+T18: Multi-file index (vault scan MVP) COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T18] Created lua/lifemode/index.lua module for vault-wide indexing - lua/lifemode/index.lua:1
+- [T18] Added scan_vault(vault_root) to find all .md files recursively - lua/lifemode/index.lua:8
+- [T18] Added build_vault_index(vault_root) to parse all files and build global index - lua/lifemode/index.lua:35
+- [T18] Added get_node_location(idx, node_id) to lookup node file/line - lua/lifemode/index.lua:103
+- [T18] Added get_backlinks(idx, target) to get all source nodes referencing target - lua/lifemode/index.lua:109
+- [T18] Updated find_references_at_cursor() to use vault index when available - lua/lifemode/references.lua:196
+- [T18] Added find_references_in_vault() to search across all files - lua/lifemode/references.lua:172
+- [T18] Added :LifeModeRebuildIndex command - lua/lifemode/init.lua:470
+- [T18] Index stored in config.vault_index for gr to use - lua/lifemode/init.lua:491
+- [T18] Updated _reset_for_testing() to include :LifeModeRebuildIndex cleanup - lua/lifemode/init.lua:653
+- [T18] Created tests/index_spec.lua (11 tests, all passing)
+- [T18] Created manual acceptance test - tests/manual_t18_test.lua (9 tests, all passing)
 - [T17] Added get_due(line) to extract @due(YYYY-MM-DD) from line - lua/lifemode/tasks.lua:408
 - [T17] Added set_due(line, date) to add/update/remove due dates - lua/lifemode/tasks.lua:416
 - [T17] Added set_due_buffer(bufnr, node_id, date) for buffer operations - lua/lifemode/tasks.lua:448
@@ -181,6 +193,13 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Index storage (T18) | Store in config.vault_index after rebuild | Simple MVP approach - no persistent cache, rebuild on demand |
+| Index scope (T18) | node_id → (file, line) + backlinks map | Core data structures for cross-file navigation and references |
+| File scanning (T18) | Use find command with *.md pattern | Simple, portable, works on macOS/Linux |
+| Node location lookup (T18) | Match ^id pattern in lines | Find exact line containing node ID marker |
+| Backlinks merging (T18) | Accumulate from all files during index build | Single pass to build complete backlinks map |
+| References fallback (T18) | Use current buffer when index not available | Graceful degradation - gr works without index |
+| Config safety (T18) | pcall around get_config in references.lua | Avoid errors when lifemode not configured |
 | Due date syntax (T17) | `@due(YYYY-MM-DD)` inline marker | Per SPEC.md requirement, strict format validation |
 | Due date pattern (T17) | `@due%((%d%d%d%d%-%d%d%-%d%d)%)` | Validates YYYY-MM-DD format at extraction time |
 | Due date placement (T17) | Before ^id if present, else end of line | Consistent with priority and tag placement patterns |
@@ -261,6 +280,21 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Multi-file Indexing (T18)
+- vim.loop.fs_stat() checks if path exists and gets type (directory/file)
+- find command with shellescape handles paths with spaces: `find <path> -type f -name '*.md'`
+- Building index requires parsing each file: read into buffer, parse, extract locations
+- Node location lookup: search for ^id pattern in file lines, store file + line number
+- Backlinks accumulate across files: merge each file's backlinks into global map
+- Parser only creates nodes for block types (headings, lists, tasks) - not plain paragraphs
+- References.find_references_at_cursor should handle missing config gracefully with pcall
+- Vault index stored in config, persists until setup() called again (resets config)
+- Index rebuild is on-demand via :LifeModeRebuildIndex command
+- gr automatically uses vault index if available, falls back to buffer search if not
+- Test files must use proper block types (list items) for IDs to be indexed
+- find command returns newline-separated paths - use gmatch to split into array
+- Temporary buffers for parsing must set filetype to 'markdown' for proper parsing
 
 ### Due Date Operations (T17)
 - Due date pattern `@due%((%d%d%d%d%-%d%d%-%d%d)%)` strictly validates YYYY-MM-DD format

@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T17 COMPLETE
+T18 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,6 +45,18 @@ T17 COMPLETE
 None
 
 ## Just Completed
+- [x] T18 - Multi-file index (vault scan MVP)
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 11/11) → REFACTOR
+  - Tests: 11/11 index_spec.lua + 9/9 manual acceptance
+  - Files: lua/lifemode/index.lua (created), lua/lifemode/references.lua (modified), lua/lifemode/init.lua (modified)
+  - Functions: scan_vault(), build_vault_index(), get_node_location(), get_backlinks(), find_references_in_vault()
+  - Command: :LifeModeRebuildIndex
+  - Index structure: node_locations (node_id → {file, line}), backlinks (target → [source_ids])
+  - Storage: Stored in config.vault_index, rebuilt on demand
+  - Integration: gr uses vault index when available, falls back to buffer search
+  - Acceptance: gr works across files for wikilinks and Bible verses, index rebuilds correctly
+
+## Previously Completed
 - [x] T17 - Due date set/clear (commanded edit)
   - TDD: RED (exit 1, get_due not found) → GREEN (exit 0, 21/21) → REFACTOR
   - Tests: 21/21 due_spec.lua + 10/10 manual acceptance
@@ -335,6 +347,13 @@ None
 | Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
 | Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
 | Manual Test | `nvim -l tests/manual_t12_test.lua` | 0 | All acceptance criteria met (10/10 tests pass) |
+
+### T18
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Index Tests | `nvim -l tests/index_spec.lua` | 0 | **PASS (11/11)** |
+| Regression: References | `nvim -l tests/references_spec.lua` | 0 | **PASS (18/18)** |
+| Manual Test | `nvim -l tests/manual_t18_test.lua` | 0 | All acceptance criteria met (9/9 tests pass) |
 
 ### T17
 | Check | Command | Exit Code | Result |

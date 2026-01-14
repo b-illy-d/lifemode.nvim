@@ -160,6 +160,91 @@ When adding new configuration options, always test:
    - Config accessed before setup()
    - Long strings (test output rendering)
 
+## Multi-file Indexing Patterns (T18)
+
+### Vault Scanning
+```lua
+-- Use find command to scan for markdown files
+local cmd = string.format("find %s -type f -name '*.md' 2>/dev/null", vim.fn.shellescape(vault_root))
+local result = vim.fn.system(cmd)
+
+-- Split result into lines
+local files = {}
+for line in result:gmatch("[^\r\n]+") do
+  table.insert(files, line)
+end
+```
+
+### Building Vault Index
+```lua
+-- Create temporary buffer for parsing each file
+local bufnr = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_buf_set_option(bufnr, 'filetype', 'markdown')
+vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+
+-- Parse and extract nodes
+local result = node.build_nodes_from_buffer(bufnr)
+
+-- Store node locations (file + line)
+for node_id, node_data in pairs(result.nodes_by_id) do
+  -- Find line containing ^node_id
+  for i, line in ipairs(lines) do
+    if line:find("%^" .. vim.pesc(node_id), 1, false) then
+      node_locations[node_id] = { file = file_path, line = i }
+      break
+    end
+  end
+end
+
+-- Cleanup
+vim.api.nvim_buf_delete(bufnr, { force = true })
+```
+
+### Backlinks Accumulation
+```lua
+-- Merge backlinks from each file into global map
+for target, source_ids in pairs(file_backlinks) do
+  if not global_backlinks[target] then
+    global_backlinks[target] = {}
+  end
+  for _, source_id in ipairs(source_ids) do
+    table.insert(global_backlinks[target], source_id)
+  end
+end
+```
+
+### Config Safety Pattern
+```lua
+-- Handle missing config gracefully
+local vault_index = nil
+local ok, lifemode = pcall(require, 'lifemode')
+if ok then
+  local config_ok, config = pcall(lifemode.get_config)
+  if config_ok and config then
+    vault_index = config.vault_index
+  end
+end
+```
+
+### Cross-file References
+```lua
+-- Use index if available, fallback to buffer search
+function find_references_in_vault(target, ref_type, vault_index)
+  if vault_index and vault_index.backlinks[target] then
+    -- Use index to find references across all files
+    local refs = {}
+    for _, source_id in ipairs(vault_index.backlinks[target]) do
+      local loc = vault_index.node_locations[source_id]
+      -- Read line from file...
+    end
+    return refs
+  end
+
+  -- Fallback: search current buffer only
+  return find_references_in_buffer(bufnr, target, ref_type)
+end
+```
+
 ## Quickfix and References Patterns (T07a)
 
 ### Quickfix List API

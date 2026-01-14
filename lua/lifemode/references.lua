@@ -158,6 +158,50 @@ function M.populate_quickfix(refs, bufnr, target)
   vim.fn.setqflist({}, 'a', { title = title })
 end
 
+--- Find references across entire vault using index
+--- @param target string Target to find
+--- @param ref_type string Type of reference
+--- @param vault_index table Vault index with backlinks
+--- @return table Array of references with format { bufnr, lnum, col, text, file }
+function M.find_references_in_vault(target, ref_type, vault_index)
+  -- Try to use vault index first (if available)
+  if vault_index and vault_index.backlinks and vault_index.backlinks[target] then
+    local refs = {}
+    local source_ids = vault_index.backlinks[target]
+
+    -- For each source node, find its location and get the line
+    for _, source_id in ipairs(source_ids) do
+      local loc = vault_index.node_locations[source_id]
+      if loc then
+        -- Read the line from the file
+        local f = io.open(loc.file, "r")
+        if f then
+          local line_num = 1
+          for line in f:lines() do
+            if line_num == loc.line then
+              table.insert(refs, {
+                file = loc.file,
+                lnum = loc.line,
+                col = 1,
+                text = line,
+              })
+              break
+            end
+            line_num = line_num + 1
+          end
+          f:close()
+        end
+      end
+    end
+
+    return refs
+  end
+
+  -- Fallback: search current buffer only (no index available)
+  local bufnr = vim.api.nvim_get_current_buf()
+  return M.find_references_in_buffer(bufnr, target, ref_type)
+end
+
 --- Find references for target under cursor and populate quickfix
 --- Main entry point for `gr` mapping
 function M.find_references_at_cursor()
@@ -174,23 +218,54 @@ function M.find_references_at_cursor()
     return
   end
 
-  -- Find all references in buffer
-  local refs = M.find_references_in_buffer(bufnr, target, ref_type)
+  -- Get vault index from config (if available)
+  local vault_index = nil
+  local ok, lifemode = pcall(require, 'lifemode')
+  if ok then
+    local config_ok, config = pcall(lifemode.get_config)
+    if config_ok and config then
+      vault_index = config.vault_index
+    end
+  end
+
+  -- Find references (vault-wide if index available, else current buffer)
+  local refs = M.find_references_in_vault(target, ref_type, vault_index)
 
   if #refs == 0 then
     vim.api.nvim_echo({{string.format("No references found for: %s", target), "WarningMsg"}}, true, {})
     return
   end
 
-  -- Populate quickfix
-  M.populate_quickfix(refs, bufnr, target)
+  -- Convert refs to quickfix format
+  local qf_items = {}
+  for _, ref in ipairs(refs) do
+    -- Handle both file-based refs and buffer-based refs
+    local item = {
+      lnum = ref.lnum,
+      col = ref.col or 1,
+      text = ref.text,
+    }
+
+    if ref.file then
+      item.filename = ref.file
+    else
+      item.bufnr = ref.bufnr
+    end
+
+    table.insert(qf_items, item)
+  end
+
+  -- Set quickfix list
+  vim.fn.setqflist(qf_items, 'r')
+  vim.fn.setqflist({}, 'a', { title = "References to: " .. target })
 
   -- Open quickfix window
   vim.cmd('copen')
 
   -- Show message
+  local scope = vault_index and "vault" or "buffer"
   vim.api.nvim_echo({{
-    string.format("Found %d reference(s) to: %s", #refs, target),
+    string.format("Found %d reference(s) to: %s (%s)", #refs, target, scope),
     "Normal"
   }}, true, {})
 end

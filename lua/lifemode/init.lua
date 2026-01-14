@@ -467,6 +467,34 @@ function M.setup(user_config)
     desc = 'Clear due date from task at cursor'
   })
 
+  -- Create :LifeModeRebuildIndex command
+  vim.api.nvim_create_user_command('LifeModeRebuildIndex', function()
+    local index = require('lifemode.index')
+    local vault_root = config.vault_root
+
+    vim.api.nvim_echo({{"Building vault index...", "Normal"}}, true, {})
+
+    -- Build index
+    local idx = index.build_vault_index(vault_root)
+
+    -- Count nodes and backlinks
+    local node_count = 0
+    for _ in pairs(idx.node_locations) do node_count = node_count + 1 end
+
+    local backlink_count = 0
+    for _ in pairs(idx.backlinks) do backlink_count = backlink_count + 1 end
+
+    -- Store in config for gr to use
+    config.vault_index = idx
+
+    vim.api.nvim_echo({{
+      string.format("Index built: %d nodes, %d backlink targets", node_count, backlink_count),
+      "Normal"
+    }}, true, {})
+  end, {
+    desc = 'Rebuild vault-wide index'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -619,6 +647,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeClearDue')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeRebuildIndex')
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeLensNext')
