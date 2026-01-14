@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T06 COMPLETE
+T07a COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,18 +45,16 @@ T06 COMPLETE
 None
 
 ## Just Completed
-- [x] T07 - Bible reference extraction and parsing
-  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 19/19) → REFACTOR
-  - Tests: 19/19 bible_spec.lua, 8/8 bible_integration_spec.lua
-  - Files: lua/lifemode/bible.lua (created), lua/lifemode/node.lua (modified), lua/lifemode/init.lua (modified)
-  - Acceptance: Parses single verses, ranges, abbreviations; generates deterministic IDs; :LifeModeBibleRefs shows all refs
+- [x] T07a - Quickfix "references" view
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 18/18) → REFACTOR
+  - Tests: 18/18 references_spec.lua
+  - Files: lua/lifemode/references.lua (created), lua/lifemode/view.lua (modified)
+  - Acceptance: `gr` opens quickfix with correct matches for wikilinks and Bible verses; handles edge cases gracefully
 
 ## Blocked
 None
 
 ## Remaining
-- [ ] T07: Bible reference extraction and parsing
-- [ ] T07a: Quickfix "references" view
 - [ ] T08: "Definition" jump for wikilinks and Bible refs
 - [ ] T09-T30: (remaining per SPEC.md)
 
@@ -144,6 +142,21 @@ None
 | Regression: Refs | `nvim -l tests/refs_spec.lua` | 0 | **PASS (18/18)** |
 | Manual Test | `nvim -l tests/manual_t07_test.lua` | 0 | All acceptance criteria met |
 
+### T07a
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| References Tests | `nvim -l tests/references_spec.lua` | 0 | **PASS (18/18)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: UUID | `nvim -l tests/uuid_spec.lua` | 0 | **PASS (5/5)** |
+| Regression: Ensure ID | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Refs | `nvim -l tests/refs_spec.lua` | 0 | **PASS (18/18)** |
+| Regression: Bible | `nvim -l tests/bible_spec.lua` | 0 | **PASS (19/19)** |
+| Manual Test | `nvim -l tests/manual_t07a_test.lua` | 0 | All acceptance criteria met |
+
 ## Known Issues (T00)
 
 ### BLOCKING for T01 (Must Fix)
@@ -212,3 +225,12 @@ None
 | Backlinks index | Map from target → array of source IDs | Built during node creation for efficiency |
 | :LifeModeRefs command | Shows outbound + backlinks | Simplified cursor-to-node mapping for MVP |
 | All T06 requirements | All implemented + 18 tests + manual test + command | No deviation |
+
+### T07a
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Extract target at cursor | Implemented with bounds checking | Detects both wikilinks and Bible refs |
+| Find references | Pattern-based search through buffer | Multiple refs per line supported with while loop |
+| Quickfix population | Two-call API (items + title) | vim.fn.setqflist doesn't support both in one call |
+| gr keymap | Added to view buffers in create_buffer() | Buffer-local keymap survives window switches |
+| All T07a requirements | All implemented + 18 tests + manual test | No deviation |

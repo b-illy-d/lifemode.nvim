@@ -62,6 +62,15 @@ function M.create_buffer()
     span_end = 4,
   })
 
+  -- Set up keymaps for view buffer
+  local opts = { buffer = bufnr, noremap = true, silent = true }
+
+  -- gr: Find references for link/node under cursor
+  vim.keymap.set('n', 'gr', function()
+    local references = require('lifemode.references')
+    references.find_references_at_cursor()
+  end, vim.tbl_extend('force', opts, { desc = 'Find references' }))
+
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 

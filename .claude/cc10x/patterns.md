@@ -36,6 +36,9 @@
 - vault_root must be provided by user (required config)
 - Leader key is configurable, default is `<Space>`
 - Bible references are first-class features
+- **Quickfix API quirk**: Cannot pass both list and options in single call to vim.fn.setqflist
+- **string.find return order**: Returns (start, end, captures...) not (start, captures, end)
+- **Wikilink target matching**: [[Page]] and [[Page#Section]] are different targets (exact match)
 - **Wikilink pattern captures full target**: [[Page#Heading]] target is "Page#Heading", not just "Page"
 - **Empty wikilinks [[]] should be filtered**: Use target:match("%S") to check for non-whitespace content
 - **Backlinks index by full target**: Index includes # and ^ suffixes for complete reference tracking
@@ -156,6 +159,62 @@ When adding new configuration options, always test:
    - Command registration conflicts
    - Config accessed before setup()
    - Long strings (test output rendering)
+
+## Quickfix and References Patterns (T07a)
+
+### Quickfix List API
+```lua
+-- Set quickfix items and title separately
+vim.fn.setqflist(items, 'r')  -- Replace with items
+vim.fn.setqflist({}, 'a', { title = 'My Title' })  -- Append title
+
+-- Get quickfix with title
+local qf_info = vim.fn.getqflist({ title = 1 })
+print(qf_info.title)
+
+-- Quickfix item format
+{
+  bufnr = bufnr,
+  lnum = line_number,  -- 1-indexed
+  col = column,        -- 1-indexed (display), 0-indexed (internal)
+  text = preview_text,
+}
+```
+
+### Extract Target Under Cursor Pattern
+```lua
+-- Check if cursor position falls within match bounds
+for match_start, target, match_end in text:gmatch("()%[%[([^%]]+)%]%]()") do
+  local start_col = match_start - 1  -- Convert to 0-indexed
+  local end_col = match_end - 1
+
+  if col >= start_col and col < end_col then
+    return target, "wikilink"
+  end
+end
+```
+
+### Find Multiple References in Same Line
+```lua
+-- Use while loop with search_pos to find all matches
+local search_pos = 1
+while true do
+  local match_start, match_end, match_target = line:find("%[%[([^%]]+)%]%]", search_pos)
+  if not match_start then break end
+
+  -- Process match...
+
+  search_pos = match_end + 1  -- Continue search after this match
+end
+```
+
+### Buffer-Local Keymaps
+```lua
+-- Set keymap for specific buffer (survives window switches)
+vim.keymap.set('n', 'gr', function()
+  require('lifemode.references').find_references_at_cursor()
+end, { buffer = bufnr, noremap = true, silent = true })
+```
 
 ## Bible Reference Patterns (T07)
 

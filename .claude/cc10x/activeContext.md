@@ -1,10 +1,16 @@
 # Active Context
 
 ## Current Focus
-T07: Bible reference extraction and parsing COMPLETE
+T07a: Quickfix "references" view COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T07a] Created lua/lifemode/references.lua with find_references_at_cursor() - lua/lifemode/references.lua:1
+- [T07a] Added extract_target_at_cursor() for wikilinks and Bible refs - lua/lifemode/references.lua:14
+- [T07a] Added find_references_in_buffer() for quickfix population - lua/lifemode/references.lua:72
+- [T07a] Added `gr` keymap to view buffers - lua/lifemode/view.lua:65
+- [T07a] Created tests/references_spec.lua (18 tests, all passing)
+- [T07a] Created manual acceptance test - tests/manual_t07a_test.lua
 - [T07] Created lua/lifemode/bible.lua with parse_bible_refs() - lua/lifemode/bible.lua:1
 - [T07] Integrated Bible ref extraction into node.lua - lua/lifemode/node.lua:69
 - [T07] Added :LifeModeBibleRefs command - lua/lifemode/init.lua:276
@@ -50,9 +56,8 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T07a: Quickfix "references" view
-2. T08: "Definition" jump for wikilinks and Bible refs
-3. Continue with remaining tasks per SPEC.md
+1. T08: "Definition" jump for wikilinks and Bible refs
+2. Continue with remaining tasks per SPEC.md
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -80,6 +85,17 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Backlinks index (T06) | Map from target → array of source node IDs | Enables quick backlink lookup |
 
 ## Learnings This Session
+
+### Quickfix References (T07a)
+- `vim.fn.setqflist()` API: cannot pass both list and options dict in same call
+- Must call `vim.fn.setqflist(items, 'r')` then `vim.fn.setqflist({}, 'a', {title=...})` separately
+- `string.find(pattern)` returns `(start, end, captures...)` - order matters for assignment
+- Extract target at cursor: need to check if cursor position falls within match bounds
+- Bible ref extraction at cursor: use first verse of range as primary target
+- Wikilink targets include full syntax: `[[Page#Heading]]` is different from `[[Page]]`
+- Quickfix automatically opens when `vim.cmd('copen')` is called
+- Buffer-local keymaps survive quickfix window switches
+- Multiple references in same line need while loop with search_pos tracking
 
 ### Bible Reference Parsing (T07)
 - Lua pattern `([%d]?%s?[%a]+)%s+(%d+):(%d+)%-?(%d*)` matches Bible refs in text
