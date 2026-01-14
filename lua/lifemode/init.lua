@@ -435,6 +435,22 @@ function M.setup(user_config)
     desc = 'Decrease task priority (toward !5)'
   })
 
+  -- Create :LifeModeAddTag command
+  vim.api.nvim_create_user_command('LifeModeAddTag', function()
+    local tasks = require('lifemode.tasks')
+    tasks.add_tag_interactive()
+  end, {
+    desc = 'Add tag to task at cursor'
+  })
+
+  -- Create :LifeModeRemoveTag command
+  vim.api.nvim_create_user_command('LifeModeRemoveTag', function()
+    local tasks = require('lifemode.tasks')
+    tasks.remove_tag_interactive()
+  end, {
+    desc = 'Remove tag from task at cursor'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -473,6 +489,12 @@ function M.setup(user_config)
             vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
           end
         end, { buffer = args.buf, noremap = true, silent = true, desc = 'Decrease task priority' })
+
+        -- <Space>tt: edit tags (add/remove tag prompt)
+        vim.keymap.set('n', config.leader .. 'tt', function()
+          local tasks = require('lifemode.tasks')
+          tasks.add_tag_interactive()
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Add tag to task' })
       end
     end,
   })
@@ -563,6 +585,12 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeDecPriority')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeAddTag')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeRemoveTag')
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeLensNext')

@@ -125,6 +125,12 @@ function M.create_buffer()
     end
   end, vim.tbl_extend('force', opts, { desc = 'Decrease task priority' }))
 
+  -- <Space>tt: Add tag to task
+  vim.keymap.set('n', '<Space>tt', function()
+    local tasks = require('lifemode.tasks')
+    tasks.add_tag_interactive()
+  end, vim.tbl_extend('force', opts, { desc = 'Add tag to task' }))
+
   -- <Space>ml: Cycle to next lens
   vim.keymap.set('n', '<Space>ml', function()
     local lens = require('lifemode.lens')

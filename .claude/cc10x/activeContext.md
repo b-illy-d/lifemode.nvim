@@ -1,10 +1,21 @@
 # Active Context
 
 ## Current Focus
-T15: Expansion budget + cycle stub COMPLETE
+T16: Tag add/remove (commanded edit) COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T16] Added get_tags(line) to extract all #tag and #tag/subtag from line - lua/lifemode/tasks.lua:221
+- [T16] Added add_tag(bufnr, node_id, tag) to add tags to task lines - lua/lifemode/tasks.lua:232
+- [T16] Added remove_tag(bufnr, node_id, tag) to remove tags from tasks - lua/lifemode/tasks.lua:291
+- [T16] Added add_tag_interactive() for prompted tag addition - lua/lifemode/tasks.lua:334
+- [T16] Added remove_tag_interactive() for prompted tag removal - lua/lifemode/tasks.lua:370
+- [T16] Added :LifeModeAddTag command - lua/lifemode/init.lua:442
+- [T16] Added :LifeModeRemoveTag command - lua/lifemode/init.lua:449
+- [T16] Added <Space>tt keymap for tag addition in vault files - lua/lifemode/init.lua:500
+- [T16] Added <Space>tt keymap for tag addition in view buffers - lua/lifemode/view.lua:128
+- [T16] Created tests/tags_spec.lua (22 tests, all passing)
+- [T16] Created manual acceptance test - tests/manual_t16_test.lua (10 tests, all passing)
 - [T15] Added max_nodes_per_action config option (default: 100) - lua/lifemode/init.lua:12
 - [T15] Added config validation for max_nodes_per_action (1-10000) - lua/lifemode/init.lua:47
 - [T15] Implemented cycle detection in expand_instance() - lua/lifemode/render.lua:90
@@ -157,6 +168,14 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
+| Tag syntax (T16) | `#tag/subtag` with slash for hierarchy | Per SPEC.md requirement, consistent with common tag conventions |
+| Tag pattern (T16) | `#([%w_/-]+)` | Matches word chars, underscore, slash, hyphen for flexible tagging |
+| Tag placement (T16) | Before ^id if present, else end of line | Consistent with priority placement pattern |
+| Duplicate tag handling (T16) | Skip silently (return true) | Idempotent add operation - no error on duplicate |
+| Tag removal spacing (T16) | Match tag with leading space, clean up doubles | Prevents double spaces after removal |
+| Interactive prompt (T16) | vim.fn.input() with current tags shown | Simple MVP approach, shows context to user |
+| Tag input cleanup (T16) | Strip # prefix and whitespace | User can type "#tag" or "tag", both work |
+| Keymap for tags (T16) | <Space>tt for add_tag_interactive | Per SPEC.md requirement, mnemonic "task tags" |
 | Cycle stub text (T15) | "↩ already shown" | Simple, clear indicator that node already in expansion path |
 | Cycle detection scope (T15) | Per-expansion-path, not global | Same node in different branches is OK, only detect in current path |
 | Max nodes per action default (T15) | 100 | Balance between performance and utility, configurable 1-10000 |

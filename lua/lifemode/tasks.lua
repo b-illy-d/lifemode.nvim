@@ -228,4 +228,237 @@ function M.dec_priority(bufnr, node_id)
   return true
 end
 
+--- Extract all tags from a line
+--- @param line string Line text to extract tags from
+--- @return table Array of tag strings (without # prefix)
+function M.get_tags(line)
+  local tags = {}
+  -- Pattern: #([%w_/-]+) matches #tag or #tag/subtag
+  -- Allows word chars, underscore, slash, and hyphen
+  for tag in line:gmatch("#([%w_/-]+)") do
+    table.insert(tags, tag)
+  end
+  return tags
+end
+
+--- Add a tag to a task
+--- @param bufnr number Buffer handle
+--- @param node_id string Node ID
+--- @param tag string Tag to add (without # prefix)
+--- @return boolean True if successful, false if not found or not a task
+function M.add_tag(bufnr, node_id, tag)
+  -- Parse buffer to find the task
+  local blocks = parser.parse_buffer(bufnr)
+
+  -- Find the block with matching ID
+  local target_block = nil
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      if block.type == "task" then
+        target_block = block
+        break
+      else
+        -- Found node but it's not a task
+        return false
+      end
+    end
+  end
+
+  if not target_block then
+    -- Node not found
+    return false
+  end
+
+  -- Get the line content
+  local line_num = target_block.line_num
+  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
+  if #lines == 0 then
+    return false
+  end
+
+  local line = lines[1]
+
+  -- Check if tag already exists
+  local existing_tags = M.get_tags(line)
+  for _, existing_tag in ipairs(existing_tags) do
+    if existing_tag == tag then
+      -- Tag already present, do nothing
+      return true
+    end
+  end
+
+  -- Add tag before ^id if present, otherwise at end
+  local new_line
+  if line:match("%^[%w%-_]+%s*$") then
+    -- Insert tag before ID
+    new_line = line:gsub("(%s*)(%^[%w%-_]+%s*)$", " #" .. tag .. "%1%2")
+  else
+    -- No ID, append at end
+    new_line = line .. " #" .. tag
+  end
+
+  -- Update the buffer
+  vim.api.nvim_buf_set_lines(bufnr, line_num - 1, line_num, false, {new_line})
+
+  return true
+end
+
+--- Remove a tag from a task
+--- @param bufnr number Buffer handle
+--- @param node_id string Node ID
+--- @param tag string Tag to remove (without # prefix)
+--- @return boolean True if successful, false if not found or not a task
+function M.remove_tag(bufnr, node_id, tag)
+  -- Parse buffer to find the task
+  local blocks = parser.parse_buffer(bufnr)
+
+  -- Find the block with matching ID
+  local target_block = nil
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      if block.type == "task" then
+        target_block = block
+        break
+      else
+        -- Found node but it's not a task
+        return false
+      end
+    end
+  end
+
+  if not target_block then
+    -- Node not found
+    return false
+  end
+
+  -- Get the line content
+  local line_num = target_block.line_num
+  local lines = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)
+  if #lines == 0 then
+    return false
+  end
+
+  local line = lines[1]
+
+  -- Remove the tag
+  -- Pattern: #tag_to_remove with surrounding spaces
+  local escaped_tag = tag:gsub("([%-%.%+%[%]%(%)%$%^%%%?%*])", "%%%1")
+
+  -- Try to match tag with space before it first (most common case)
+  local new_line = line:gsub("%s#" .. escaped_tag .. "(%s*)", "%1")
+
+  -- If that didn't work, try without leading space (tag at start of content)
+  if new_line == line then
+    new_line = line:gsub("#" .. escaped_tag .. "%s*", "")
+  end
+
+  -- Clean up any double spaces that might result
+  new_line = new_line:gsub("%s%s+", " ")
+
+  -- Update the buffer
+  vim.api.nvim_buf_set_lines(bufnr, line_num - 1, line_num, false, {new_line})
+
+  return true
+end
+
+--- Interactive add tag - prompts user for tag and adds it to task at cursor
+function M.add_tag_interactive()
+  -- Get task at cursor
+  local node_id, bufnr = M.get_task_at_cursor()
+
+  if not node_id then
+    vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Get existing tags to show user
+  local blocks = parser.parse_buffer(bufnr)
+  local current_tags = {}
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      local lines = vim.api.nvim_buf_get_lines(bufnr, block.line_num - 1, block.line_num, false)
+      if #lines > 0 then
+        current_tags = M.get_tags(lines[1])
+      end
+      break
+    end
+  end
+
+  -- Prompt for tag
+  local prompt = 'Add tag'
+  if #current_tags > 0 then
+    prompt = prompt .. ' (current: ' .. table.concat(current_tags, ', ') .. ')'
+  end
+  prompt = prompt .. ': '
+
+  local tag = vim.fn.input(prompt)
+
+  -- Clean up input - remove # prefix if user included it
+  tag = tag:gsub('^#', ''):match('^%s*(.-)%s*$')  -- trim whitespace
+
+  if tag == '' then
+    vim.api.nvim_echo({{'Tag cannot be empty', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Add tag
+  local success = M.add_tag(bufnr, node_id, tag)
+
+  if success then
+    vim.api.nvim_echo({{'Added tag #' .. tag, 'Normal'}}, true, {})
+  else
+    vim.api.nvim_echo({{'Failed to add tag', 'ErrorMsg'}}, true, {})
+  end
+end
+
+--- Interactive remove tag - prompts user for tag and removes it from task at cursor
+function M.remove_tag_interactive()
+  -- Get task at cursor
+  local node_id, bufnr = M.get_task_at_cursor()
+
+  if not node_id then
+    vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Get existing tags
+  local blocks = parser.parse_buffer(bufnr)
+  local current_tags = {}
+  for _, block in ipairs(blocks) do
+    if block.id == node_id then
+      local lines = vim.api.nvim_buf_get_lines(bufnr, block.line_num - 1, block.line_num, false)
+      if #lines > 0 then
+        current_tags = M.get_tags(lines[1])
+      end
+      break
+    end
+  end
+
+  if #current_tags == 0 then
+    vim.api.nvim_echo({{'Task has no tags to remove', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Prompt for tag
+  local prompt = 'Remove tag (current: ' .. table.concat(current_tags, ', ') .. '): '
+  local tag = vim.fn.input(prompt)
+
+  -- Clean up input - remove # prefix if user included it
+  tag = tag:gsub('^#', ''):match('^%s*(.-)%s*$')  -- trim whitespace
+
+  if tag == '' then
+    vim.api.nvim_echo({{'Tag cannot be empty', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Remove tag
+  local success = M.remove_tag(bufnr, node_id, tag)
+
+  if success then
+    vim.api.nvim_echo({{'Removed tag #' .. tag, 'Normal'}}, true, {})
+  else
+    vim.api.nvim_echo({{'Failed to remove tag', 'ErrorMsg'}}, true, {})
+  end
+end
+
 return M
