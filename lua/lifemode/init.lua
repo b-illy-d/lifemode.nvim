@@ -99,6 +99,33 @@ function M.setup(user_config)
   end, {
     desc = 'Debug: show span metadata at cursor'
   })
+
+  -- Create :LifeModeParse command
+  vim.api.nvim_create_user_command('LifeModeParse', function()
+    local parser = require('lifemode.parser')
+    local bufnr = vim.api.nvim_get_current_buf()
+    local blocks = parser.parse_buffer(bufnr)
+
+    -- Count tasks
+    local task_count = 0
+    for _, block in ipairs(blocks) do
+      if block.type == 'task' then
+        task_count = task_count + 1
+      end
+    end
+
+    -- Print summary
+    local lines = {
+      'Markdown Parser Results:',
+      '  Total blocks: ' .. #blocks,
+      '  Tasks: ' .. task_count,
+    }
+    for _, line in ipairs(lines) do
+      vim.api.nvim_echo({{line, 'Normal'}}, true, {})
+    end
+  end, {
+    desc = 'Parse current buffer and show block count + task count'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -121,6 +148,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeDebugSpan')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeParse')
   end)
 end
 

@@ -1,10 +1,14 @@
 # Active Context
 
 ## Current Focus
-T02: Extmark-based span mapping COMPLETE
+T03: Minimal Markdown block parser COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T03] Created lua/lifemode/parser.lua with parse_buffer() function - lua/lifemode/parser.lua:1
+- [T03] Added :LifeModeParse command - lua/lifemode/init.lua:86
+- [T03] Created tests/parser_spec.lua (22 tests, all passing)
+- [T03] Created manual acceptance test - tests/manual_t03_test.lua
 - [T02] Created lua/lifemode/extmarks.lua with namespace and span metadata helpers - lua/lifemode/extmarks.lua:1
 - [T02] Added :LifeModeDebugSpan command - lua/lifemode/init.lua:54
 - [T02] Updated view.create_buffer() with example spans - lua/lifemode/view.lua:27
@@ -22,9 +26,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T03: Minimal Markdown block parser
-2. T04: Ensure IDs for indexable blocks
-3. T05: Build in-memory Node model
+1. T04: Ensure IDs for indexable blocks
+2. T05: Build in-memory Node model
+3. T06: Basic wikilink extraction
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -38,6 +42,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | View buffer options (T01) | `buftype=nofile`, `swapfile=false`, `bufhidden=wipe` | Per SPEC.md requirement |
 | Extmark metadata storage (T02) | Separate table indexed by bufnr:mark_id | Neovim extmarks don't allow arbitrary keys |
 | Multi-line span retrieval (T02) | Query with overlap detection | Check if extmark end_row covers target line |
+| Parser block types (T03) | heading, list_item, task | Minimal set for MVP - ignore prose paragraphs |
+| Task checkbox syntax (T03) | `[ ]` for todo, `[x]` or `[X]` for done | Standard Markdown syntax |
+| ID extraction pattern (T03) | `^[%w%-_]+` at end of line | Matches UUID and simple IDs |
 
 ## Learnings This Session
 
@@ -70,6 +77,13 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - Boundary values (0, negative, huge numbers) expose assumptions
 - Runtime environment variations need explicit tests
 
+### Lua Pattern Matching (T03)
+- `^#+ ` matches headings (one or more # at start, then space)
+- `^[%-%*] ` matches list items (- or * at start, then space)
+- `%[([%sxX])%]` captures checkbox state (space, x, or X)
+- `%^([%w%-_]+)%s*$` extracts ID at end of line (^id format)
+- Lua patterns are NOT regex - use character classes like `[%-%*]` not `[-*]`
+
 ## Blockers / Issues
 
 ### Critical Issues Found (5 total)
@@ -89,4 +103,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 18:15 EST
+2026-01-14 19:45 EST

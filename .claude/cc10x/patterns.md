@@ -14,10 +14,12 @@
 - `lua/lifemode/init.lua` - main entry point with setup()
 - `lua/lifemode/view.lua` - view buffer creation and management
 - `lua/lifemode/extmarks.lua` - extmark-based span metadata tracking
+- `lua/lifemode/parser.lua` - minimal Markdown block parser (headings, list items, tasks)
 - `lua/lifemode/config.lua` - configuration management (future)
 - `lua/lifemode/engine/` - parsing, indexing, query logic (future)
 - `tests/lifemode/` - test files using plenary (future)
 - `tests/*_spec.lua` - test files using custom test runner
+- `tests/manual_*_test.lua` - manual acceptance tests
 
 ## Testing Patterns
 - Use plenary.nvim test harness (when available)
@@ -38,6 +40,10 @@
 - **Extmarks don't allow arbitrary keys**: must store custom metadata separately
 - **Extmark end_row is exclusive**: add 1 when setting, subtract 1 when checking range
 - **Multi-line span detection requires overlap checking**: query from buffer start and check if extmark covers target line
+- **Lua patterns vs regex**: Lua uses `%` for special chars, not `\` (e.g., `%[` not `\[`)
+- **Function order matters in Lua**: local functions must be defined before use
+- **Markdown heading syntax**: Must have space after # symbols (`# Heading` not `#Heading`)
+- **Parser ignores non-block lines**: Regular text/paragraphs not parsed, only headings and lists
 
 ## Dependencies
 - plenary.nvim (async, utilities, testing)

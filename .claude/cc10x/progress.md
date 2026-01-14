@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T02 COMPLETE
+T03 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -20,6 +20,11 @@ T02 COMPLETE
   - Tests: 15/15 passing
   - Files: lua/lifemode/extmarks.lua (created), lua/lifemode/init.lua (modified), lua/lifemode/view.lua (modified)
   - Acceptance: :LifeModeDebugSpan prints metadata at cursor
+- [x] T03 - Minimal Markdown block parser
+  - TDD: RED (exit 1) → GREEN (exit 0) → REFACTOR
+  - Tests: 22/22 passing
+  - Files: lua/lifemode/parser.lua (created), lua/lifemode/init.lua (modified)
+  - Acceptance: :LifeModeParse parses current buffer and prints block + task count
 
 ## In Progress
 None
@@ -28,7 +33,6 @@ None
 None
 
 ## Remaining
-- [ ] T03: Minimal Markdown block parser
 - [ ] T04: Ensure IDs for indexable blocks
 - [ ] T05: Build in-memory Node model
 - [ ] T06: Basic wikilink extraction
@@ -60,6 +64,15 @@ None
 | View Tests | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
 | All Unit Tests | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
 | Manual Test | `nvim -l tests/manual_t02_test.lua` | 0 | All acceptance criteria met |
+
+### T03
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Parser Tests | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Manual Test | `nvim -l tests/manual_t03_test.lua` | 0 | All acceptance criteria met |
 
 ## Known Issues (T00)
 
@@ -98,3 +111,10 @@ None
 |---------|--------|------------------|
 | Store metadata in extmark | Store in separate table | Neovim extmarks don't allow arbitrary keys |
 | All T02 requirements | All implemented + tests + example spans | No deviation |
+
+### T03
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Parse headings + list items | Implemented with task detection | Added task type per SPEC.md requirements |
+| Extract task state + IDs | Implemented with pattern matching | No deviation |
+| All T03 requirements | All implemented + 22 tests + manual test | No deviation |
