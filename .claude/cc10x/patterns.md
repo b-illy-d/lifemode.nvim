@@ -157,6 +157,38 @@ When adding new configuration options, always test:
    - Config accessed before setup()
    - Long strings (test output rendering)
 
+## Bible Reference Patterns (T07)
+
+### Book Name Mapping
+- Mapping table: abbreviated/full name → canonical name (lowercase, no spaces)
+- Covers all 66 books + common abbreviations
+- Examples: "gen" → "genesis", "rom" → "romans", "matt" → "matthew"
+- Numbered books: "1cor" → "1corinthians", "1john" → "1john", "2tim" → "2timothy"
+- Psalm variations: "psalm", "psalms", "ps" all → "psalms"
+
+### Lua Pattern for Bible References
+```lua
+-- Pattern: ([%d]?%s?[%a]+)%s+(%d+):(%d+)%-?(%d*)
+-- Captures: book, chapter, verse_start, verse_end (optional)
+-- Handles: John 3:16, 1 Cor 13:4, Rom 8:28-30
+```
+
+### Verse ID Format
+- Deterministic: `bible:book:chapter:verse`
+- All lowercase, no spaces
+- Examples: `bible:john:3:16`, `bible:romans:8:28`, `bible:psalms:23:1`
+
+### Integration Pattern
+```lua
+-- In node.lua build_nodes_from_buffer:
+local refs = extract_wikilinks(block.text)
+local bible_refs = bible.parse_bible_refs(block.text)
+for _, ref in ipairs(bible_refs) do
+  table.insert(refs, ref)
+end
+-- Bible refs participate in backlinks system same as wikilinks
+```
+
 ## Test Template for New Features
 
 ```lua

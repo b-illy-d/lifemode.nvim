@@ -1,10 +1,17 @@
 # Active Context
 
 ## Current Focus
-T06: Basic wikilink extraction COMPLETE
+T07: Bible reference extraction and parsing COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T07] Created lua/lifemode/bible.lua with parse_bible_refs() - lua/lifemode/bible.lua:1
+- [T07] Integrated Bible ref extraction into node.lua - lua/lifemode/node.lua:69
+- [T07] Added :LifeModeBibleRefs command - lua/lifemode/init.lua:276
+- [T07] Created tests/bible_spec.lua (19 tests, all passing)
+- [T07] Created tests/bible_integration_spec.lua (8 tests, all passing)
+- [T07] Created manual acceptance test - tests/manual_t07_test.lua
+- [T07] Updated _reset_for_testing() to include :LifeModeBibleRefs cleanup
 - [T06] Added extract_wikilinks() function to node.lua - lua/lifemode/node.lua:36
 - [T06] Updated build_nodes_from_buffer() to extract refs and build backlinks map - lua/lifemode/node.lua:63
 - [T06] Added :LifeModeRefs command - lua/lifemode/init.lua:194
@@ -43,9 +50,9 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T07: Bible reference extraction and parsing
-2. T07a: Quickfix "references" view
-3. T08: "Definition" jump for wikilinks and Bible refs
+1. T07a: Quickfix "references" view
+2. T08: "Definition" jump for wikilinks and Bible refs
+3. Continue with remaining tasks per SPEC.md
 
 ## Active Decisions
 | Decision | Choice | Why |
@@ -73,6 +80,19 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Backlinks index (T06) | Map from target → array of source node IDs | Enables quick backlink lookup |
 
 ## Learnings This Session
+
+### Bible Reference Parsing (T07)
+- Lua pattern `([%d]?%s?[%a]+)%s+(%d+):(%d+)%-?(%d*)` matches Bible refs in text
+- Book name normalization: remove spaces, lowercase, lookup in mapping table
+- Book name mapping covers all 66 books + common abbreviations (Gen, Rom, Matt, Ps, etc.)
+- Numbered books (1 Cor, 2 Tim, 1 John) handled by allowing optional digit + space in pattern
+- Psalm/Psalms both normalize to "psalms" for consistency
+- Verse ranges expand to individual verse IDs at extraction time (not query time)
+- Bible refs automatically added to node.refs with type="bible_verse"
+- Bible refs participate in backlinks system same as wikilinks
+- Deterministic ID format: bible:book:chapter:verse (all lowercase, no spaces)
+- Pattern-based extraction works in free text, not just isolated refs
+- :LifeModeBibleRefs shows all Bible refs in buffer with node context
 
 ### Wikilink Extraction (T06)
 - Lua pattern `%[%[([^%]]+)%]%]` captures content between [[ and ]]
@@ -159,4 +179,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 20:15 EST
+2026-01-14 21:45 EST

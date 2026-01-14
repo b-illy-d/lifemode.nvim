@@ -272,6 +272,63 @@ function M.setup(user_config)
   end, {
     desc = 'Show references (outbound + backlinks) for node at cursor'
   })
+
+  -- Create :LifeModeBibleRefs command
+  vim.api.nvim_create_user_command('LifeModeBibleRefs', function()
+    local node = require('lifemode.node')
+    local bufnr = vim.api.nvim_get_current_buf()
+
+    -- Build nodes from buffer
+    local result = node.build_nodes_from_buffer(bufnr)
+
+    -- Collect all Bible references from all nodes
+    local bible_refs = {}
+    for node_id, n in pairs(result.nodes_by_id) do
+      for _, ref in ipairs(n.refs) do
+        if ref.type == "bible_verse" then
+          table.insert(bible_refs, {
+            target = ref.target,
+            node_id = node_id,
+            body = n.body_md
+          })
+        end
+      end
+    end
+
+    -- Display results
+    vim.api.nvim_echo({{'Bible References in Buffer', 'Title'}}, true, {})
+    vim.api.nvim_echo({{'', 'Normal'}}, true, {})
+
+    if #bible_refs == 0 then
+      vim.api.nvim_echo({{'No Bible references found', 'Comment'}}, true, {})
+    else
+      vim.api.nvim_echo({{
+        string.format('Found %d Bible reference(s):', #bible_refs),
+        'Normal'
+      }}, true, {})
+      vim.api.nvim_echo({{'', 'Normal'}}, true, {})
+
+      for _, ref in ipairs(bible_refs) do
+        -- Show verse ID
+        vim.api.nvim_echo({{
+          string.format('  %s', ref.target),
+          'Identifier'
+        }}, true, {})
+
+        -- Show node context (truncated)
+        local preview = ref.body:sub(1, 60)
+        if #ref.body > 60 then
+          preview = preview .. '...'
+        end
+        vim.api.nvim_echo({{
+          string.format('    in node %s: %s', ref.node_id, preview),
+          'Comment'
+        }}, true, {})
+      end
+    end
+  end, {
+    desc = 'Show all Bible references found in current buffer'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -306,6 +363,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeRefs')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeBibleRefs')
   end)
 end
 

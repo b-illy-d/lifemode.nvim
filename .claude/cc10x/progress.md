@@ -44,6 +44,13 @@ T06 COMPLETE
 ## In Progress
 None
 
+## Just Completed
+- [x] T07 - Bible reference extraction and parsing
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 19/19) → REFACTOR
+  - Tests: 19/19 bible_spec.lua, 8/8 bible_integration_spec.lua
+  - Files: lua/lifemode/bible.lua (created), lua/lifemode/node.lua (modified), lua/lifemode/init.lua (modified)
+  - Acceptance: Parses single verses, ranges, abbreviations; generates deterministic IDs; :LifeModeBibleRefs shows all refs
+
 ## Blocked
 None
 
@@ -121,6 +128,21 @@ None
 | Regression: Ensure ID | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
 | Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
 | Manual Test | `nvim -l tests/manual_t06_test.lua` | 0 | All acceptance criteria met |
+
+### T07
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Bible Tests | `nvim -l tests/bible_spec.lua` | 0 | **PASS (19/19)** |
+| Integration Tests | `nvim -l tests/bible_integration_spec.lua` | 0 | **PASS (8/8)** |
+| Regression: Init | `nvim -l tests/run_tests.lua` | 0 | **PASS (7/7)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Regression: Extmarks | `nvim -l tests/extmarks_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Parser | `nvim -l tests/parser_spec.lua` | 0 | **PASS (22/22)** |
+| Regression: UUID | `nvim -l tests/uuid_spec.lua` | 0 | **PASS (5/5)** |
+| Regression: Ensure ID | `nvim -l tests/ensure_id_spec.lua` | 0 | **PASS (12/12)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: Refs | `nvim -l tests/refs_spec.lua` | 0 | **PASS (18/18)** |
+| Manual Test | `nvim -l tests/manual_t07_test.lua` | 0 | All acceptance criteria met |
 
 ## Known Issues (T00)
 

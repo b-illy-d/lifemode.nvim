@@ -2,6 +2,7 @@
 -- Converts parsed blocks into a tree structure with parent/child relationships
 
 local parser = require('lifemode.parser')
+local bible = require('lifemode.bible')
 
 local M = {}
 
@@ -76,8 +77,14 @@ function M.build_nodes_from_buffer(bufnr)
     -- Generate ID if not present
     local node_id = block.id or generate_synthetic_id()
 
-    -- Extract wikilinks from body
+    -- Extract wikilinks and Bible references from body
     local refs = extract_wikilinks(block.text)
+    local bible_refs = bible.parse_bible_refs(block.text)
+
+    -- Combine all refs
+    for _, ref in ipairs(bible_refs) do
+      table.insert(refs, ref)
+    end
 
     -- Create node record
     local node = {
