@@ -1,10 +1,23 @@
 # Active Context
 
 ## Current Focus
-T12: Active node highlighting + statusline/winbar info COMPLETE
+T13: Compiled view render of a page root (single file) COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T13] Created lua/lifemode/render.lua with render_page_view() function - lua/lifemode/render.lua:1
+- [T13] Added generate_instance_id() for unique instance identification - lua/lifemode/render.lua:11
+- [T13] Added choose_lens(node_data) to select appropriate lens (task/brief or node/raw) - lua/lifemode/render.lua:18
+- [T13] Implemented render_page_view(source_bufnr) parsing source and rendering root nodes - lua/lifemode/render.lua:26
+- [T13] View buffer creation with proper options (nofile, swapfile=false, bufhidden=wipe) - lua/lifemode/render.lua:37
+- [T13] Extmark metadata set after buffer populated (fixed async issue) - lua/lifemode/render.lua:87
+- [T13] Renders only root nodes (top-level, no parents) to view - lua/lifemode/render.lua:52
+- [T13] Handles both string and table return types from lens.render() - lua/lifemode/render.lua:61
+- [T13] Added :LifeModePageView command - lua/lifemode/init.lua:498
+- [T13] Integrated active node tracking in PageView command - lua/lifemode/init.lua:505
+- [T13] Updated _reset_for_testing() to include :LifeModePageView cleanup - lua/lifemode/init.lua:577
+- [T13] Created tests/render_spec.lua (11 tests, all passing)
+- [T13] Created manual acceptance test - tests/manual_t13_test.lua (11 tests, all passing)
 - [T12] Created lua/lifemode/activenode.lua with active node tracking - lua/lifemode/activenode.lua:1
 - [T12] Added highlight_active_span(bufnr, start_line, end_line) for visual distinction - lua/lifemode/activenode.lua:25
 - [T12] Added clear_active_highlight(bufnr) to remove highlights - lua/lifemode/activenode.lua:47
@@ -171,6 +184,20 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Cursor tracking scope (T12) | Per-buffer autocmd group | Named 'LifeModeActiveNode_' + bufnr |
 
 ## Learnings This Session
+
+### Compiled View Rendering (T13)
+- Extmarks must be set AFTER buffer lines are populated, not before
+- Store span metadata in intermediate structure, then apply after buffer set
+- Root nodes are top-level (no parent) - hierarchy determines what gets rendered
+- Blank lines don't break hierarchy - list items after heading remain children
+- choose_lens pattern: tasks use task/brief, everything else uses node/raw
+- Instance IDs must be unique per rendered node instance (not per node_id)
+- lens.render() can return string or table - handle both with type() check
+- View buffer integrated with active node tracking via track_cursor_movement()
+- :LifeModePageView creates compiled view from current source buffer
+- Rendering pipeline: parse → build nodes → filter roots → render each → set extmarks
+
+## Previous Learnings
 
 ### Active Node Tracking (T12)
 - Winbar is window-local, not buffer-local - must use nvim_win_set_option not nvim_buf_set_option

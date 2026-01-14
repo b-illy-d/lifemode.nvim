@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-T11 COMPLETE
+T13 COMPLETE
 
 ## Completed
 - [x] Memory files initialized
@@ -45,6 +45,18 @@ T11 COMPLETE
 None
 
 ## Just Completed
+- [x] T13 - Compiled view render of a page root (single file)
+  - TDD: RED (exit 1, module not found) → GREEN (exit 0, 11/11) → REFACTOR
+  - Tests: 11/11 render_spec.lua + 11/11 manual acceptance
+  - Files: lua/lifemode/render.lua (created), lua/lifemode/init.lua (modified)
+  - Functions: render_page_view(source_bufnr), generate_instance_id(), choose_lens(node_data)
+  - Command: :LifeModePageView
+  - Rendering: Parses source buffer, filters root nodes, renders with lens, sets extmarks
+  - Lens selection: Tasks use task/brief, others use node/raw
+  - Integration: Active node tracking enabled automatically
+  - Acceptance: :LifeModePageView shows file as compiled interactive view with only root nodes
+
+## Previously Completed
 - [x] T12 - Active node highlighting + statusline/winbar info
   - TDD: RED (exit 1, module not found) → GREEN (exit 0, 15/15) → REFACTOR
   - Tests: 15/15 activenode_spec.lua + 10/10 manual acceptance
@@ -276,6 +288,15 @@ None
 | Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
 | Manual Test | `nvim -l tests/manual_t12_test.lua` | 0 | All acceptance criteria met (10/10 tests pass) |
 
+### T13
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Render Tests | `nvim -l tests/render_spec.lua` | 0 | **PASS (11/11)** |
+| Regression: Lens | `nvim -l tests/lens_spec.lua` | 0 | **PASS (23/23)** |
+| Regression: Node | `nvim -l tests/node_spec.lua` | 0 | **PASS (15/15)** |
+| Regression: View | `nvim -l tests/view_spec.lua` | 0 | **PASS (10/10)** |
+| Manual Test | `nvim -l tests/manual_t13_test.lua` | 0 | All acceptance criteria met (11/11 tests pass) |
+
 ## Known Issues (T00)
 
 ### BLOCKING for T01 (Must Fix)
@@ -404,3 +425,16 @@ None
 | :LifeModeLensNext / Prev commands | Show message, no re-render | MVP: lens system first, view integration later (T12-T14) |
 | Re-render span on lens change | Deferred | Core lens rendering complete, view integration in T12-T14 |
 | All T11 requirements | All implemented + 23 tests + 15 manual tests | Core functionality complete, view integration deferred to T12-T14 |
+
+### T13
+| Planned | Actual | Deviation Reason |
+|---------|--------|------------------|
+| Render page view from source | render_page_view(source_bufnr) | Parses, filters roots, renders each with lens |
+| Root node filtering | Uses root_ids from build_nodes_from_buffer | Only top-level nodes (no parents) rendered |
+| Lens selection | choose_lens() based on node type | Tasks use task/brief, others use node/raw |
+| Instance ID generation | Unique per rendered instance | timestamp + random for uniqueness |
+| Extmark metadata | Set after buffer populated | Fixed async issue - must populate buffer first |
+| View buffer options | nofile, swapfile=false, bufhidden=wipe | Per view buffer pattern |
+| :LifeModePageView command | Opens compiled view of current buffer | Integrated with active node tracking |
+| Handle multiline rendering | Type check for string vs table | lens.render() can return both |
+| All T13 requirements | All implemented + 11 tests + 11 manual tests | No deviation from core requirements |

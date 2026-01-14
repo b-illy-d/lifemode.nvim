@@ -490,6 +490,20 @@ function M.setup(user_config)
   end, {
     desc = 'Cycle to previous lens for active instance'
   })
+
+  -- Create :LifeModePageView command
+  vim.api.nvim_create_user_command('LifeModePageView', function()
+    local render = require('lifemode.render')
+    local source_bufnr = vim.api.nvim_get_current_buf()
+    local view_bufnr = render.render_page_view(source_bufnr)
+    vim.api.nvim_set_current_buf(view_bufnr)
+
+    -- Enable active node tracking
+    local activenode = require('lifemode.activenode')
+    activenode.track_cursor_movement(view_bufnr)
+  end, {
+    desc = 'Render current file as compiled page view'
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -545,6 +559,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeLensPrev')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModePageView')
   end)
 end
 
