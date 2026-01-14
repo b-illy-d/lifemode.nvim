@@ -71,6 +71,12 @@ function M.create_buffer()
     references.find_references_at_cursor()
   end, vim.tbl_extend('force', opts, { desc = 'Find references' }))
 
+  -- gd: Go to definition for wikilink/Bible ref under cursor
+  vim.keymap.set('n', 'gd', function()
+    local navigation = require('lifemode.navigation')
+    navigation.goto_definition()
+  end, vim.tbl_extend('force', opts, { desc = 'Go to definition' }))
+
   -- Open buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
 

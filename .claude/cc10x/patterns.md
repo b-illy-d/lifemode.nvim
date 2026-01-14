@@ -248,6 +248,60 @@ end
 -- Bible refs participate in backlinks system same as wikilinks
 ```
 
+## Navigation Patterns (T08)
+
+### File Search in Vault
+```lua
+-- Use find command to search vault recursively
+local cmd = string.format("find %s -type f -name %s 2>/dev/null | head -n 1",
+  vim.fn.shellescape(vault_root),
+  vim.fn.shellescape(filename))
+local result = vim.fn.system(cmd):gsub('^%s+', ''):gsub('%s+$', '')
+-- result is path to file or empty string if not found
+```
+
+### Jump to Heading in Buffer
+```lua
+-- Pattern match for heading with exact text
+local heading_text = line:match("^#+%s+(.+)$")
+if heading_text and heading_text == target_heading then
+  vim.api.nvim_set_current_buf(bufnr)  -- Set buffer first!
+  vim.api.nvim_win_set_cursor(0, {lnum, 0})
+end
+```
+
+### Jump to Block ID with Special Char Escaping
+```lua
+-- Escape special chars in ID for pattern matching
+local escaped_id = block_id:gsub("([%-%.%+%[%]%(%)%$%^%%%?%*])", "%%%1")
+if line:match("%^" .. escaped_id) then
+  -- Found block ID
+end
+```
+
+### FileType Autocmd for Vault Files
+```lua
+-- Add keymap only to markdown files in vault
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'markdown',
+  callback = function(args)
+    local filepath = vim.api.nvim_buf_get_name(args.buf)
+    if filepath:match('^' .. vim.pesc(config.vault_root)) then
+      -- File is in vault - add keymap
+      vim.keymap.set('n', 'gd', handler, { buffer = args.buf })
+    end
+  end,
+})
+```
+
+### Lua Heredoc Workaround
+```lua
+-- Cannot use [[ or ]] inside [[...]] heredoc
+-- Workaround: use placeholders and gsub
+local content = [[Link to Page link here.]]
+content = content:gsub("Page link here%.", "[[Page]]")
+```
+
 ## Test Template for New Features
 
 ```lua

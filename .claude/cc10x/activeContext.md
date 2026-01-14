@@ -1,10 +1,21 @@
 # Active Context
 
 ## Current Focus
-T07a: Quickfix "references" view COMPLETE
+T08: "Definition" jump for wikilinks and Bible refs COMPLETE
 Implemented using TDD (RED → GREEN → REFACTOR cycle)
 
 ## Recent Changes
+- [T08] Created lua/lifemode/navigation.lua with goto_definition() - lua/lifemode/navigation.lua:1
+- [T08] Added parse_wikilink_target() to parse [[Page]], [[Page#Heading]], [[Page^id]] - lua/lifemode/navigation.lua:14
+- [T08] Added find_file_in_vault() to search vault recursively - lua/lifemode/navigation.lua:35
+- [T08] Added jump_to_heading() to navigate to headings in buffer - lua/lifemode/navigation.lua:67
+- [T08] Added jump_to_block_id() to navigate to block IDs in buffer - lua/lifemode/navigation.lua:96
+- [T08] Added `gd` keymap to view buffers - lua/lifemode/view.lua:72
+- [T08] Added `gd` keymap to markdown files in vault via FileType autocmd - lua/lifemode/init.lua:337
+- [T08] Added :LifeModeGotoDef command - lua/lifemode/init.lua:328
+- [T08] Created tests/navigation_spec.lua (19 tests, all passing)
+- [T08] Created manual acceptance test - tests/manual_t08_test.lua (9 tests, all passing)
+- [T08] Updated _reset_for_testing() to include :LifeModeGotoDef cleanup
 - [T07a] Created lua/lifemode/references.lua with find_references_at_cursor() - lua/lifemode/references.lua:1
 - [T07a] Added extract_target_at_cursor() for wikilinks and Bible refs - lua/lifemode/references.lua:14
 - [T07a] Added find_references_in_buffer() for quickfix population - lua/lifemode/references.lua:72
@@ -56,7 +67,7 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 - [T00] Initialized git repository and created initial commit (0dd2003)
 
 ## Next Steps
-1. T08: "Definition" jump for wikilinks and Bible refs
+1. T09: Minimal task state toggle (commanded edit)
 2. Continue with remaining tasks per SPEC.md
 
 ## Active Decisions
@@ -83,8 +94,25 @@ Implemented using TDD (RED → GREEN → REFACTOR cycle)
 | Wikilink pattern (T06) | `%[%[([^%]]+)%]%]` | Matches [[...]] with content between brackets |
 | Refs storage (T06) | Array in node.refs field | Each ref: { target, type = "wikilink" } |
 | Backlinks index (T06) | Map from target → array of source node IDs | Enables quick backlink lookup |
+| Wikilink target parsing (T08) | Split on # for heading, ^ for block ID | Supports [[Page]], [[Page#Heading]], [[Page^id]] formats |
+| File search strategy (T08) | Use find command to search vault recursively | Case-sensitive, finds first match |
+| Heading jump (T08) | Pattern match for ^#+%s+heading_text | Matches any level heading with exact text |
+| Block ID jump (T08) | Pattern match for %^block_id in line | Escapes special chars in ID for pattern matching |
+| Bible ref navigation (T08) | Show message stub for MVP | Provider implementation deferred to T24 |
+| gd keymap scope (T08) | View buffers + markdown files in vault | FileType autocmd checks file path vs vault_root |
 
 ## Learnings This Session
+
+### Navigation (T08)
+- vim.fn.shellescape() required for paths with spaces in shell commands
+- find command: `find /path -type f -name "filename.md" 2>/dev/null | head -n 1` returns first match
+- Lua heredoc cannot contain nested `[[` or `]]` - use placeholders and gsub
+- vim.pesc() escapes pattern chars for string comparison (used in path matching)
+- nvim_set_current_buf() required before nvim_win_set_cursor() when jumping to different buffer
+- Special chars in block IDs need escaping: `id:gsub("([%-%.%+%[%]%(%)%$%^%%%?%*])", "%%%1")`
+- FileType autocmd with vim.api.nvim_buf_get_name() checks if file is in vault
+- Navigation errors should show user-friendly messages, not throw errors
+- Bible verse navigation stub for MVP - full provider deferred to T24
 
 ### Quickfix References (T07a)
 - `vim.fn.setqflist()` API: cannot pass both list and options dict in same call
@@ -195,4 +223,4 @@ Should critical issues be fixed before T01, or documented and deferred?
 - Requested silent failure hunt after T00 completion
 
 ## Last Updated
-2026-01-14 21:45 EST
+2026-01-14 22:30 EST

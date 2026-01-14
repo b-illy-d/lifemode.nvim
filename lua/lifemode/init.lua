@@ -329,6 +329,31 @@ function M.setup(user_config)
   end, {
     desc = 'Show all Bible references found in current buffer'
   })
+
+  -- Create :LifeModeGotoDef command (manual testing for goto_definition)
+  vim.api.nvim_create_user_command('LifeModeGotoDef', function()
+    local navigation = require('lifemode.navigation')
+    navigation.goto_definition()
+  end, {
+    desc = 'Go to definition for wikilink or Bible ref under cursor'
+  })
+
+  -- Set up autocommand to add gd keymap to markdown files in vault
+  vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'markdown',
+    callback = function(args)
+      local bufnr = args.buf
+      -- Check if this file is in the vault
+      local filepath = vim.api.nvim_buf_get_name(bufnr)
+      if filepath:match('^' .. vim.pesc(config.vault_root)) then
+        -- File is in vault - add gd keymap
+        vim.keymap.set('n', 'gd', function()
+          local navigation = require('lifemode.navigation')
+          navigation.goto_definition()
+        end, { buffer = bufnr, noremap = true, silent = true, desc = 'Go to definition' })
+      end
+    end,
+  })
 end
 
 -- Get current configuration (for testing and internal use)
@@ -366,6 +391,9 @@ function M._reset_for_testing()
   end)
   pcall(function()
     vim.api.nvim_del_user_command('LifeModeBibleRefs')
+  end)
+  pcall(function()
+    vim.api.nvim_del_user_command('LifeModeGotoDef')
   end)
 end
 
