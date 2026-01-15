@@ -540,6 +540,49 @@ function M.setup(user_config)
     desc = 'Open/create task detail file for task at cursor'
   })
 
+  -- Create :LifeModeTasksToday command
+  vim.api.nvim_create_user_command('LifeModeTasksToday', function()
+    local query = require('lifemode.query')
+    local tasks_today = query.get_tasks_today()
+    query.show_tasks_quickfix(tasks_today, "Tasks Due Today")
+  end, {
+    desc = 'Show tasks due today in quickfix list'
+  })
+
+  -- Create :LifeModeTasksByTag command
+  vim.api.nvim_create_user_command('LifeModeTasksByTag', function(opts)
+    local tag = opts.args
+    if not tag or tag == "" then
+      vim.api.nvim_echo({{'Please provide a tag name', 'ErrorMsg'}}, true, {})
+      return
+    end
+
+    local query = require('lifemode.query')
+    local tasks_by_tag = query.get_tasks_by_tag(tag)
+    query.show_tasks_quickfix(tasks_by_tag, string.format("Tasks Tagged: #%s", tag))
+  end, {
+    nargs = 1,
+    desc = 'Show tasks with specified tag in quickfix list'
+  })
+
+  -- Create :LifeModeTasksAll command
+  vim.api.nvim_create_user_command('LifeModeTasksAll', function()
+    local query = require('lifemode.query')
+    local all_tasks = query.get_all_todo_tasks()
+    query.show_tasks_quickfix(all_tasks, "All TODO Tasks")
+  end, {
+    desc = 'Show all TODO tasks in quickfix list'
+  })
+
+  -- Create :LifeModeTasksOverdue command
+  vim.api.nvim_create_user_command('LifeModeTasksOverdue', function()
+    local query = require('lifemode.query')
+    local overdue_tasks = query.get_overdue_tasks()
+    query.show_tasks_quickfix(overdue_tasks, "Overdue Tasks")
+  end, {
+    desc = 'Show overdue tasks in quickfix list'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -608,6 +651,24 @@ function M.setup(user_config)
           local tasks = require('lifemode.tasks')
           tasks.edit_task_details()
         end, { buffer = args.buf, noremap = true, silent = true, desc = 'Edit task details' })
+
+        -- <Space>vt: tasks by tag
+        vim.keymap.set('n', config.leader .. 'vt', function()
+          vim.ui.input({ prompt = 'Enter tag: ' }, function(tag)
+            if tag and tag ~= "" then
+              local query = require('lifemode.query')
+              local tasks_by_tag = query.get_tasks_by_tag(tag)
+              query.show_tasks_quickfix(tasks_by_tag, string.format("Tasks Tagged: #%s", tag))
+            end
+          end)
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'View tasks by tag' })
+
+        -- <Space>vv: all tasks view
+        vim.keymap.set('n', config.leader .. 'vv', function()
+          local query = require('lifemode.query')
+          local all_tasks = query.get_all_todo_tasks()
+          query.show_tasks_quickfix(all_tasks, "All TODO Tasks")
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'View all tasks' })
       end
     end,
   })
