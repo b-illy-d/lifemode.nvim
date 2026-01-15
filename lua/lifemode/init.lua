@@ -377,6 +377,27 @@ function M.setup(user_config)
             vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, false, {})
           end
         end, { buffer = bufnr, noremap = true, silent = true, desc = 'Toggle task state' })
+
+        -- Auto-insert UUID for tasks on InsertLeave
+        vim.api.nvim_create_autocmd('InsertLeave', {
+          buffer = bufnr,
+          callback = function()
+            local cursor = vim.api.nvim_win_get_cursor(0)
+            local line_num = cursor[1]
+            local line = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)[1]
+
+            -- Check if this is a task line without an ID
+            if line and line:match('^%s*%- %[.%]') and not line:match('%^[%w%-_]+%s*$') then
+              -- Generate UUID and append to line
+              local uuid = require('lifemode.uuid')
+              local new_uuid = uuid.generate()
+              local new_line = line .. ' ^' .. new_uuid
+
+              -- Update the line
+              vim.api.nvim_buf_set_lines(bufnr, line_num - 1, line_num, false, {new_line})
+            end
+          end,
+        })
       end
     end,
   })
@@ -511,6 +532,14 @@ function M.setup(user_config)
     desc = 'Insert node inclusion at cursor'
   })
 
+  -- Create :LifeModeEditTaskDetails command
+  vim.api.nvim_create_user_command('LifeModeEditTaskDetails', function()
+    local tasks = require('lifemode.tasks')
+    tasks.edit_task_details()
+  end, {
+    desc = 'Open/create task detail file for task at cursor'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -573,6 +602,12 @@ function M.setup(user_config)
           local inclusion = require('lifemode.inclusion')
           inclusion.include_node_interactive()
         end, { buffer = args.buf, noremap = true, silent = true, desc = 'Insert node inclusion' })
+
+        -- <Space>te: edit task details
+        vim.keymap.set('n', config.leader .. 'te', function()
+          local tasks = require('lifemode.tasks')
+          tasks.edit_task_details()
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Edit task details' })
       end
     end,
   })

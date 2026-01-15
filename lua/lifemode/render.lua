@@ -8,6 +8,37 @@ local lifemode = require('lifemode')
 
 local M = {}
 
+-- Define highlight groups for inclusions
+local function setup_inclusion_highlights()
+  -- Inclusion marker line
+  vim.api.nvim_set_hl(0, 'LifeModeInclusionMarker', {
+    fg = '#61afef',  -- Blue
+    italic = true,
+    default = true,
+  })
+
+  -- Task inclusions
+  vim.api.nvim_set_hl(0, 'LifeModeInclusionTask', {
+    bg = '#2c313a',  -- Subtle dark background
+    default = true,
+  })
+
+  -- Text/generic inclusions
+  vim.api.nvim_set_hl(0, 'LifeModeInclusionText', {
+    bg = '#282c34',  -- Very subtle background
+    default = true,
+  })
+
+  -- Heading inclusions
+  vim.api.nvim_set_hl(0, 'LifeModeInclusionHeading', {
+    bg = '#3e4451',  -- Slightly lighter background
+    default = true,
+  })
+end
+
+-- Setup highlights on module load
+setup_inclusion_highlights()
+
 -- Track which instances are expanded
 -- Format: {[bufnr] = {[instance_id] = {child_instance_ids = {...}, node_id = "...", depth = N, expansion_path = {...}}}}
 local expanded_instances = {}

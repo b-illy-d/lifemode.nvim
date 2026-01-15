@@ -672,4 +672,70 @@ function M.clear_due_interactive()
   end
 end
 
+--- Open or create task detail file for task at cursor
+function M.edit_task_details()
+  local node_id, bufnr = M.get_task_at_cursor()
+
+  if not node_id then
+    vim.api.nvim_echo({{'No task at cursor', 'WarningMsg'}}, true, {})
+    return
+  end
+
+  -- Get vault root from config
+  local lifemode = require('lifemode')
+  local config = lifemode.get_config()
+  local vault_root = config.vault_root
+
+  -- Create tasks directory if it doesn't exist
+  local tasks_dir = vault_root .. '/tasks'
+  vim.fn.mkdir(tasks_dir, 'p')
+
+  -- Construct detail file path
+  local detail_file = tasks_dir .. '/task-' .. node_id .. '.md'
+
+  -- Check if file exists
+  local file_exists = vim.fn.filereadable(detail_file) == 1
+
+  if not file_exists then
+    -- Create initial content for new detail file
+    -- Get the task summary from current line
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local row = cursor[1]
+    local lines = vim.api.nvim_buf_get_lines(bufnr, row - 1, row, false)
+    local summary = lines[1] or ""
+
+    -- Strip the ID from summary for cleaner display
+    summary = summary:gsub("%s*%^[%w%-_]+%s*$", "")
+
+    local initial_content = {
+      "# Task Details: " .. node_id,
+      "",
+      "## Summary",
+      "",
+      summary,
+      "",
+      "## Details",
+      "",
+      "<!-- Add detailed notes, context, and information here -->",
+      "",
+      "## Dependencies",
+      "",
+      "<!-- List task dependencies -->",
+      "<!-- depends:: [[other-task-id]] -->",
+      "",
+      "## Notes",
+      "",
+      "<!-- Additional notes -->",
+    }
+
+    -- Write initial content
+    vim.fn.writefile(initial_content, detail_file)
+  end
+
+  -- Open the detail file
+  vim.cmd('edit ' .. vim.fn.fnameescape(detail_file))
+
+  vim.api.nvim_echo({{'Opened task detail file', 'Normal'}}, false, {})
+end
+
 return M
