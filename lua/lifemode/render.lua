@@ -40,6 +40,126 @@ local function choose_lens(node_data)
   end
 end
 
+--- Render a node with its inclusions expanded and text children rendered
+--- @param node_data table Node data
+--- @param lens_name string Lens to use
+--- @param bufnr number Buffer number (for cache lookups)
+--- @param indent number Indentation level (default 0)
+--- @return table Array of lines
+local function render_node_with_inclusions(node_data, lens_name, bufnr, indent)
+  indent = indent or 0
+  local indent_str = string.rep("  ", indent)
+  local lines = {}
+
+  -- Render the main node
+  local rendered = lens.render(node_data, lens_name)
+
+  -- Handle both string and table return types
+  local node_lines = {}
+  if type(rendered) == "table" then
+    node_lines = rendered
+  else
+    node_lines = { rendered }
+  end
+
+  -- Add main node lines
+  for _, line in ipairs(node_lines) do
+    table.insert(lines, indent_str .. line)
+  end
+
+  -- If this is a heading, auto-render text-type children
+  if node_data.type == "heading" and node_data.children and #node_data.children > 0 then
+    for _, child_id in ipairs(node_data.children) do
+      local cache_key = string.format("%d:%s", bufnr, child_id)
+      local child_node = M._node_cache and M._node_cache[cache_key]
+
+      if child_node and child_node.type == "text" then
+        -- Recursively render text child with inclusions
+        local child_lines = render_node_with_inclusions(child_node, "node/raw", bufnr, indent)
+        for _, child_line in ipairs(child_lines) do
+          table.insert(lines, child_line)
+        end
+      end
+    end
+  end
+
+  -- Check for inclusions in refs
+  if node_data.refs then
+    for _, ref in ipairs(node_data.refs) do
+      if ref.type == "inclusion" then
+        -- Look up included node from cache or vault index
+        local included_node_id = ref.target
+        local cache_key = string.format("%d:%s", bufnr, included_node_id)
+        local included_node = M._node_cache and M._node_cache[cache_key]
+
+        -- If not in buffer cache, try vault index
+        if not included_node then
+          local config = lifemode.get_config()
+          if config.vault_index and config.vault_index.node_locations then
+            local location = config.vault_index.node_locations[included_node_id]
+            if location then
+              -- Read the node from its source file
+              local file_path = location.file
+              local line_num = location.line
+
+              -- Read the line from file
+              local file = io.open(file_path, "r")
+              if file then
+                local current_line = 0
+                for line_text in file:lines() do
+                  current_line = current_line + 1
+                  if current_line == line_num then
+                    -- Create a minimal node object from the line
+                    included_node = {
+                      id = included_node_id,
+                      type = "text",  -- Assume text for now
+                      body_md = line_text,
+                      children = {},
+                      props = {},
+                      refs = {},
+                    }
+                    -- Detect task type
+                    if line_text:match("^%s*%-.--%s*%[.%]") then
+                      included_node.type = "task"
+                    end
+                    break
+                  end
+                end
+                file:close()
+              end
+            end
+          end
+        end
+
+        if included_node then
+          -- Add inclusion marker
+          table.insert(lines, indent_str .. "  ↳ included: " .. included_node_id)
+
+          -- Render included node with extra indentation
+          local included_lens = choose_lens(included_node)
+          local included_rendered = lens.render(included_node, included_lens)
+
+          local included_lines = {}
+          if type(included_rendered) == "table" then
+            included_lines = included_rendered
+          else
+            included_lines = { included_rendered }
+          end
+
+          for _, line in ipairs(included_lines) do
+            table.insert(lines, indent_str .. "    " .. line)
+          end
+        else
+          -- Node not found - show warning
+          table.insert(lines, indent_str .. "  ↳ [NOT FOUND: " .. included_node_id .. "]")
+        end
+      end
+    end
+  end
+
+  return lines
+end
+
 --- Expand an instance to show its children
 --- @param bufnr number View buffer number
 --- @param line number Line number (0-indexed) where cursor is
@@ -146,16 +266,8 @@ function M.expand_instance(bufnr, line)
         -- Choose lens for child
         local child_lens = choose_lens(child_node)
 
-        -- Render child
-        local rendered = lens.render(child_node, child_lens)
-
-        -- Handle both string and table return types
-        local lines_to_add = {}
-        if type(rendered) == "table" then
-          lines_to_add = rendered
-        else
-          lines_to_add = { rendered }
-        end
+        -- Render child with inclusions expanded
+        local lines_to_add = render_node_with_inclusions(child_node, child_lens, bufnr, 1)
 
         -- Store child lines and metadata
         for _, child_line in ipairs(lines_to_add) do
@@ -371,16 +483,8 @@ function M.render_page_view(source_bufnr)
       -- Choose lens based on node type
       local lens_name = choose_lens(node_data)
 
-      -- Render node with lens
-      local rendered = lens.render(node_data, lens_name)
-
-      -- Handle both string and table return types
-      local lines_to_add = {}
-      if type(rendered) == "table" then
-        lines_to_add = rendered
-      else
-        lines_to_add = { rendered }
-      end
+      -- Render node with inclusions expanded
+      local lines_to_add = render_node_with_inclusions(node_data, lens_name, view_bufnr, 0)
 
       -- Calculate span
       local span_start = current_line
@@ -454,6 +558,12 @@ function M.render_page_view(source_bufnr)
     local line = cursor[1] - 1  -- Convert to 0-indexed
     M.cycle_lens_at_cursor(view_bufnr, line, -1)
   end, vim.tbl_extend('force', opts, { desc = 'Previous lens' }))
+
+  -- <leader>mi: Include node
+  vim.keymap.set('n', leader .. 'mi', function()
+    local inclusion = require('lifemode.inclusion')
+    inclusion.include_node_interactive()
+  end, vim.tbl_extend('force', opts, { desc = 'Insert node inclusion' }))
 
   return view_bufnr
 end

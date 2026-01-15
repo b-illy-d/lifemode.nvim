@@ -35,15 +35,39 @@ local function get_indent_level(text)
   return #spaces
 end
 
---- Extract wikilinks from text
+--- Extract inclusions from text
+--- @param text string Text to search for inclusions
+--- @return table Array of refs with format { target = "node-id", type = "inclusion" }
+local function extract_inclusions(text)
+  local refs = {}
+
+  -- Pattern to match ![[...]] inclusions
+  -- Captures content between ![[and ]]
+  for target in text:gmatch("!%[%[([^%]]+)%]%]") do
+    -- Skip empty targets
+    if target and target:match("%S") then
+      table.insert(refs, {
+        target = target,
+        type = "inclusion"
+      })
+    end
+  end
+
+  return refs
+end
+
+--- Extract wikilinks from text (excluding inclusions)
 --- @param text string Text to search for wikilinks
 --- @return table Array of refs with format { target = "Page", type = "wikilink" }
 local function extract_wikilinks(text)
   local refs = {}
 
-  -- Pattern to match [[...]] wikilinks
-  -- Captures content between [[ and ]]
-  for target in text:gmatch("%[%[([^%]]+)%]%]") do
+  -- Pattern to match [[...]] wikilinks that are NOT preceded by !
+  -- First, remove all inclusions to avoid matching them
+  local text_without_inclusions = text:gsub("!%[%[[^%]]+%]%]", "")
+
+  -- Now match remaining [[...]] patterns
+  for target in text_without_inclusions:gmatch("%[%[([^%]]+)%]%]") do
     -- Skip empty targets
     if target and target:match("%S") then
       table.insert(refs, {
@@ -77,11 +101,15 @@ function M.build_nodes_from_buffer(bufnr)
     -- Generate ID if not present
     local node_id = block.id or generate_synthetic_id()
 
-    -- Extract wikilinks and Bible references from body
+    -- Extract wikilinks, inclusions, and Bible references from body
     local refs = extract_wikilinks(block.text)
+    local inclusions = extract_inclusions(block.text)
     local bible_refs = bible.parse_bible_refs(block.text)
 
     -- Combine all refs
+    for _, ref in ipairs(inclusions) do
+      table.insert(refs, ref)
+    end
     for _, ref in ipairs(bible_refs) do
       table.insert(refs, ref)
     end
@@ -161,6 +189,20 @@ function M.build_nodes_from_buffer(bufnr)
 
       -- Push this list item onto stack
       table.insert(list_stack, { id = node_id, indent = indent })
+
+    elseif block.type == "text" then
+      -- Plain text nodes: children of current heading, or root if no heading
+      local parent_id = nil
+      if current_heading then
+        parent_id = current_heading.id
+      end
+
+      if parent_id then
+        table.insert(nodes_by_id[parent_id].children, node_id)
+      else
+        -- No parent, this is a root node
+        table.insert(root_ids, node_id)
+      end
     end
   end
 

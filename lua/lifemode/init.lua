@@ -503,6 +503,14 @@ function M.setup(user_config)
     desc = 'Show backlinks for current node/page'
   })
 
+  -- Create :LifeModeIncludeNode command
+  vim.api.nvim_create_user_command('LifeModeIncludeNode', function()
+    local inclusion = require('lifemode.inclusion')
+    inclusion.include_node_interactive()
+  end, {
+    desc = 'Insert node inclusion at cursor'
+  })
+
   -- Add priority keymaps to markdown files in vault
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'markdown',
@@ -559,6 +567,12 @@ function M.setup(user_config)
           local backlinks = require('lifemode.backlinks')
           backlinks.show_backlinks()
         end, { buffer = args.buf, noremap = true, silent = true, desc = 'Show backlinks for current node/page' })
+
+        -- <Space>mi: include node
+        vim.keymap.set('n', config.leader .. 'mi', function()
+          local inclusion = require('lifemode.inclusion')
+          inclusion.include_node_interactive()
+        end, { buffer = args.buf, noremap = true, silent = true, desc = 'Insert node inclusion' })
       end
     end,
   })

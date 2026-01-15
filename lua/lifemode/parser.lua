@@ -18,6 +18,11 @@ end
 --- @param line_num number Line number (1-indexed)
 --- @return table|nil Block or nil if not a recognized block type
 local function parse_line(line, line_num)
+  -- Skip empty lines
+  if line:match("^%s*$") then
+    return nil
+  end
+
   -- Check for heading (must start with #)
   if line:match("^#+ ") then
     return {
@@ -52,8 +57,14 @@ local function parse_line(line, line_num)
     end
   end
 
-  -- Not a recognized block type
-  return nil
+  -- Plain text line (non-empty, not a heading/list/task)
+  -- This allows inclusions and other inline content to be parsed
+  return {
+    type = "text",
+    line_num = line_num,
+    text = line,
+    id = extract_id(line),
+  }
 end
 
 --- Parse a buffer into a list of blocks
