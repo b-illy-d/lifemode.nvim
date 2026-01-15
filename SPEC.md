@@ -468,6 +468,51 @@ Lenses:
 - `<Space>L` previous lens
 
 
+## Known Issues & High Priority Features
+
+### Critical Bugs
+1. **LifeMode Leader key broken in LifeModePageView** (BLOCKING)
+   - Symptom: Changing lenses doesn't work; LifeMode Leader key mappings are not responding in PageView buffers
+   - Affects: T11 (lens cycling), T13 (page view)
+   - Priority: P0 - blocks core workflow
+   - Status: Needs investigation and fix
+
+### High Priority Features (Add Before T20)
+2. **Node inclusion/transclusion with search modal** (TOP PRIORITY)
+   - User should be able to create an "inclusion" of any node while in Page View
+   - Workflow:
+     - Trigger command in Page View (e.g., `<Space>mi` for "LifeMode include")
+     - Modal appears with fuzzy search across all nodes (tasks, headings, blocks)
+     - User selects node to include
+     - Insert inclusion syntax at cursor (e.g., `![[node-id]]` or similar)
+     - Included node renders in place with special formatting
+   - Acceptance: Can insert and render inclusions from anywhere in vault
+   - Related: Need to decide inclusion syntax (LogSeq uses `{{embed [[...]}}}`; Obsidian uses `![[...]]`)
+   - Add as: **T19a — Node inclusion/transclusion with Telescope picker**
+
+3. **Automatic task creation + task detail files** (TOP PRIORITY)
+   - Behavior: When user types `- [ ] ` followed by text, system should:
+     - Automatically insert UUID at end of line: `- [ ] Task summary ^<uuid>`
+     - Summary text is what's visible in PageView and all inclusions
+     - Provide command to "open task details" (e.g., `<Space>te` for "edit")
+   - Task detail file:
+     - Stored as `task-<uuid>.md` in vault
+     - Contains full markdown for task metadata (tags, dependencies, notes, etc.)
+     - When task is included/shown anywhere, only the summary line is visible
+     - Task detail file is the canonical source for the task
+   - Rendering:
+     - Inclusions of tasks should have syntax highlighting by type (task, source, verse, etc.)
+     - Visual distinction between included content and inline content
+   - Add as: **T19b — Auto-task creation with detail files + inclusion syntax highlighting**
+   - Related to: T04 (ensure IDs), but this changes the model significantly
+
+**Implementation notes for T19a/T19b:**
+- These are architectural changes affecting the node model
+- Task detail files introduce a new pattern: node content lives in separate files rather than inline in notes
+- Inclusion rendering is new: need to support recursive rendering with cycle detection
+- Consider: Should all node types support detail files, or just tasks?
+
+
 ## Iteration (commit-sized tasks)
 
 Each task below should fit in ~10–1000 LOC and land as a single git commit.
@@ -608,6 +653,32 @@ Each task below should fit in ~10–1000 LOC and land as a single git commit.
 - Implement `:LifeModeBacklinks`:
   - show backlinks as a compiled view listing contexts/snippets
 - Acceptance: backlinks list updates when files change and is navigable.
+
+### T19a — Node inclusion/transclusion with Telescope picker (HIGH PRIORITY)
+- Implement inclusion/transclusion syntax for embedding nodes in other nodes
+- Decide on syntax: `![[node-id]]` (Obsidian-style) or `{{embed [[node-id]]}}` (LogSeq-style)
+- Add command `<Space>mi` (LifeMode include) in Page View:
+  - Opens Telescope fuzzy finder with all indexable nodes (tasks, headings, blocks)
+  - User selects node to include
+  - Insert inclusion syntax at cursor position
+- Parser must recognize inclusion syntax and create inclusion instances
+- Rendering must show included node content inline with visual distinction
+- Acceptance: Can search for and insert inclusions; included content renders in place with proper formatting.
+
+### T19b — Auto-task creation with detail files + inclusion syntax highlighting (HIGH PRIORITY)
+- Implement automatic UUID insertion when user types `- [ ] ` and completes the line
+  - Hook on `InsertLeave` or `TextChanged` for task lines
+  - Auto-append `^<uuid>` if missing
+- Implement task detail file workflow:
+  - Command `<Space>te` (task edit) opens `task-<uuid>.md` for the task under cursor
+  - Task detail file is created in vault root or a `tasks/` subdirectory
+  - Detail file contains full task metadata, notes, dependencies, etc.
+  - Only the summary line (from original `- [ ] ...` text) shows in inclusions/page views
+- Add syntax highlighting for inclusions by node type:
+  - Different highlight groups for task inclusions, source inclusions, verse inclusions
+  - Visual distinction (border, background, icon) for included vs inline content
+- Update node model to support "summary" vs "detail" separation
+- Acceptance: Typing `- [ ] My task` auto-adds UUID; `<Space>te` opens detail file; inclusions show only summary with type-specific highlighting.
 
 ### T20 — Minimal query views for tasks
 - Implement a tiny filter engine for tasks:
