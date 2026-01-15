@@ -249,6 +249,80 @@ function M.collapse_instance(bufnr, line)
   expanded_instances[bufnr][span.instance_id] = nil
 end
 
+--- Cycle the lens for the instance at cursor and re-render
+--- @param bufnr number View buffer number
+--- @param line number Line number (0-indexed) where cursor is
+--- @param direction number 1 for next, -1 for previous
+function M.cycle_lens_at_cursor(bufnr, line, direction)
+  local extmarks = require('lifemode.extmarks')
+  local lens_mod = require('lifemode.lens')
+  local activenode = require('lifemode.activenode')
+
+  -- Get span at line
+  local span = extmarks.get_span_at_line(bufnr, line)
+  if not span then
+    vim.api.nvim_echo({{'No instance at cursor', 'WarningMsg'}}, false, {})
+    return
+  end
+
+  -- Get current lens
+  local current_lens = span.lens or "node/raw"
+
+  -- Cycle to next lens
+  local new_lens = lens_mod.cycle_lens(current_lens, direction)
+
+  -- Get node data from cache
+  if not M._node_cache then
+    vim.api.nvim_echo({{'Node cache not available', 'WarningMsg'}}, false, {})
+    return
+  end
+
+  local cache_key = string.format("%d:%s", bufnr, span.node_id)
+  local node_data = M._node_cache[cache_key]
+
+  if not node_data then
+    vim.api.nvim_echo({{'Node data not found in cache', 'WarningMsg'}}, false, {})
+    return
+  end
+
+  -- Re-render with new lens
+  local rendered = lens_mod.render(node_data, new_lens)
+
+  -- Handle both string and table return types
+  local new_lines = {}
+  if type(rendered) == "table" then
+    new_lines = rendered
+  else
+    new_lines = { rendered }
+  end
+
+  -- Make buffer modifiable
+  local was_modifiable = vim.api.nvim_buf_get_option(bufnr, 'modifiable')
+  vim.api.nvim_buf_set_option(bufnr, 'modifiable', true)
+
+  -- Replace span lines
+  vim.api.nvim_buf_set_lines(bufnr, span.span_start, span.span_end + 1, false, new_lines)
+
+  -- Restore modifiable state
+  vim.api.nvim_buf_set_option(bufnr, 'modifiable', was_modifiable)
+
+  -- Update extmark with new lens and new span end
+  local new_span_end = span.span_start + #new_lines - 1
+  extmarks.set_span_metadata(bufnr, span.span_start, new_span_end, {
+    instance_id = span.instance_id,
+    node_id = span.node_id,
+    lens = new_lens,
+    span_start = span.span_start,
+    span_end = new_span_end,
+  })
+
+  -- Update active node to reflect change
+  activenode.update_active_node(bufnr)
+
+  -- Show feedback
+  vim.api.nvim_echo({{string.format('Lens: %s', new_lens), 'Normal'}}, false, {})
+end
+
 --- Render a page view from source buffer
 --- Parses source buffer, extracts root nodes, renders each with appropriate lens
 --- @param source_bufnr number Source buffer number
@@ -348,22 +422,38 @@ function M.render_page_view(source_bufnr)
     extmarks.set_span_metadata(view_bufnr, span_info.span_start, span_info.span_end, span_info.metadata)
   end
 
-  -- Set up keymaps for expand/collapse
+  -- Set up keymaps for expand/collapse and lens cycling
   local opts = { buffer = view_bufnr, noremap = true, silent = true }
+  local config = lifemode.get_config()
+  local leader = config.leader
 
-  -- <Space>e: Expand instance under cursor
-  vim.keymap.set('n', '<Space>e', function()
+  -- <leader>e: Expand instance under cursor
+  vim.keymap.set('n', leader .. 'e', function()
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = cursor[1] - 1  -- Convert to 0-indexed
     M.expand_instance(view_bufnr, line)
   end, vim.tbl_extend('force', opts, { desc = 'Expand instance' }))
 
-  -- <Space>E: Collapse instance under cursor
-  vim.keymap.set('n', '<Space>E', function()
+  -- <leader>E: Collapse instance under cursor
+  vim.keymap.set('n', leader .. 'E', function()
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line = cursor[1] - 1  -- Convert to 0-indexed
     M.collapse_instance(view_bufnr, line)
   end, vim.tbl_extend('force', opts, { desc = 'Collapse instance' }))
+
+  -- <leader>ml: Next lens
+  vim.keymap.set('n', leader .. 'ml', function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = cursor[1] - 1  -- Convert to 0-indexed
+    M.cycle_lens_at_cursor(view_bufnr, line, 1)
+  end, vim.tbl_extend('force', opts, { desc = 'Next lens' }))
+
+  -- <leader>mL: Previous lens
+  vim.keymap.set('n', leader .. 'mL', function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = cursor[1] - 1  -- Convert to 0-indexed
+    M.cycle_lens_at_cursor(view_bufnr, line, -1)
+  end, vim.tbl_extend('force', opts, { desc = 'Previous lens' }))
 
   return view_bufnr
 end
