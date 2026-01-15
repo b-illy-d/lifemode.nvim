@@ -19,7 +19,7 @@ See [SPEC.md](./SPEC.md) for full specification.
 
 ```lua
 {
-  'billy/lifemode.nvim',
+  'b-illy-d/lifemode.nvim',
   config = function()
     require('lifemode').setup({
       vault_root = vim.fn.expand("~/notes"), -- Required: path to your notes
@@ -35,7 +35,7 @@ See [SPEC.md](./SPEC.md) for full specification.
 
 ```lua
 use {
-  'billy/lifemode.nvim',
+  'b-illy-d/lifemode.nvim',
   config = function()
     require('lifemode').setup({
       vault_root = vim.fn.expand("~/notes"), -- Required

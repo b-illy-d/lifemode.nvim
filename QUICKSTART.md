@@ -8,7 +8,7 @@ Get started with LifeMode in 5 minutes. This guide walks you through the core wo
 
 ```lua
 {
-  'billy/lifemode.nvim',
+  'b-illy-d/lifemode.nvim',
   config = function()
     require('lifemode').setup({
       vault_root = vim.fn.expand("~/notes"),  -- REQUIRED: Your notes directory
@@ -24,7 +24,7 @@ Get started with LifeMode in 5 minutes. This guide walks you through the core wo
 
 ```bash
 cd ~/.local/share/nvim/site/pack/plugins/start
-git clone https://github.com/billy/lifemode.nvim.git
+git clone git@github.com:b-illy-d/lifemode.nvim.git
 ```
 
 Add to your `init.lua`:
