@@ -9,7 +9,8 @@ LifeMode is a Markdown-native productivity + wiki system for Neovim, inspired by
 Core promise:
 
 - **Markdown is the source of truth.** Everything else (indexes, views, AI suggestions) is derived and disposable.
-- You rarely "open a node"; you **live in views** that compile relevant nodes into an interactive buffer.
+- You don't open vault files directly; you invoke **:LifeMode** from anywhere in Neovim to enter modal views that compile relevant nodes into interactive buffers.
+- **:LifeMode is the primary entry point.** Views are first-class interfaces, not auxiliary to file editing. Vault files are backend storage, not primary UI.
 - UX feels like an **LSP for your life**: go-to-definition for wikilinks, references/backlinks in quickfix, rename terms safely, code-actions for tasks.
 - The system manages **productive connections** (explicit dependencies/outputs) and helps discover **creative connections** (suggested bridges between ideas).
 - **Bible references are central** to the workflow. Notes integrate Scripture references naturally alongside academic sources and online articles for both theological study and daily reflection.
@@ -31,31 +32,34 @@ Non-goals (for MVP):
 
 The essential workflow that must work end-to-end before expanding features:
 
-1. **Write** Markdown notes in a configurable vault directory
-   - Inline Bible references (e.g., `John 17:20-23`, `Rom 8:28`)
-   - Wikilinks to other notes `[[Page]]`, `[[Page#Heading]]`
-   - Tasks with checkboxes `- [ ] Task name`
-   - Citations to academic sources and articles
+1. **Invoke** `:LifeMode` from anywhere in Neovim
+   - Opens default view (Daily: nodes grouped by date-added)
+   - View shows aggregated vault data without opening files
+   - No manual indexing required
 
-2. **Auto-ID** indexable blocks (tasks, referenced blocks) with stable UUIDs
-   - Format: `^<uuid>` appended to line
-   - Generated on-demand when block needs stable identity
+2. **Navigate** interactive views
+   - Daily view: YEAR > MONTH > DAY tree, today expanded by default
+   - All Tasks view: Tree grouped by due date/priority/tags
+   - Expand/collapse tree nodes, cycle lenses per instance
+   - Jump to source files on demand (`gd` / Enter)
 
-3. **Navigate** with LSP-like semantics
-   - `gd` follow wikilink or Bible ref to definition
-   - `gr` show all references/backlinks for item under cursor
-   - Jump between related notes fluidly
+3. **Auto-index** runs in background
+   - Index built lazily on first view open
+   - Incremental updates on vault file saves
+   - ID assignment happens automatically for new tasks
+   - Date tracking uses file timestamps (zero-maintenance)
 
-4. **Manage tasks** with inline priority and basic commands
-   - `!1` = highest priority, `!5` = lowest priority
+4. **Manage tasks** from any view
    - Toggle state, adjust priority, set due dates
-   - View tasks filtered by state/tag/due
+   - Changes update vault files and refresh views
+   - Views re-query index automatically
+   - `!1` = highest priority, `!5` = lowest priority
 
-5. **Query and view**
-   - Backlinks for current note/block
-   - All tasks with filters
-   - Bible verse references across vault
-   - Expandable/collapsible structured views
+5. **Edit source when needed**
+   - Jump from view to source file with `gd` or Enter
+   - Edit markdown directly in vault
+   - Save triggers index refresh and view update
+   - Standard markdown remains human-readable
 
 Everything else builds on this loop. Get this working with manual testing, then add automated tests and expand features.
 
@@ -115,21 +119,39 @@ LifeMode is configured via `require('lifemode').setup({ ... })`:
 - `max_depth`: default expansion depth limit (default: `10`)
 - `max_nodes_per_action`: expansion budget (default: `100`)
 - `bible_version`: default Bible version for providers (default: `"ESV"`)
+- `default_view`: default view when running `:LifeMode` (default: `"daily"`)
+- `daily_view_expanded_depth`: how many date levels to expand (default: `3` = expand to day level)
+- `tasks_default_grouping`: default grouping for All Tasks view (default: `"due_date"`)
+- `auto_index_on_startup`: whether to build index on Neovim startup (default: `false`)
 
 Example:
 ```lua
 require('lifemode').setup({
   vault_root = vim.fn.expand("~/notes"),
   leader = "<leader>m",
-  bible_version = "NIV"
+  bible_version = "NIV",
+  default_view = "daily",
+  tasks_default_grouping = "due_date",
+  auto_index_on_startup = false,
 })
 ```
 
 ### A. Components
 
+#### A0. Primary Entry Points
+
+`:LifeMode [view]`
+- No args: Opens default view (Daily)
+- Args: `:LifeMode tasks`, `:LifeMode daily` (explicit view selection)
+- Invocable from anywhere in Neovim
+- View buffers are independent of vault file buffers
+
 #### A1. Vault (filesystem)
-- Root directory containing Markdown files.
-- Optional “providers” for non-file corpora (e.g., Bible verses), treated as read-only node sources.
+- **Storage backend**, not primary interface
+- Root directory containing Markdown files
+- Files use standard markdown - no lock-in
+- Views read from vault via index, not direct file editing
+- Optional "providers" for non-file corpora (e.g., Bible verses), treated as read-only node sources
 
 #### A2. Core Engine (recommended external process/library)
 Responsibilities:
@@ -139,30 +161,64 @@ Responsibilities:
   - parent/children relationships
   - refs/backlinks (links, ranges, citations)
   - tags, types, properties, tasks
+  - **file timestamps** (mtime) for date tracking
 - Resolve selectors:
   - verse ranges, query results, backlinks lists, etc.
 - Produce a **render plan** for a view:
   - linearized list/tree of instances + lens + spans
-- Apply edits via patch operations (see “Patch Ops”).
+- Apply edits via patch operations (see "Patch Ops").
+
+**Automatic Indexing Strategy:**
+- **Lazy initialization**: Build index on first `:LifeMode` invocation
+- **Incremental updates**: On `BufWritePost` for files in vault_root
+- **File watching** (optional future): Watch vault directory for external changes
+- **Index data includes**: node locations, backlinks, task metadata, **file timestamps**
+
+**Index data structures:**
+```lua
+{
+  node_locations = { [node_id] = { file, line, mtime } },
+  backlinks = { [target] = { source_ids } },
+  tasks_by_state = { todo = {...}, done = {...} },
+  nodes_by_date = { ["2026-01-15"] = { node_ids } }
+}
+```
 
 Interface:
 - JSON-RPC or msgpack-rpc over stdio or socket.
-- Versioned responses (“vault revision N”) so the UI can safely re-render.
+- Versioned responses ("vault revision N") so the UI can safely re-render.
 
 (For earliest MVP, this can be in Lua; keep boundaries so it can be moved out later.)
 
 #### A3. Neovim Plugin (UI client)
-Responsibilities:
-- Manage view buffers (`buftype=nofile`, compiled content).
-- Map buffer line ranges → instance/node via extmarks.
-- Handle keymaps, motions, pickers, quickfix output.
-- Render nodes using lens renderers:
-  - base text in buffer
-  - decorations via extmarks (virtual text, highlights, conceal)
-- Trigger expansion/collapse (lazy).
-- Edit flow:
-  - commanded edits for MVP
-  - optional in-view direct editing later
+Responsibilities (view-first design):
+
+1. **Manage modal view buffers** (primary UX)
+   - Daily view: Date-based tree navigation
+   - All Tasks view: Configurable grouping/filtering
+   - Backlinks view: Reference exploration
+
+2. **Handle view interactions**
+   - Expand/collapse tree nodes
+   - Cycle lenses per instance
+   - Jump to source files on demand
+
+3. **Trigger index updates**
+   - Build index lazily on first view open
+   - Incremental rebuild on vault file saves
+   - Refresh views when index changes
+
+4. **Edit vault files** (secondary workflow)
+   - Jump from view to source with `gd` / Enter
+   - Standard markdown editing
+   - Save triggers index refresh
+
+Technical implementation:
+- View buffers: `buftype=nofile`, compiled content
+- Map buffer line ranges → instance/node via extmarks
+- Handle keymaps, motions, pickers, quickfix output
+- Render nodes using lens renderers (text + decorations via extmarks)
+- Edit flow: commanded edits for MVP, optional in-view direct editing later
 
 
 ### B. Data Model
@@ -313,6 +369,79 @@ Bible references are **central to daily note-taking and study**. The user's vaul
 Treat Bible references with the same first-class status as wikilinks. They are not an add-on feature.
 
 
+### C7. View Types (Core UX)
+
+LifeMode provides two primary modal views, invoked via `:LifeMode`:
+
+#### Daily View (Default)
+**Purpose**: Browse vault chronologically by date-added
+
+**Structure**: Three-level tree (Year > Month > Day)
+
+**Default state**: Today's date expanded, siblings collapsed
+
+**Node display**: All nodes added on each date (tasks, notes, headings)
+
+**Date tracking**: File modification timestamp (mtime) by default
+
+**Navigation**: Expand/collapse dates, lens cycling per node
+
+**Keymaps**:
+- `Enter` / `gd`: Jump to source file at node location
+- `<Space>e/E`: Expand/collapse date grouping
+- `]d / [d`: Next/previous day
+- `]m / [m`: Next/previous month
+
+**Example tree:**
+```
+2026
+  January
+    Jan 15 (today)
+      - [ ] Finish spec restructure !2 @due(2026-01-16) ^abc123
+      # Meeting Notes ^def456
+      - Study Romans 8 ^ghi789
+  December
+    Dec 31
+      ...
+2025
+  ...
+```
+
+#### All Tasks View
+**Purpose**: Browse all tasks across vault with filtering
+
+**Structure**: Tree grouped by configurable property
+
+**Grouping modes**:
+- By due date: Overdue / Today / This Week / Later / No Due Date
+- By priority: !1 (highest) → !5 (lowest) → No Priority
+- By tag: Group by first tag (e.g., #project, #personal)
+
+**Filtering**: Toggle filters (state: todo/done, tag, date range)
+
+**Sorting**: Within groups, sort by priority or due date
+
+**Keymaps**:
+- `Enter` / `gd`: Jump to source file at task location
+- `<Space><Space>`: Toggle task state
+- `<Space>g`: Cycle grouping mode
+- `<Space>f`: Toggle filters
+
+**Example tree (grouped by due date):**
+```
+Overdue (3)
+  - [ ] Review PR #123 !1 @due(2026-01-10) ^task1
+  - [ ] Submit report !2 @due(2026-01-14) ^task2
+Today (2)
+  - [ ] Team standup !1 @due(2026-01-16) ^task3
+  - [ ] Code review !3 @due(2026-01-16) ^task4
+This Week (5)
+  ...
+No Due Date (12)
+  ...
+```
+
+
 ### D. Views, Lenses, and Rendering
 
 #### D1. Lenses
@@ -325,7 +454,7 @@ A lens is a named renderer:
 
 Lens switching:
 - Keep `i/a` as normal Vim insert for the active node.
-- Separate keys to cycle lenses (e.g., `<Space>ml` / `<Space>mL`).
+- Separate keys to cycle lenses (e.g., `<Space>l` / `<Space>L`).
 
 #### D2. Active Node UX
 - Active node span is visually distinct (highlight).
@@ -338,6 +467,21 @@ Lens switching:
   - highlights for task states, tags, active span
 
 #### D4. Buffer model (compiled, virtualized)
+
+**View Buffer Types:**
+
+**Modal View Buffers** (invoked via `:LifeMode`):
+- Independent of source file buffers
+- Show aggregated vault data (not single-file)
+- Examples: Daily view, All Tasks view
+- Can be opened from anywhere in Neovim
+
+**Page View Buffers** (invoked via `gd` from modal views):
+- Show compiled single-file content
+- Used when jumping to source from modal view
+- Fallback: Open source file directly if page view unavailable
+
+**Technical details:**
 - View buffers are typically `nofile` and largely read-only.
 - Every rendered block gets an extmark with:
   - `instance_id`, `node_id` (or selector)
@@ -441,31 +585,33 @@ IMPORTANT: We want a separate, scoped "LifeMode Leader" that is **configurable f
 - Users can override in their config: `require('lifemode').setup({ leader = '<leader>m' })`
 - All LifeMode commands use this leader prefix to avoid conflicting with existing keybindings
 
-Navigation:
-- `gd` go to definition (wikilink target)
-- `gr` references/backlinks for target under cursor
-- `gR` rename target under cursor across vault
+#### Global Entry Points (from anywhere)
+- `:LifeMode`: Open default view (Daily)
+- `:LifeMode tasks`: Open All Tasks view
+- `:LifeMode daily`: Open Daily view explicitly
 
-Tasks:
-- `<Space><Space>` cycle task state
-- `<Space>tp` / `<Space>tP` inc/dec priority
-- `<Space>tt` edit tags (picker)
-- `<Space>td` set due date (prompt)
+#### Modal View Keymaps (LifeMode view buffers)
+- `Enter` / `gd`: Jump to source file
+- `<Space>e` / `<Space>E`: Expand/collapse tree node
+- `<Space>l` / `<Space>L`: Cycle lens for active instance
+- `]d` / `[d`: Navigate dates (Daily view)
+- `]m` / `[m`: Navigate months (Daily view)
+- `<Space>g`: Cycle grouping mode (All Tasks view)
+- `<Space>f`: Toggle filters (All Tasks view)
 
-Views:
-- `<Space>vv` tasks view (picker)
-- `<Space>vt` tasks by tag
-- `<Space>vb` backlinks for current node/page
+#### Task Management (from any view or vault file)
+- `<Space><Space>`: Cycle task state
+- `<Space>tp` / `<Space>tP`: Inc/dec priority
+- `<Space>tt`: Edit tags
+- `<Space>td`: Set due date
+- `<Space>te`: Edit task details (open task file)
 
-Expansion:
-- `<Space>e` expand instance under cursor
-- `<Space>E` collapse instance under cursor
-- `]t` / `[t` next/prev task in view buffer
-- `]l` / `[l` next/prev link in view buffer
-
-Lenses:
-- `<Space>l` next lens
-- `<Space>L` previous lens
+#### Vault File Keymaps (when editing .md files in vault)
+- `gd`: Go to definition (wikilink/Bible ref)
+- `gr`: Show references/backlinks
+- `gR`: Rename target across vault
+- `<Space>mi`: Insert node inclusion
+- Standard task management keymaps (above)
 
 
 ## Known Issues & High Priority Features
@@ -528,9 +674,10 @@ Each task below should fit in ~10–1000 LOC and land as a single git commit.
 ### T00 — Repo skeleton + plugin bootstrap
 - Create `lua/lifemode/init.lua`, minimal `setup()` with config defaults.
 - Required config: `vault_root` (must be provided by user)
-- Optional config: `leader` (default `"<Space>"`), `max_depth`, `bible_version`
+- Optional config: `leader`, `max_depth`, `bible_version`, `default_view`, etc.
 - Add a `:LifeModeHello` command to validate loading and show config.
-- Acceptance: `:LifeModeHello` echoes config and plugin loads without errors.
+- Add a `:LifeMode` command that opens an empty view (scaffold for default Daily view).
+- Acceptance: `:LifeModeHello` echoes config, `:LifeMode` opens empty view buffer, plugin loads without errors.
 
 ### T01 — View buffer creation utility
 - Implement `lifemode.view.create_buffer()`:
@@ -606,7 +753,7 @@ Each task below should fit in ~10–1000 LOC and land as a single git commit.
 ### T11 — Basic lens system + lens cycling
 - Define lens registry with at least:
   - `task/brief`, `task/detail`, `node/raw`
-- Implement `<Space>ml` / `<Space>mL` to change lens for active instance and re-render span.
+- Implement `<Space>l` / `<Space>L` to change lens for active instance and re-render span.
 - Acceptance: same task displays differently in brief vs detail lens.
 
 ### T12 — Active node highlighting + statusline/winbar info
@@ -614,8 +761,20 @@ Each task below should fit in ~10–1000 LOC and land as a single git commit.
 - Populate winbar with `type`, `node_id`, `lens`.
 - Acceptance: active node is unambiguous while navigating.
 
-### T13 — Compiled view render of a page root (single file)
-- Create a simple “page view”:
+### T13a — Daily view scaffold (date tree, no data)
+- Implement basic Daily view: YEAR > MONTH > DAY tree structure.
+- Hardcode example dates initially (no index integration).
+- Expand today by default, siblings collapsed.
+- Acceptance: `:LifeMode` opens empty Daily view tree with example dates.
+
+### T13b — All Tasks view scaffold (grouped tree)
+- Implement basic All Tasks view: grouping by due date.
+- Hardcode example tasks initially (no index integration).
+- Support `:LifeMode tasks` command.
+- Acceptance: `:LifeMode tasks` opens empty grouped task tree with example structure.
+
+### T13c — Compiled view render of a page root (single file)
+- Create a simple "page view":
   - root instances are top-level nodes of current file
 - Render to view buffer with extmarks for each node span.
 - Acceptance: `:LifeModePageView` shows the file as a compiled interactive view.
@@ -643,11 +802,21 @@ Each task below should fit in ~10–1000 LOC and land as a single git commit.
 - Implement set/clear due ops.
 - Acceptance: due date appears in task/brief lens virtual text.
 
-### T18 — Multi-file index (vault scan MVP)
-- Given a vault root, scan `.md` files and build:
-  - node_id → (file, line)
-  - backlinks index for wikilinks (simple)
-- Acceptance: `gr` references works across files.
+### T18a — Vault index enhancement: Add file timestamps
+- Update `index.build_vault_index()` to capture `mtime` per node.
+- Add `nodes_by_date` map: date string → node IDs.
+- Acceptance: Index includes date-added data from file timestamps.
+
+### T18b — Lazy index initialization
+- Move index build to first `:LifeMode` invocation.
+- Store index in plugin state (not requiring manual command).
+- Show "Building index..." message on first open.
+- Acceptance: First `:LifeMode` builds index automatically.
+
+### T18c — Incremental index updates on save
+- Add `BufWritePost` autocmd for vault files.
+- Re-index only changed file, merge into vault index.
+- Acceptance: Saving vault file updates index in background.
 
 ### T19 — Backlinks view buffer for current node/page
 - Implement `:LifeModeBacklinks`:
@@ -686,58 +855,70 @@ Each task below should fit in ~10–1000 LOC and land as a single git commit.
 - Add `:LifeModeTasksToday` and `:LifeModeTasksByTag <tag>`.
 - Acceptance: results appear in quickfix or a view buffer.
 
-### T21 — Productive edges (depends/blocks) parsing
+### T21 — Populate Daily view from index
+- Connect Daily view to `nodes_by_date` from index.
+- Show actual vault nodes grouped by date-added.
+- Render with appropriate lenses (tasks: brief, text: raw).
+- Acceptance: Daily view shows real vault data by date.
+
+### T22 — Populate All Tasks view from index
+- Connect All Tasks view to task query system.
+- Group by due date (Overdue/Today/Week/Later/None).
+- Allow grouping mode cycling (`<Space>g`).
+- Acceptance: All Tasks view shows filtered tasks grouped by due date.
+
+### T23 — Productive edges (depends/blocks) parsing
 - Parse property lines in a task subtree:
   - `depends:: [[...]]`
   - `blocks:: [[...]]`
 - Index these as typed edges.
 - Acceptance: `:LifeModeBlocked` shows tasks with open dependencies.
 
-### T22 — Warn-on-done if blocked (non-enforcing)
+### T24 — Warn-on-done if blocked (non-enforcing)
 - When toggling to done, if `depends::` has unfinished tasks:
   - show warning message (do not block, MVP)
 - Acceptance: warning appears with a list of blockers.
 
-### T23 — Source entities + citation mentions (MVP)
+### T25 — Source entities + citation mentions (MVP)
 - Add `type:: source` node handling and `type:: citation` mention nodes.
 - Index citations referencing `source:: [[source:...]]`.
-- Acceptance: “show all citations for this source” view works.
+- Acceptance: "show all citations for this source" view works.
 
-### T24 — Provider interface (Bible provider stub)
+### T26 — Provider interface (Bible provider stub)
 - Define provider API:
   - `get_node(node_id)` and `expand_selector(selector)`
 - Implement a stub provider with a few hardcoded verse nodes.
 - Acceptance: selector expands to provider nodes and renders in view.
 
-### T25 — Verse range selector parsing + backlinks accounting
+### T27 — Verse range selector parsing + backlinks accounting
 - Parse `John 17:18-23` style text into selector.
 - Ensure reference queries for a verse find range mentions (expand at query time if needed).
 - Acceptance: searching references for `bible:john:17:20` includes range citations.
 
-### T26 — External engine boundary (RPC skeleton)
+### T28 — External engine boundary (RPC skeleton)
 - Create an engine process stub (could be Lua first, then swapped):
   - `parse_file`, `build_index`, `view_plan`, `apply_patch`
 - Neovim plugin calls engine via RPC.
 - Acceptance: same features work with engine calls routed over RPC.
 
-### T27 — Incremental indexing hooks
+### T29 — Incremental indexing hooks
 - On `BufWritePost` and debounced `TextChanged`, update engine index for that file.
 - Acceptance: backlinks/tasks views refresh without full rescan.
 
-### T28 — Patch op: replace body (for direct in-view editing, experimental)
+### T30 — Patch op: replace body (for direct in-view editing, experimental)
 - Allow toggling the active span to modifiable on `i/a`.
 - On exit insert, diff and send `replace_body(node_id, new_md)`.
 - Acceptance: editing updates source file and re-renders span.
 
-### T29 — Creative connection suggestions (non-AI baseline)
-- Implement “suggest bridges” based on:
+### T31 — Creative connection suggestions (non-AI baseline)
+- Implement "suggest bridges" based on:
   - shared tags, shared backlinks neighbors, co-occurrence
 - Render suggestions as a view with actions:
   - promote → insert a productive/creative link property line
   - ignore → store ignore list (optional, later)
 - Acceptance: suggestions appear and can be promoted into explicit edges.
 
-### T30 — Agent-neutral suggestion protocol (comments)
+### T32 — Agent-neutral suggestion protocol (comments)
 - Define comment block format:
   - `<!-- lifemode:suggest ... -->`
 - Implement import/export of suggestions.
