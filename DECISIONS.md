@@ -224,6 +224,134 @@ function M.create_buffer()
 end
 ```
 
-**Status:** TO BE IMPLEMENTED
+**Status:** COMPLETED - Fix verified
+
+---
+
+## Decision 004: Fix T02 Memory Leak Before Completion
+
+**Date:** 2026-01-16
+**Task:** T02 - Extmark-based span mapping
+**Decision:** Fix critical memory leak before marking T02 complete
+
+**Context:**
+- Component-builder completed T02 implementation with all functional requirements met
+- Code-reviewer identified redundant extmark API call (confidence 92/100)
+- Silent-failure-hunter discovered 1 CRITICAL memory leak (confidence 72/100)
+- Integration-verifier must decide: proceed to T03 or fix now
+
+**Critical Issue Found:**
+
+**[lua/lifemode/extmarks.lua] Memory leak - stale metadata after buffer deletion**
+- Problem: When buffer deleted, extmarks auto-cleaned by Neovim BUT _metadata_store[bufnr] entry persists indefinitely
+- Evidence: test_memory_leak.lua confirms _metadata_store[bufnr] exists after vim.api.nvim_buf_delete()
+- Impact: Memory accumulates in long-running sessions (8+ hour dev sessions common)
+- Silent: User won't notice until memory exhaustion/crash
+- Severity: CRITICAL - Resource exhaustion
+
+**Additional Issues Identified:**
+
+1. **Redundant extmark creation (lines 19-36)** - MEDIUM
+   - Lines 19-28: First nvim_buf_set_extmark call creates extmark
+   - Lines 30-36: Second nvim_buf_set_extmark call updates with same parameters
+   - Impact: Performance waste (2x API calls), functionally correct
+   - Fix: Remove second call
+
+2. **Invalid buffer validation** - FALSE ALARM
+   - Silent-failure-hunter claimed "Only 1/4 invalid buffers caught"
+   - test_buffer_validation.lua proves 4/4 invalid buffers caught
+   - bufnr=0, nil caught by our check; -1, 9999 caught by Neovim API
+   - No fix needed
+
+3. **Overlapping spans return first, not last** - LOW
+   - test_overlap_order.lua confirms FIFO behavior (returns first match)
+   - Functional ambiguity, not critical
+   - Decision: Document behavior, no fix needed
+
+4. **rawget() usage (line 38)** - TRIVIAL
+   - Style preference, no functional impact
+   - No fix needed
+
+**Options Considered:**
+
+**Option A: Proceed to T03 without fix**
+- Pros: Maintain velocity, issue only affects long sessions
+- Cons: Known critical memory leak, contradicts T00/T01 precedent
+- Risk: HIGH - Long-running sessions common for developers (8+ hours)
+
+**Option B: Fix memory leak now (CHOSEN)**
+- Pros: Matches T00/T01 precedent, prevents resource exhaustion, simple fix
+- Cons: Slight delay (~10 minutes)
+- Risk: LOW - Surgical fix, well-scoped
+
+**Rationale:**
+1. **Precedent:** Decisions 001 and 003 established pattern of fixing critical silent failures
+2. **Severity:** Resource exhaustion is CRITICAL (same class as T00/T01 silent corruption)
+3. **Silent failure:** Memory leak accumulates invisibly until crash
+4. **Cost-benefit:** ~10 minute fix now vs hours debugging memory issues later
+5. **Professional standards:** Cannot ship with known memory leak
+6. **User guidance:** "pick best choice and document in DECISIONS.md" → Fix matches precedent
+
+**Implementation Plan:**
+1. Add BufDelete/BufWipeout autocmd to clean _metadata_store[bufnr]
+2. Register autocmd once when _metadata_store first initialized
+3. Remove redundant nvim_buf_set_extmark call (lines 30-36)
+4. Verify all tests still pass
+5. Verify memory leak fixed with test_memory_leak.lua
+
+**Estimated Effort:** 10 minutes implementation, 5 minutes testing
+
+**Confidence:** 95/100
+
+**Implementation:**
+```lua
+local autocmd_registered = false
+
+local function register_cleanup_autocmd()
+  if autocmd_registered then
+    return
+  end
+
+  vim.api.nvim_create_autocmd({'BufDelete', 'BufWipeout'}, {
+    callback = function(args)
+      if M._metadata_store and M._metadata_store[args.buf] then
+        M._metadata_store[args.buf] = nil
+      end
+    end,
+  })
+
+  autocmd_registered = true
+end
+
+function M.set_instance_span(bufnr, start_line, end_line, metadata)
+  -- ... buffer validation ...
+
+  if not M._metadata_store then
+    M._metadata_store = {}
+    register_cleanup_autocmd()  -- Register on first use
+  end
+
+  -- ... rest of function ...
+end
+```
+
+**Verification Evidence:**
+
+| Check | Command | Exit Code | Result |
+|-------|---------|-----------|--------|
+| Full test suite | `make test` | 0 | PASS (all T00+T01+T02 tests) |
+| T02 acceptance | test_t02_acceptance.lua | 0 | 5/5 PASS |
+| T02 edge cases | test_t02_edge_cases.lua | 0 | 8/8 PASS |
+| Memory leak fix | test_memory_leak.lua | 0 | No leak detected |
+| Buffer validation | test_buffer_validation.lua | 0 | 4/4 invalid buffers caught |
+
+**Status:** COMPLETED - Memory leak fixed and verified
+
+**Deferred Issues:**
+- rawget() usage: Style preference, no impact
+- Overlapping spans order: Documented behavior, not critical
+- Invalid buffer validation: FALSE ALARM, no fix needed
+
+**Confidence:** 99/100 - PRODUCTION-READY
 
 ---

@@ -14,6 +14,7 @@
 ## File Structure
 - lua/lifemode/init.lua: Main plugin module (setup, commands, state)
 - lua/lifemode/view.lua: View buffer creation utilities
+- lua/lifemode/extmarks.lua: Extmark-based span tracking for metadata
 - plugin/lifemode.vim: Autoload guard
 - tests/: Test files (manual tests for now)
 - test_*.lua: Root-level test files for each feature
@@ -162,3 +163,77 @@ vim.api.nvim_create_buf = original_api
 5. Test counter edge cases (overflow)
 6. Verify buffer settings actually applied
 7. Test state validation (functions without setup)
+
+## Extmark-based Span Mapping Pattern
+
+```lua
+local M = {}
+local ns_id = nil
+
+function M.create_namespace()
+  if not ns_id then
+    ns_id = vim.api.nvim_create_namespace('namespace_name')
+  end
+  return ns_id
+end
+
+function M.set_instance_span(bufnr, start_line, end_line, metadata)
+  if bufnr == 0 or not bufnr then
+    error('Invalid buffer number')
+  end
+
+  local ns = M.create_namespace()
+  local mark_id = vim.api.nvim_buf_set_extmark(bufnr, ns, start_line, 0, {
+    end_line = end_line,
+    end_col = 0,
+    right_gravity = false,
+    end_right_gravity = true,
+  })
+
+  if not mark_id then
+    error('Failed to create extmark')
+  end
+
+  if not M._metadata_store then
+    M._metadata_store = {}
+  end
+  if not M._metadata_store[bufnr] then
+    M._metadata_store[bufnr] = {}
+  end
+  M._metadata_store[bufnr][mark_id] = metadata
+end
+
+function M.get_instance_at_cursor()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1
+
+  if not M._metadata_store or not M._metadata_store[bufnr] then
+    return nil
+  end
+
+  local ns = M.create_namespace()
+  local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {details = true})
+
+  for _, mark in ipairs(extmarks) do
+    local mark_id = mark[1]
+    local mark_line = mark[2]
+    local details = mark[4]
+
+    if details and details.end_row then
+      if line >= mark_line and line <= details.end_row then
+        return M._metadata_store[bufnr][mark_id]
+      end
+    end
+  end
+
+  return nil
+end
+```
+
+**Why this pattern:**
+- Singleton namespace: All span tracking uses same namespace for simplicity
+- Module-local metadata store: ext_data API incomplete/unreliable in Neovim
+- Buffer validation: Check bufnr == 0 or not bufnr before using
+- Extmark range tracking: Use end_line parameter for multiline spans
+- Cursor position lookup: Iterate all extmarks, check if cursor within [start_row, end_row]

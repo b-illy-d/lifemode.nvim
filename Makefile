@@ -1,6 +1,6 @@
-.PHONY: test test-manual test-acceptance test-view clean
+.PHONY: test test-manual test-acceptance test-view test-t02 clean
 
-test: test-manual test-view test-acceptance
+test: test-manual test-view test-acceptance test-t02
 
 test-manual:
 	@echo "Running manual tests..."
@@ -19,5 +19,10 @@ test-acceptance:
 	@echo "Running acceptance tests..."
 	@nvim --headless --noplugin -u NONE -c "luafile test_acceptance.lua" -c "qa!"
 
+test-t02:
+	@echo ""
+	@echo "Running T02 acceptance tests..."
+	@nvim --headless --noplugin -u NONE -c "luafile test_t02_acceptance.lua" -c "qa!"
+
 clean:
-	@rm -f test_manual.lua test_commands.lua test_acceptance.lua test_view_creation.lua
+	@rm -f test_manual.lua test_commands.lua test_acceptance.lua test_view_creation.lua test_t02_acceptance.lua

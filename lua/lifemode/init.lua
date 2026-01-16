@@ -81,6 +81,10 @@ function M.setup(opts)
     M.open_view_buffer()
   end, {})
 
+  vim.api.nvim_create_user_command('LifeModeDebugSpan', function()
+    M.debug_span()
+  end, {})
+
   state.initialized = true
 end
 
@@ -142,6 +146,32 @@ function M.open_view_buffer()
   local view = require('lifemode.view')
   local bufnr = view.create_buffer()
   vim.api.nvim_win_set_buf(0, bufnr)
+end
+
+function M.debug_span()
+  if not state.config then
+    vim.notify('LifeMode not configured. Run require("lifemode").setup()', vim.log.levels.ERROR)
+    return
+  end
+
+  local extmarks = require('lifemode.extmarks')
+  local metadata = extmarks.get_instance_at_cursor()
+
+  if not metadata then
+    vim.notify('No instance metadata at cursor', vim.log.levels.WARN)
+    return
+  end
+
+  local lines = {
+    'Instance Metadata:',
+    '==================',
+  }
+
+  for key, value in pairs(metadata) do
+    table.insert(lines, string.format('  %s: %s', key, vim.inspect(value)))
+  end
+
+  vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
 end
 
 return M

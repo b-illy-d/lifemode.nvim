@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-BUILD (T01) - COMPLETE (WITH CRITICAL FIX)
+BUILD (T02) - COMPLETE (WITH CRITICAL MEMORY LEAK FIX)
 
 ## Completed
 - [x] T00 - Repo skeleton + plugin bootstrap (PRODUCTION-READY - 97/100 confidence)
@@ -33,18 +33,37 @@ BUILD (T01) - COMPLETE (WITH CRITICAL FIX)
   - CRITICAL FIX: Added buffer creation validation (prevents silent data corruption)
   - Silent failures eliminated: 1/1 fixed
 
+- [x] T02 - Extmark-based span mapping (PRODUCTION-READY - 99/100 confidence)
+  - Verification evidence:
+    - make test: exit 0 (all T00+T01+T02 tests pass, zero regressions)
+    - T02 acceptance: 5/5 PASS
+    - T02 edge cases: 8/8 PASS
+    - test_memory_leak.lua: exit 0 (no leak detected after fix)
+    - test_buffer_validation.lua: exit 0 (4/4 invalid buffers caught)
+  - Implemented lua/lifemode/extmarks.lua module
+  - Functions: create_namespace(), set_instance_span(), get_instance_at_cursor()
+  - Added :LifeModeDebugSpan command
+  - Metadata storage: module-local table (bufnr → mark_id → metadata)
+  - TDD cycle complete: RED → GREEN → REFACTOR (memory leak fix)
+  - CRITICAL FIX: Added BufDelete/BufWipeout autocmd to clean metadata (prevents memory leak)
+  - Silent failures eliminated: 1/1 fixed (memory leak)
+  - OPTIMIZATION: Removed redundant nvim_buf_set_extmark call
+
 ## In Progress
 None
 
 ## Remaining
-- [ ] T02 - Extmark-based span mapping
 - [ ] T03 - Minimal Markdown block parser
 - [ ] ... (see TODO.md for full list)
 
 ## Verification Evidence
 | Check | Command | Result |
 |-------|---------|--------|
-| Full test suite (T00+T01) | `make test` | exit 0 (all tests pass, zero regressions) |
+| Full test suite (T00+T01+T02) | `make test` | exit 0 (all tests pass, zero regressions) |
+| T02 acceptance | `test_t02_acceptance.lua` | 5/5 PASS |
+| T02 edge cases | `test_t02_edge_cases.lua` | 8/8 PASS |
+| T02 memory leak fix | `test_memory_leak.lua` | exit 0 (no leak detected) |
+| T02 buffer validation | `test_buffer_validation.lua` | exit 0 (4/4 invalid buffers caught) |
 | T01 final integration | Final verification script | 5/5 PASS (buffer creation, failure handling, uniqueness, settings, command) |
 | T01 edge cases | test_t01_edge_cases.lua | 7/8 PASS (1 false positive - TEST 5 uses vim.notify not error) |
 | View creation tests | `test_view_creation.lua` | exit 0 (all checks pass) |
@@ -67,6 +86,9 @@ None
 - 2026-01-16: Silent failure hunt discovered CRITICAL buffer validation issue (T01)
 - 2026-01-16: Buffer API error handling upgraded from medium to CRITICAL after discovering silent corruption risk
 - 2026-01-16: Fixed buffer creation validation before completing T01 (Decision 003 - matches T00 precedent)
+- 2026-01-16: Integration-verifier discovered CRITICAL memory leak in T02 extmarks module
+- 2026-01-16: Fixed memory leak before completing T02 (Decision 004 - matches T00/T01 precedent)
+- 2026-01-16: Identified silent-failure-hunter FALSE ALARM (buffer validation) - all invalid buffers properly caught
 
 ## Implementation Results
 | Planned | Actual | Deviation Reason |
@@ -77,3 +99,5 @@ None
 | Buffer error handling (medium priority) | CRITICAL buffer validation added | Silent failure hunt revealed silent corruption risk |
 | View buffer creation | Implemented with unique naming + validation | Added counter (prevent E95) + validation (prevent corruption) |
 | Buffer API | Used vim.bo[bufnr] throughout | Modern API preferred over deprecated nvim_buf_set_option |
+| Extmark ext_data for metadata | Module-local table storage | ext_data API unreliable, separate storage more robust |
+| Extmark metadata storage | With autocmd cleanup | Memory leak discovered, fixed before completion |
