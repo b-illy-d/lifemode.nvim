@@ -1,0 +1,458 @@
+# LifeMode TODO
+
+Tasks for building LifeMode, the Markdown-native productivity + wiki system for Neovim.
+Each task is self-contained (10-100 lines) and corresponds to principles in SPEC.md.
+
+---
+
+## Phase 1: Foundation
+
+### T01: Plugin bootstrap with setup() function
+- Create `lua/lifemode/init.lua` with `setup({ vault_root, ... })` function
+- Validate required `vault_root` setting exists and is a directory
+- Store config in module-level state with defaults per SPEC §A0
+- Create `:LifeMode` command stub that prints config (placeholder)
+- **Aligns with**: §A0 Configuration, P1 (durable/portable setup)
+
+### T02: Vault file discovery
+- Create `lua/lifemode/vault.lua` module
+- Implement `vault.list_files()` to find all `.md` files in vault_root recursively
+- Return list with file paths and mtime (for date tracking per §A2)
+- Handle edge cases: empty vault, missing vault_root, non-existent paths
+- **Aligns with**: §A1 Vault, P1 (markdown files are source of truth)
+
+### T03: Basic markdown parsing - heading and text nodes
+- Create `lua/lifemode/parser.lua` module
+- Implement `parser.parse_file(path)` returning list of nodes
+- Extract heading nodes (`# Heading`) with level, text, line number
+- Extract text/paragraph nodes with line ranges
+- Node structure: `{ type, body_md, line_start, line_end }`
+- **Aligns with**: §B1 Node, §A2 Core Engine, P2 (nodes are truth)
+
+### T04: Node ID extraction and generation
+- Add `^id` parsing to extract existing block IDs from markdown
+- Implement `parser.generate_id()` using UUID v4 format
+- Update node structure to include `id` field (nil if no ID present)
+- Validate ID format matches `^[a-f0-9-]{36}$` pattern
+- **Aligns with**: §C1 Node IDs, P3 (stable identity is non-negotiable)
+
+### T05: Task node parsing
+- Extend parser to detect task list items (`- [ ]` and `- [x]`)
+- Extract task metadata: state (todo/done), priority (!1-!5), due date (@due), tags (#tag)
+- Parse inline metadata with regex patterns per §C3
+- Return task nodes with `type: "task"` and props for state/priority/due/tags
+- **Aligns with**: §C3 Tasks, §B1 Node props
+
+---
+
+## Phase 2: Index System
+
+### T06: Basic index data structure
+- Create `lua/lifemode/index.lua` module
+- Define index structure: `{ node_locations, tasks_by_state, nodes_by_date }`
+- Implement `index.create()` returning empty index
+- Implement `index.add_node(idx, node, file_path, mtime)`
+- **Aligns with**: §A2 Index data structures, P2 (separate truth from projection)
+
+### T07: Full index build from vault
+- Implement `index.build(vault_root)` using vault.list_files() + parser.parse_file()
+- Populate node_locations: `{ [node_id] = { file, line, mtime } }`
+- Populate tasks_by_state: `{ todo = {...}, done = {...} }`
+- Populate nodes_by_date: `{ ["2026-01-15"] = { node_ids } }` using file mtime
+- **Aligns with**: §A2 Automatic Indexing Strategy
+
+### T08: Lazy index initialization
+- Add `M._index` to store built index (module state)
+- Implement `index.get_or_build()` for lazy initialization
+- Only build index on first access (first `:LifeMode` call)
+- Add `index.is_built()` check
+- **Aligns with**: §A2 "Lazy initialization: Build index on first :LifeMode invocation"
+
+### T09: Incremental index updates on file save
+- Set up `BufWritePost` autocmd for files in vault_root
+- Implement `index.update_file(file_path)` to re-parse single file
+- Remove old entries for file, add new entries
+- Only trigger for `.md` files within vault_root
+- **Aligns with**: §A2 "Incremental updates: On BufWritePost for files in vault_root"
+
+---
+
+## Phase 3: View Infrastructure
+
+### T10: View buffer creation utility
+- Create `lua/lifemode/view.lua` module
+- Implement `view.create_buffer(name)` returning bufnr with `buftype=nofile`
+- Set buffer options: nomodifiable (initially), noswapfile, bufhidden=wipe
+- Add buffer-local variable to identify as LifeMode view buffer
+- **Aligns with**: §D4 Buffer model, §A3 "View buffers: buftype=nofile"
+
+### T11: Extmark-based span mapping
+- Create `lua/lifemode/spans.lua` module
+- Implement `spans.create_namespace()` for LifeMode extmarks
+- Implement `spans.set_span(bufnr, line_start, line_end, data)` storing instance/node info
+- Implement `spans.get_span_at_cursor(bufnr)` returning span data for current line
+- Data includes: instance_id, node_id, depth, lens, collapsed state
+- **Aligns with**: §D4 "Every rendered block gets an extmark"
+
+### T12: Basic lens renderer interface
+- Create `lua/lifemode/lens.lua` module
+- Define lens interface: `lens.render(node, params) -> { lines, highlights }`
+- Implement `task/brief` lens: state icon + title + due + priority on one line
+- Implement `node/raw` lens: raw markdown body
+- Return both text lines and highlight ranges for extmarks
+- **Aligns with**: §D1 Lenses, P4 (lenses are deterministic renderers)
+
+---
+
+## Phase 4: Daily View (MVP Core)
+
+### T13: Daily view date tree structure
+- Create `lua/lifemode/views/daily.lua` module
+- Implement `daily.build_tree(index)` returning Year > Month > Day hierarchy
+- Group nodes by date using nodes_by_date from index
+- Return tree structure with synthetic group nodes (year/month/day) + leaf nodes
+- **Aligns with**: §C7 Daily View structure
+
+### T14: Daily view rendering
+- Implement `daily.render(tree, options)` producing lines + spans for buffer
+- Render year/month headers as collapsible group lines
+- Render day headers with node count
+- Render leaf nodes using lens system (task/brief or node/raw)
+- Track line ranges for each rendered element
+- **Aligns with**: §C7 Daily View, §D3 Rendering mechanics
+
+### T15: Daily view buffer and :LifeMode command
+- Update `:LifeMode` command to open Daily view by default
+- Create view buffer, render tree, set content
+- Apply extmarks for spans and highlights
+- Set buffer as read-only after rendering
+- Focus cursor on today's date section (expanded by default)
+- **Aligns with**: §A0 ":LifeMode invocable from anywhere", Core MVP Loop step 1-2
+
+### T16: Daily view expand/collapse
+- Implement expand/collapse for date group nodes
+- `<Space>e`: Expand node under cursor (show children)
+- `<Space>E`: Collapse node under cursor (hide children)
+- Update spans and re-render affected line ranges
+- Track collapsed state in span data
+- **Aligns with**: §C7 Keymaps, P5 (lazy expansion)
+
+### T17: Daily view date navigation
+- Implement `]d` / `[d`: Jump to next/previous day
+- Implement `]m` / `[m`: Jump to next/previous month
+- Use extmark data to find date boundaries
+- Auto-expand target date if collapsed
+- **Aligns with**: §C7 Daily View keymaps
+
+---
+
+## Phase 5: Navigation (LSP-like)
+
+### T18: Jump to source file (gd / Enter)
+- Implement `gd` / `Enter` on view buffer to jump to source
+- Get node_id from span at cursor
+- Look up file + line in index.node_locations
+- Open file in split/current window at correct line
+- **Aligns with**: Core MVP Loop step 5, §D5 Navigation semantics
+
+### T19: Return to view from source
+- Track last view buffer when jumping to source
+- Provide command/keymap to return to view (e.g., `<C-o>` or `:LifeMode`)
+- Refresh view if index changed during source editing
+- **Aligns with**: Core MVP Loop "Edit source when needed"
+
+---
+
+## Phase 6: Task Management
+
+### T20: Task state toggle patch operation
+- Create `lua/lifemode/patch.lua` module
+- Implement `patch.toggle_task_state(node_id)`
+- Look up node location, read file, toggle `- [ ]` ↔ `- [x]`
+- Write file back, trigger index update
+- **Aligns with**: §F Patch Ops, Core MVP Loop step 4
+
+### T21: Task state toggle from view
+- Add `<Space><Space>` keymap in view buffers
+- Get node at cursor, call patch.toggle_task_state()
+- Re-render affected span in view buffer
+- Update tasks_by_state in index
+- **Aligns with**: §J Task Management keymaps
+
+### T22: Priority patch operations
+- Implement `patch.inc_priority(node_id)` and `patch.dec_priority(node_id)`
+- Parse existing priority (!1-!5), increment/decrement within bounds
+- Add priority if missing (default to !3), remove if going past bounds
+- Add `<Space>tp` / `<Space>tP` keymaps
+- **Aligns with**: §F Patch Ops, §J keymaps
+
+### T23: Due date patch operation
+- Implement `patch.set_due(node_id, date)` and `patch.clear_due(node_id)`
+- Parse/update `@due(YYYY-MM-DD)` in task line
+- Add `<Space>td` keymap opening date picker (or prompt)
+- Handle date format validation
+- **Aligns with**: §F Patch Ops, §C3 Tasks
+
+### T24: Tag patch operations
+- Implement `patch.add_tag(node_id, tag)` and `patch.remove_tag(node_id, tag)`
+- Parse existing tags (#tag/subtag), add/remove as requested
+- Add `<Space>tt` keymap opening tag editor (or prompt)
+- Validate tag format
+- **Aligns with**: §F Patch Ops, §C3 Tasks
+
+---
+
+## Phase 7: All Tasks View
+
+### T25: All Tasks view basic structure
+- Create `lua/lifemode/views/tasks.lua` module
+- Implement `tasks.build_tree(index, grouping)` with group-by modes
+- Support grouping: by_due_date (Overdue/Today/ThisWeek/Later/NoDue)
+- Return tree with group nodes + task leaf nodes
+- **Aligns with**: §C7 All Tasks View
+
+### T26: All Tasks view additional groupings
+- Add by_priority grouping: !1 → !5 → No Priority
+- Add by_tag grouping: group by first tag
+- Implement sorting within groups (priority or due date)
+- **Aligns with**: §C7 All Tasks View grouping modes
+
+### T27: All Tasks view rendering and command
+- Add `:LifeMode tasks` command
+- Render tree using lens system
+- Apply highlights for overdue (red), today (yellow), etc.
+- Set up view buffer with keymaps
+- **Aligns with**: §C7 All Tasks View
+
+### T28: All Tasks view grouping/filter cycling
+- Implement `<Space>g` to cycle grouping mode
+- Implement `<Space>f` to toggle filters (state: todo/done)
+- Re-render view on grouping/filter change
+- Persist last grouping choice in buffer-local state
+- **Aligns with**: §C7 All Tasks View keymaps
+
+---
+
+## Phase 8: Wikilinks and References
+
+### T29: Wikilink parsing
+- Extend parser to extract wikilinks: `[[Page]]`, `[[Page#Heading]]`, `[[Page^block-id]]`
+- Store refs in node: `refs: [{ type: "wikilink", target, display }]`
+- Handle all three formats per §C2
+- **Aligns with**: §C2 Wikilinks, §B1 Node refs
+
+### T30: Backlinks index
+- Add `backlinks` to index structure: `{ [target] = [source_ids] }`
+- Populate during index build by inverting refs
+- Implement `index.get_backlinks(target)` query
+- Handle page, heading, and block-id targets
+- **Aligns with**: §A2 Index data structures (backlinks)
+
+### T31: References/backlinks view (gr)
+- Implement `gr` keymap in view and vault buffers
+- Get node at cursor, query backlinks from index
+- Show results in quickfix list with file:line format
+- Allow jumping to each reference
+- **Aligns with**: §D5 Navigation semantics (References)
+
+### T32: Go-to-definition for wikilinks (gd in vault)
+- Implement `gd` in vault file buffers for wikilinks
+- Detect wikilink under cursor
+- Resolve target: Page → file, Page#Heading → heading, Page^id → block
+- Jump to target location
+- **Aligns with**: §C2 Definition for "go-to", §D5 Definition navigation
+
+---
+
+## Phase 9: Bible References (Core Feature)
+
+### T33: Bible reference parsing
+- Create `lua/lifemode/bible.lua` module
+- Implement regex patterns for verse references: `John 17:20`, `John 17:18-23`, `Rom 8:28`
+- Support abbreviated book names (map to canonical)
+- Extract single verses and ranges from markdown text
+- **Aligns with**: §C6 Bible verses (reference formats)
+
+### T34: Bible verse ID generation
+- Implement deterministic ID format: `bible:john:17:20`
+- Handle ranges by expanding to individual verse IDs
+- Add verse refs to node.refs during parsing
+- Store in index for backlink queries
+- **Aligns with**: §C6 "Verse nodes use deterministic IDs", P3 (stable identity)
+
+### T35: Bible reference backlinks
+- Ensure range references index as refs to each verse in range
+- `John 17:18-23` creates backlinks to verses 18, 19, 20, 21, 22, 23
+- Query: "show all notes referencing John 17:20" finds range mentions
+- **Aligns with**: §C6 "A range mention must count as a reference to each verse"
+
+### T36: Bible reference navigation (gd on verse)
+- Implement `gd` on Bible reference in vault/view buffers
+- Detect verse reference under cursor
+- Show verse text inline (expand) or in floating window
+- Requires Bible text provider (stub for MVP, real provider later)
+- **Aligns with**: §C6 Navigation (gd on verse reference)
+
+### T37: Bible verse references view (gr on verse)
+- Implement `gr` on Bible verse reference
+- Query all notes referencing that verse (direct + range mentions)
+- Show in quickfix or dedicated view
+- Critical for cross-study workflow per §C6
+- **Aligns with**: §C6 "gr on a verse shows all notes that reference this verse"
+
+---
+
+## Phase 10: Lens System
+
+### T38: Lens registry and cycling
+- Implement lens registry: map of lens_name → render function
+- Implement `lens.get_available(node_type)` returning valid lenses
+- Implement `lens.cycle(current, node_type)` for lens switching
+- **Aligns with**: §D1 Lens switching
+
+### T39: Additional lens implementations
+- Implement `task/detail`: full metadata (tags, due, blockers, outputs)
+- Implement `source/biblio`: formatted citation for source nodes
+- Implement `verse/citation`: verse text with verse numbers
+- **Aligns with**: §D1 Lenses
+
+### T40: Lens cycling keymaps
+- Add `<Space>l` to cycle lens forward for active instance
+- Add `<Space>L` to cycle lens backward
+- Re-render only affected span (not full view)
+- Update span data with new lens
+- **Aligns with**: §J Modal View Keymaps
+
+---
+
+## Phase 11: Active Node and Visual Feedback
+
+### T41: Active node highlighting
+- Track "active" instance based on cursor position
+- Apply distinct highlight to active node span
+- Update on cursor movement (CursorMoved autocmd)
+- **Aligns with**: §D2 "Active node span is visually distinct"
+
+### T42: Statusline/winbar info
+- Show active node info in statusline or winbar
+- Display: node type, node_id (truncated), current lens, depth
+- Update on cursor movement
+- **Aligns with**: §D2 "Winbar/statusline shows: type, node_id, lens"
+
+---
+
+## Phase 12: Source and Citation Nodes
+
+### T43: Source node parsing
+- Extend parser to detect source nodes (`type:: source`)
+- Extract source properties: title, author, year, kind, url
+- Store in node props
+- **Aligns with**: §C5 Sources and citations
+
+### T44: Citation node parsing
+- Extend parser to detect citation nodes (`type:: citation`)
+- Extract citation properties: source reference, locator, pages
+- Link citation to source node
+- **Aligns with**: §C5 Citation node (mention)
+
+### T45: Source/citation rendering in views
+- Render sources with source/biblio lens
+- Render citations with source reference + locator
+- Show citation count for sources
+- **Aligns with**: §D1 source/biblio lens
+
+---
+
+## Phase 13: Query System (MVP)
+
+### T46: Basic query filter parsing
+- Create `lua/lifemode/query.lua` module
+- Parse filter expressions: `due:today`, `tag:#lifemode`, `state:todo`
+- Return structured filter object
+- **Aligns with**: §E Query/View System
+
+### T47: Query execution
+- Implement `query.execute(filter, index)` returning matching nodes
+- Support filters: due, tag, state, blocked
+- Combine multiple filters with AND logic
+- **Aligns with**: §E Query filters
+
+### T48: Query-based view rendering
+- Allow views to accept query filter
+- Filter nodes before building tree
+- Update All Tasks view to use query system internally
+- **Aligns with**: §E "Views render results into quickfix or view buffer"
+
+---
+
+## Phase 14: Ensure ID Assignment
+
+### T49: Auto-assign IDs to indexable blocks
+- Implement `patch.ensure_id(node_location)`
+- Detect blocks that need IDs: tasks, has links, referenced
+- Generate and insert UUID at end of block line
+- **Aligns with**: §C1 "Insert IDs automatically when block becomes indexable"
+
+### T50: Batch ID assignment on index build
+- During index build, detect nodes without IDs that need them
+- Offer to auto-assign IDs (prompt or config option)
+- Apply patches to add missing IDs
+- **Aligns with**: §C1 Node IDs, Core MVP Loop step 3
+
+---
+
+## Phase 15: Polish and Testing
+
+### T51: Unit tests for parser
+- Create `tests/lifemode/parser_spec.lua`
+- Test heading extraction, task parsing, ID extraction
+- Test edge cases: empty files, malformed markdown
+- Use plenary.nvim test harness
+- **Aligns with**: §H Testing Strategy
+
+### T52: Unit tests for index
+- Create `tests/lifemode/index_spec.lua`
+- Test index build, node lookup, backlinks query
+- Test incremental update
+- **Aligns with**: §H Testing Strategy
+
+### T53: Integration tests for views
+- Create `tests/lifemode/view_spec.lua`
+- Test Daily view rendering, expand/collapse
+- Test All Tasks view grouping
+- Test jump to source
+- **Aligns with**: §H Testing Strategy
+
+### T54: Error handling and user feedback
+- Add meaningful error messages for common issues
+- Handle missing vault_root gracefully
+- Show notifications for successful operations (state toggle, etc.)
+- **Aligns with**: P6 (editing should feel like Vim)
+
+### T55: Documentation and help
+- Create basic `:help lifemode` documentation
+- Document setup options, keymaps, commands
+- Add inline help hints in views
+- **Aligns with**: Non-goal (no heavy GUI), P1 (portable)
+
+---
+
+## Milestone Checkpoints
+
+- **After T09**: Index system complete - pause for testing
+- **After T17**: Daily view complete - pause for user testing (per §H)
+- **After T24**: Task management complete - pause for user testing
+- **After T37**: Bible references complete - pause for user testing (per §H)
+- **After T48**: Query system complete - feature complete MVP
+
+---
+
+## Future (Post-MVP)
+
+- Direct in-span editing (not just commanded edits)
+- External engine process (RPC boundary per P8)
+- AI integration via protocol (P7)
+- File watching for external changes
+- Productive/creative edges UI
+- Telescope integration for pickers
+- Rename across vault
