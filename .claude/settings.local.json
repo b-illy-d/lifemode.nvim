@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Skill(cc10x:cc10x-router)"
+      "Skill(cc10x:cc10x-router)",
+      "Skill(cc10x-router)"
     ]
-  }
+  },
+  "spinnerTipsEnabled": false
 }
