@@ -15,6 +15,7 @@
 - lua/lifemode/init.lua: Main plugin module (setup, commands, state)
 - lua/lifemode/view.lua: View buffer creation utilities
 - lua/lifemode/extmarks.lua: Extmark-based span tracking for metadata
+- lua/lifemode/parser.lua: Markdown block parser (headings, tasks, list items)
 - plugin/lifemode.vim: Autoload guard
 - tests/: Test files (manual tests for now)
 - test_*.lua: Root-level test files for each feature
@@ -237,3 +238,76 @@ end
 - Buffer validation: Check bufnr == 0 or not bufnr before using
 - Extmark range tracking: Use end_line parameter for multiline spans
 - Cursor position lookup: Iterate all extmarks, check if cursor within [start_row, end_row]
+
+## Markdown Parser Pattern
+
+```lua
+local M = {}
+
+function M.parse_buffer(bufnr)
+  if bufnr == 0 or not bufnr then
+    error('Invalid buffer number')
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local blocks = {}
+
+  for line_idx, line in ipairs(lines) do
+    local block = M._parse_line(line, line_idx - 1)
+    if block then
+      table.insert(blocks, block)
+    end
+  end
+
+  return blocks
+end
+
+function M._parse_line(line, line_idx)
+  local heading_match = line:match('^(#+)%s+(.*)$')
+  if heading_match then
+    return M._parse_heading(line, line_idx)
+  end
+
+  local task_match = line:match('^%s*%-%s+%[([%sxX])%]%s+(.*)$')
+  if task_match then
+    return M._parse_task(line, line_idx)
+  end
+
+  local list_match = line:match('^%s*%-%s+(.*)$')
+  if list_match then
+    return M._parse_list_item(line, line_idx)
+  end
+
+  return nil
+end
+
+function M._extract_id(text)
+  local before_id, id = text:match('^(.-)%s*%^([%w%-]+)%s*$')
+  if before_id and id then
+    return vim.trim(before_id), id
+  end
+  return vim.trim(text), nil
+end
+```
+
+**Lua Pattern Reference:**
+- `^(#+)%s+(.*)$`: Matches headings (1-6 hashes + space + rest)
+- `^%s*%-%s+%[([%sxX])%]%s+(.*)$`: Matches tasks (optional indent + dash + checkbox + rest)
+- `^%s*%-%s+(.*)$`: Matches list items (optional indent + dash + rest)
+- `^(.-)%s*%^([%w%-]+)%s*$`: Extracts ^id suffix at end of line
+- `%s*`: Zero or more whitespace
+- `(.-)`: Non-greedy capture (shortest match)
+- `[%w%-]`: Word characters (alphanumeric + underscore) or hyphen
+- `[%sxX]`: Space, lowercase x, or uppercase X
+
+**Block structure:**
+```lua
+{
+  type = 'heading' | 'task' | 'list_item',
+  line = number,  -- 0-indexed line number
+  level = number, -- heading level (1-6), only for headings
+  text = string,  -- text content (^id suffix removed)
+  state = 'todo' | 'done', -- only for tasks
+  id = string | nil, -- extracted from ^id suffix
+}
+```

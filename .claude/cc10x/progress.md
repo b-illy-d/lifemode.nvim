@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Current Workflow
-BUILD (T02) - COMPLETE (WITH CRITICAL MEMORY LEAK FIX)
+BUILD (T03) - COMPLETE
 
 ## Completed
 - [x] T00 - Repo skeleton + plugin bootstrap (PRODUCTION-READY - 97/100 confidence)
@@ -49,17 +49,34 @@ BUILD (T02) - COMPLETE (WITH CRITICAL MEMORY LEAK FIX)
   - Silent failures eliminated: 1/1 fixed (memory leak)
   - OPTIMIZATION: Removed redundant nvim_buf_set_extmark call
 
+- [x] T03 - Minimal Markdown block parser (PRODUCTION-READY - 100/100 confidence)
+  - Verification evidence:
+    - make test: exit 0 (all T00+T01+T02+T03 tests pass, zero regressions)
+    - T03 acceptance: 9/9 PASS
+    - T03 edge cases: 9/9 PASS
+  - Implemented lua/lifemode/parser.lua module
+  - Functions: parse_buffer(bufnr), _parse_line(), _parse_heading(), _parse_task(), _parse_list_item(), _extract_id()
+  - Parses Markdown into blocks: {type, line, level, text, state, id}
+  - Types: 'heading', 'task', 'list_item'
+  - Extracts task state: [ ] (todo) vs [x]/[X] (done)
+  - Extracts ^id suffix: UUID v4 and alphanumeric IDs
+  - Added :LifeModeParse command (shows block count + task count)
+  - TDD cycle complete: RED → GREEN → VERIFIED (18 tests total)
+  - Silent failures eliminated: NONE (comprehensive edge case coverage)
+
 ## In Progress
 None
 
 ## Remaining
-- [ ] T03 - Minimal Markdown block parser
+- [ ] T04 - Ensure IDs for indexable blocks
 - [ ] ... (see TODO.md for full list)
 
 ## Verification Evidence
 | Check | Command | Result |
 |-------|---------|--------|
-| Full test suite (T00+T01+T02) | `make test` | exit 0 (all tests pass, zero regressions) |
+| Full test suite (T00+T01+T02+T03) | `make test` | exit 0 (all tests pass, zero regressions) |
+| T03 acceptance | `test_t03_acceptance.lua` | 9/9 PASS |
+| T03 edge cases | `test_t03_edge_cases.lua` | 9/9 PASS |
 | T02 acceptance | `test_t02_acceptance.lua` | 5/5 PASS |
 | T02 edge cases | `test_t02_edge_cases.lua` | 8/8 PASS |
 | T02 memory leak fix | `test_memory_leak.lua` | exit 0 (no leak detected) |
@@ -101,3 +118,4 @@ None
 | Buffer API | Used vim.bo[bufnr] throughout | Modern API preferred over deprecated nvim_buf_set_option |
 | Extmark ext_data for metadata | Module-local table storage | ext_data API unreliable, separate storage more robust |
 | Extmark metadata storage | With autocmd cleanup | Memory leak discovered, fixed before completion |
+| Tree-sitter parser | Lua string pattern matching | String patterns sufficient for MVP, simpler than tree-sitter |

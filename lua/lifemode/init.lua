@@ -85,6 +85,10 @@ function M.setup(opts)
     M.debug_span()
   end, {})
 
+  vim.api.nvim_create_user_command('LifeModeParse', function()
+    M.parse_current_buffer()
+  end, {})
+
   state.initialized = true
 end
 
@@ -172,6 +176,26 @@ function M.debug_span()
   end
 
   vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
+end
+
+function M.parse_current_buffer()
+  if not state.config then
+    vim.notify('LifeMode not configured. Run require("lifemode").setup()', vim.log.levels.ERROR)
+    return
+  end
+
+  local parser = require('lifemode.parser')
+  local bufnr = vim.api.nvim_get_current_buf()
+  local blocks = parser.parse_buffer(bufnr)
+
+  local task_count = 0
+  for _, block in ipairs(blocks) do
+    if block.type == 'task' then
+      task_count = task_count + 1
+    end
+  end
+
+  vim.notify(string.format('Parsed %d blocks (%d tasks)', #blocks, task_count), vim.log.levels.INFO)
 end
 
 return M
