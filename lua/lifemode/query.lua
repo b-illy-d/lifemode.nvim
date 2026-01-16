@@ -14,6 +14,7 @@ function M.get_all_tasks()
   local config = lifemode.get_config()
 
   if not config.vault_index or not config.vault_index.node_locations then
+    vim.api.nvim_echo({{"No vault index found. Run :LifeModeRebuildIndex first.", "WarningMsg"}}, true, {})
     return {}
   end
 

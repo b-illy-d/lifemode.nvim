@@ -356,11 +356,16 @@ function M.setup(user_config)
       -- Check if this file is in the vault
       local filepath = vim.api.nvim_buf_get_name(bufnr)
       if filepath:match('^' .. vim.pesc(config.vault_root)) then
-        -- File is in vault - add gd keymap
+        -- File is in vault - add gd and gr keymaps
         vim.keymap.set('n', 'gd', function()
           local navigation = require('lifemode.navigation')
           navigation.goto_definition()
         end, { buffer = bufnr, noremap = true, silent = true, desc = 'Go to definition' })
+
+        vim.keymap.set('n', 'gr', function()
+          local references = require('lifemode.references')
+          references.find_references_at_cursor()
+        end, { buffer = bufnr, noremap = true, silent = true, desc = 'Find references' })
 
         -- Add <leader><leader> keymap for task toggle
         vim.keymap.set('n', config.leader .. config.leader, function()
