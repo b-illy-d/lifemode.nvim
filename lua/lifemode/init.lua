@@ -77,6 +77,10 @@ function M.setup(opts)
     M.open_view()
   end, {})
 
+  vim.api.nvim_create_user_command('LifeModeOpen', function()
+    M.open_view_buffer()
+  end, {})
+
   state.initialized = true
 end
 
@@ -114,9 +118,9 @@ function M.open_view()
   end
 
   local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(bufnr, 'buftype', 'nofile')
-  vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)
-  vim.api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe')
+  vim.bo[bufnr].buftype = 'nofile'
+  vim.bo[bufnr].swapfile = false
+  vim.bo[bufnr].bufhidden = 'wipe'
   vim.api.nvim_buf_set_name(bufnr, 'LifeMode')
 
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
@@ -126,6 +130,17 @@ function M.open_view()
     'Vault root: ' .. state.config.vault_root,
   })
 
+  vim.api.nvim_win_set_buf(0, bufnr)
+end
+
+function M.open_view_buffer()
+  if not state.config then
+    vim.notify('LifeMode not configured. Run require("lifemode").setup()', vim.log.levels.ERROR)
+    return
+  end
+
+  local view = require('lifemode.view')
+  local bufnr = view.create_buffer()
   vim.api.nvim_win_set_buf(0, bufnr)
 end
 

@@ -138,3 +138,92 @@ This document tracks key decisions made during implementation where user input w
 - Test coverage: 97/100 (comprehensive for scope)
 
 **Overall: 97/100 - PRODUCTION-READY**
+
+---
+
+## Decision 003: Fix T01 Buffer Creation Validation Before Completion
+
+**Date:** 2026-01-16
+**Task:** T01 - View buffer creation utility
+**Decision:** Fix critical buffer creation validation before marking T01 complete
+
+**Context:**
+- Component-builder completed T01 implementation with all functional requirements met
+- Code-reviewer approved with 98/100 confidence
+- Silent-failure-hunter discovered 1 CRITICAL silent failure (confidence 40/100)
+- Integration-verifier must decide: proceed to T02 or fix now
+
+**Critical Issue Found:**
+
+**[lua/lifemode/view.lua:6] nvim_create_buf failure not validated**
+- Problem: nvim_create_buf can return 0 on failure (not nil)
+- Current behavior: Code proceeds with bufnr=0
+- Impact: vim.bo[0] modifies CURRENT buffer instead of new buffer
+- Silent corruption: User's current buffer gets buftype=nofile, swapfile=false, filetype=lifemode, renamed
+- User never notified of failure
+- Severity: CRITICAL - Silent data corruption
+
+**Evidence:**
+```
+TEST: What happens when nvim_create_buf returns 0?
+Current buffer BEFORE: 1
+Current buffer buftype BEFORE: (empty)
+Current buffer filetype BEFORE: (empty)
+
+create_buffer() success: true
+create_buffer() result: 0
+
+Current buffer AFTER: 1
+Current buffer buftype AFTER: nofile
+Current buffer filetype AFTER: lifemode
+
+CRITICAL ISSUE CONFIRMED: Current buffer was MODIFIED!
+```
+
+**Options Considered:**
+
+**Option A: Proceed to T02 without fix**
+- Pros: Maintain velocity, issue unlikely in practice (nvim_create_buf rarely fails)
+- Cons: Known critical silent failure, contradicts T00 precedent, professional standards violated
+- Risk: HIGH - Users could experience silent data corruption under resource constraints
+
+**Option B: Fix critical issue now (CHOSEN)**
+- Pros: Clean foundation, matches T00 precedent, prevents silent corruption, simple 2-line fix
+- Cons: Slight delay (~5 minutes)
+- Risk: LOW - Surgical fix, well-scoped, minimal complexity
+
+**Rationale:**
+1. **Precedent:** Decision 001 established pattern of fixing critical silent failures before proceeding
+2. **Severity:** Silent data corruption is CRITICAL (same severity as T00 issues that were fixed)
+3. **Cost-benefit:** 2-line fix takes 5 minutes now vs potential hours debugging later
+4. **Professional standards:** Production code should not have known critical silent failures
+5. **User guidance:** "pick best choice" → Best choice is fix now (consistent with Decision 001)
+6. **Context from T00:** Buffer API error handling was initially marked "medium priority" but silent failure hunt revealed it's actually CRITICAL due to silent corruption risk
+
+**Implementation Plan:**
+1. Add buffer creation validation in view.create_buffer() (line 6-7)
+2. Check `if bufnr == 0 or not bufnr then error('Failed to create buffer')`
+3. Re-run edge case tests to verify fix
+4. Update test to expect error instead of silent failure
+
+**Estimated Effort:** 5 minutes implementation, 2 minutes testing
+
+**Confidence:** 95/100
+
+**Fix:**
+```lua
+function M.create_buffer()
+  local bufnr = vim.api.nvim_create_buf(false, true)
+
+  if bufnr == 0 or not bufnr then
+    error('Failed to create buffer')
+  end
+
+  vim.bo[bufnr].buftype = 'nofile'
+  -- ... rest of function
+end
+```
+
+**Status:** TO BE IMPLEMENTED
+
+---

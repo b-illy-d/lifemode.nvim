@@ -12,9 +12,11 @@
 - Module pattern: M = {}, return M
 
 ## File Structure
-- lua/lifemode/init.lua: Main plugin module
+- lua/lifemode/init.lua: Main plugin module (setup, commands, state)
+- lua/lifemode/view.lua: View buffer creation utilities
 - plugin/lifemode.vim: Autoload guard
 - tests/: Test files (manual tests for now)
+- test_*.lua: Root-level test files for each feature
 - Makefile: Test runner automation
 
 ## Testing Patterns
@@ -46,10 +48,15 @@
 
 ## Neovim API Patterns
 - Buffer creation: nvim_create_buf(false, true) for unlisted, scratch
-- Buffer options: buftype=nofile, swapfile=false, bufhidden=wipe
+- Buffer options: Use vim.bo[bufnr].option = value (NOT nvim_buf_set_option - deprecated 0.10+)
+  - buftype=nofile (compiled view, not file-backed)
+  - swapfile=false (no swap for view buffers)
+  - bufhidden=wipe (auto-cleanup when hidden)
+  - filetype=lifemode (clear marking, enables ftplugin/syntax)
 - Command registration: nvim_create_user_command with callback
 - Window buffer switch: nvim_win_set_buf(0, bufnr)
 - **Buffer API can fail - check return values or use pcall**
+- **Unique buffer names**: Use counter pattern to avoid E95 errors on multiple creates
 
 ## Config Validation Pattern (REQUIRED)
 ```lua
@@ -105,3 +112,53 @@ end
 4. **Duplicate registration**: Not checking if already initialized
 5. **Unchecked API calls**: Buffer/window operations without pcall
 6. **Generic errors**: Not providing user-friendly error messages
+
+## Buffer Creation Validation Pattern (REQUIRED)
+```lua
+function M.create_buffer()
+  local bufnr = vim.api.nvim_create_buf(false, true)
+
+  -- CRITICAL: Validate buffer creation succeeded
+  if bufnr == 0 or not bufnr then
+    error('Failed to create buffer')
+  end
+
+  -- Safe to proceed with buffer operations
+  vim.bo[bufnr].buftype = 'nofile'
+  vim.bo[bufnr].swapfile = false
+  vim.bo[bufnr].bufhidden = 'wipe'
+  vim.bo[bufnr].filetype = 'lifemode'
+
+  return bufnr
+end
+```
+
+**Why this matters:**
+- nvim_create_buf returns 0 on failure (not nil, not error)
+- Using bufnr=0 with vim.bo[0] operates on CURRENT buffer
+- Silent data corruption: current buffer settings get modified
+- Always validate: `if bufnr == 0 or not bufnr then error()`
+
+## Silent Failure Testing Pattern
+```lua
+-- Test API failure modes by mocking
+local original_api = vim.api.nvim_create_buf
+vim.api.nvim_create_buf = function()
+  return 0  -- Simulate failure
+end
+
+local success, result = pcall(my_function)
+-- Check: Did function detect failure?
+-- Check: Was error raised or silent corruption?
+
+vim.api.nvim_create_buf = original_api
+```
+
+**Testing checklist for buffer operations:**
+1. Mock nvim_create_buf returning 0
+2. Mock nvim_buf_set_name throwing error
+3. Mock nvim_win_set_buf throwing error
+4. Test rapid buffer creation (race conditions)
+5. Test counter edge cases (overflow)
+6. Verify buffer settings actually applied
+7. Test state validation (functions without setup)
