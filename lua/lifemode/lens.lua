@@ -18,11 +18,36 @@ end
 
 function M.get_available_lenses(node_type)
   local available = {
-    task = {'task/brief', 'node/raw'},
+    task = {'task/brief', 'task/detail', 'node/raw'},
     heading = {'heading/brief', 'node/raw'},
     list_item = {'node/raw'},
   }
   return available[node_type] or {}
+end
+
+function M.cycle(current, node_type, direction)
+  direction = direction or 1
+  local available = M.get_available_lenses(node_type)
+
+  if #available == 0 then return current end
+
+  local current_idx = 0
+  for i, lens_name in ipairs(available) do
+    if lens_name == current then
+      current_idx = i
+      break
+    end
+  end
+
+  if current_idx == 0 then
+    return available[1]
+  end
+
+  local next_idx = current_idx + direction
+  if next_idx > #available then next_idx = 1 end
+  if next_idx < 1 then next_idx = #available end
+
+  return available[next_idx]
 end
 
 local function highlight_span(line, text, hl_group)
@@ -78,6 +103,35 @@ register('task/brief', function(node)
   end
 
   return { lines = {line}, highlights = highlights }
+end)
+
+register('task/detail', function(node)
+  local checkbox = node.state == 'done' and '[x]' or '[ ]'
+  local lines = {checkbox .. ' ' .. node.text}
+  local highlights = {}
+
+  if node.state == 'done' then
+    table.insert(highlights, full_line_highlight(lines[1], 'LifeModeDone'))
+  end
+
+  local meta_parts = {}
+  if node.priority then
+    table.insert(meta_parts, '!' .. node.priority)
+  end
+  if node.due then
+    table.insert(meta_parts, '@due(' .. node.due .. ')')
+  end
+  if node.tags and #node.tags > 0 then
+    for _, tag in ipairs(node.tags) do
+      table.insert(meta_parts, '#' .. tag)
+    end
+  end
+
+  if #meta_parts > 0 then
+    table.insert(lines, '  ' .. table.concat(meta_parts, ' '))
+  end
+
+  return { lines = lines, highlights = highlights }
 end)
 
 register('node/raw', function(node)

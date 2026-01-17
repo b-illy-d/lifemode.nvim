@@ -77,3 +77,14 @@ Quick notes on decisions made during development.
 ### Parser extracts both wikilinks and Bible refs
 **Why**: Need unified refs system for backlinks.
 **Pattern**: `_extract_all_refs()` combines `_extract_wikilinks()` and `_extract_bible_refs()`.
+
+## Phase 10: Lens System
+
+### Lens cycling refreshes full view (MVP)
+**Why**: Per-span re-rendering requires more complex state tracking.
+**Trade-off**: Full refresh is simpler, slightly less efficient.
+**Future**: Could optimize to re-render only affected span.
+
+### source/biblio and verse/citation lenses deferred
+**Why**: No source nodes implemented yet; Bible text provider not ready.
+**Decision**: Added task/detail lens; others added when source parsing exists.

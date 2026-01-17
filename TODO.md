@@ -429,26 +429,36 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 10: Lens System
+## Phase 10: Lens System ✅ COMPLETE
 
-### T38: Lens registry and cycling
+### T38: Lens registry and cycling ✅ DONE
 - Implement lens registry: map of lens_name → render function
 - Implement `lens.get_available(node_type)` returning valid lenses
 - Implement `lens.cycle(current, node_type)` for lens switching
 - **Aligns with**: §D1 Lens switching
+- **Evidence**:
+  - `lua/lifemode/lens.lua` (`cycle()`)
+  - `tests/test_t38_lens_registry.lua` (6/6 tests)
 
-### T39: Additional lens implementations
+### T39: Additional lens implementations ✅ DONE
 - Implement `task/detail`: full metadata (tags, due, blockers, outputs)
 - Implement `source/biblio`: formatted citation for source nodes
 - Implement `verse/citation`: verse text with verse numbers
 - **Aligns with**: §D1 Lenses
+- **Evidence**:
+  - `lua/lifemode/lens.lua` (`task/detail` lens)
+  - `tests/test_t39_additional_lenses.lua` (4/4 tests)
+- **Note**: source/biblio and verse/citation deferred - no source nodes yet
 
-### T40: Lens cycling keymaps
+### T40: Lens cycling keymaps ✅ DONE
 - Add `<Space>l` to cycle lens forward for active instance
 - Add `<Space>L` to cycle lens backward
 - Re-render only affected span (not full view)
 - Update span data with new lens
 - **Aligns with**: §J Modal View Keymaps
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_cycle_lens_at_cursor()`, keymaps)
+  - `tests/test_t40_lens_keymaps.lua` (2/2 tests)
 
 ---
 
@@ -587,9 +597,10 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 7: All Tasks View | ✅ Complete | T25-T28 (4/4) |
 | Phase 8: Wikilinks | ✅ Complete | T29-T32 (4/4) |
 | Phase 9: Bible References | ✅ Complete | T33-T37 (5/5) |
-| Phase 10-15 | Not Started | (0/18) |
+| Phase 10: Lens System | ✅ Complete | T38-T40 (3/3) |
+| Phase 11-15 | Not Started | (0/15) |
 
-**Total: 37/55 tasks complete (67%)**
+**Total: 40/55 tasks complete (73%)**
 
 ---
 

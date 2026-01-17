@@ -150,6 +150,8 @@ function M._setup_keymaps(bufnr)
   vim.keymap.set('n', '<Space>tP', function() M._dec_priority() end, opts)
   vim.keymap.set('n', '<Space>g', function() M._cycle_grouping() end, opts)
   vim.keymap.set('n', 'gr', function() M._backlinks_at_cursor() end, opts)
+  vim.keymap.set('n', '<Space>l', function() M._cycle_lens_at_cursor(1) end, opts)
+  vim.keymap.set('n', '<Space>L', function() M._cycle_lens_at_cursor(-1) end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
 end
 
@@ -354,6 +356,26 @@ function M._backlinks_at_cursor()
   if not target then return end
 
   M._show_backlinks(target)
+end
+
+function M._cycle_lens_at_cursor(direction)
+  local extmarks = require('lifemode.extmarks')
+  local lens_module = require('lifemode.lens')
+
+  local metadata = extmarks.get_instance_at_cursor()
+  if not metadata then return end
+  if metadata.lens and metadata.lens:match('^date/') then return end
+
+  local node = metadata.node
+  if not node then return end
+
+  local current_lens = metadata.lens or lens_module.get_available_lenses(node.type)[1]
+  local next_lens = lens_module.cycle(current_lens, node.type, direction)
+
+  if next_lens ~= current_lens then
+    metadata.lens = next_lens
+    M._refresh_view()
+  end
 end
 
 function M._show_bible_backlinks(verse_id)

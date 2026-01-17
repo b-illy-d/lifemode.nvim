@@ -168,7 +168,7 @@ print('PASS')
 
 print('TEST: get_available_lenses for task')
 local lenses = lens.get_available_lenses('task')
-assert_table_equal(lenses, {'task/brief', 'node/raw'}, 'task lenses')
+assert_table_equal(lenses, {'task/brief', 'task/detail', 'node/raw'}, 'task lenses')
 print('PASS')
 
 print('TEST: get_available_lenses for heading')
