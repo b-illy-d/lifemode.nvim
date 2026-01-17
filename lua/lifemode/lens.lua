@@ -21,6 +21,8 @@ function M.get_available_lenses(node_type)
     task = {'task/brief', 'task/detail', 'node/raw'},
     heading = {'heading/brief', 'node/raw'},
     list_item = {'node/raw'},
+    source = {'source/biblio', 'node/raw'},
+    citation = {'citation/brief', 'node/raw'},
   }
   return available[node_type] or {}
 end
@@ -178,6 +180,48 @@ end)
 
 register('date/day', function(node, params)
   return render_date_group(node, params, 'LifeModeDateDay')
+end)
+
+register('source/biblio', function(node)
+  local props = node.props or {}
+  local parts = {}
+
+  if props.author then
+    table.insert(parts, props.author)
+  end
+
+  if props.year then
+    table.insert(parts, '(' .. props.year .. ')')
+  end
+
+  if props.title then
+    table.insert(parts, '"' .. props.title .. '"')
+  end
+
+  if props.kind then
+    table.insert(parts, '[' .. props.kind .. ']')
+  end
+
+  local line = #parts > 0 and table.concat(parts, ' ') or (node.text or 'Source')
+  return { lines = {line}, highlights = {} }
+end)
+
+register('citation/brief', function(node)
+  local props = node.props or {}
+  local parts = {'[cite]'}
+
+  if props.source then
+    table.insert(parts, props.source)
+  end
+
+  if props.pages then
+    table.insert(parts, 'pp. ' .. props.pages)
+  elseif props.locator then
+    table.insert(parts, props.locator)
+  end
+
+  local line = table.concat(parts, ' ')
+  return { lines = {line}, highlights = {} }
 end)
 
 return M

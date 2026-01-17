@@ -88,3 +88,13 @@ Quick notes on decisions made during development.
 ### source/biblio and verse/citation lenses deferred
 **Why**: No source nodes implemented yet; Bible text provider not ready.
 **Decision**: Added task/detail lens; others added when source parsing exists.
+
+## Phase 12: Source and Citation Nodes
+
+### Multiline property collection with _parse_lines
+**Why**: Source/citation nodes have indented properties on subsequent lines.
+**Pattern**: Parser now processes lines as a whole, collecting properties until non-indented line.
+
+### Property format uses Obsidian-style `key:: value`
+**Why**: Compatible with existing markdown-based tools.
+**Pattern**: `^%s+([%w_]+)::%s*(.*)$` for indented properties.

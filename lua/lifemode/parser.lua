@@ -6,16 +6,65 @@ function M.parse_buffer(bufnr)
   end
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local blocks = {}
+  return M._parse_lines(lines)
+end
 
-  for line_idx, line in ipairs(lines) do
-    local block = M._parse_line(line, line_idx - 1)
+function M._parse_lines(lines)
+  local blocks = {}
+  local i = 1
+
+  while i <= #lines do
+    local line = lines[i]
+    local block = M._parse_line(line, i - 1)
+
+    if block and (block.type == 'source' or block.type == 'citation') then
+      local props, id, consumed = M._collect_properties(lines, i + 1)
+      block.props = props
+      if id and not block.id then
+        block.id = id
+      end
+      i = i + consumed
+    end
+
     if block then
       table.insert(blocks, block)
     end
+
+    i = i + 1
   end
 
   return blocks
+end
+
+function M._collect_properties(lines, start_idx)
+  local props = {}
+  local consumed = 0
+  local final_id = nil
+
+  local i = start_idx
+  while i <= #lines do
+    local line = lines[i]
+
+    if not line:match('^%s+') then
+      break
+    end
+
+    local key, value = line:match('^%s+([%w_]+)::%s*(.*)$')
+    if key and value then
+      props[key] = value
+      consumed = consumed + 1
+      i = i + 1
+    else
+      local id_match = line:match('^%s*%^([%w%-_:]+)%s*$')
+      if id_match then
+        final_id = id_match
+        consumed = consumed + 1
+      end
+      break
+    end
+  end
+
+  return props, final_id, consumed
 end
 
 function M.parse_file(path)
@@ -24,16 +73,7 @@ function M.parse_file(path)
   end
 
   local lines = vim.fn.readfile(path)
-  local blocks = {}
-
-  for line_idx, line in ipairs(lines) do
-    local block = M._parse_line(line, line_idx - 1)
-    if block then
-      table.insert(blocks, block)
-    end
-  end
-
-  return blocks
+  return M._parse_lines(lines)
 end
 
 function M._parse_line(line, line_idx)
@@ -47,12 +87,50 @@ function M._parse_line(line, line_idx)
     return M._parse_task(line, line_idx)
   end
 
+  local source_match = line:match('^%s*%-%s+type::%s*source')
+  if source_match then
+    return M._parse_source(line, line_idx)
+  end
+
+  local citation_match = line:match('^%s*%-%s+type::%s*citation')
+  if citation_match then
+    return M._parse_citation(line, line_idx)
+  end
+
   local list_match = line:match('^%s*%-%s+(.*)$')
   if list_match then
     return M._parse_list_item(line, line_idx)
   end
 
   return nil
+end
+
+function M._parse_source(line, line_idx)
+  local text, id = M._extract_id(line:match('^%s*%-%s+(.*)$') or '')
+  local refs = M._extract_all_refs(line)
+
+  return {
+    type = 'source',
+    line = line_idx,
+    text = text,
+    id = id,
+    refs = refs,
+    props = {},
+  }
+end
+
+function M._parse_citation(line, line_idx)
+  local text, id = M._extract_id(line:match('^%s*%-%s+(.*)$') or '')
+  local refs = M._extract_all_refs(line)
+
+  return {
+    type = 'citation',
+    line = line_idx,
+    text = text,
+    id = id,
+    refs = refs,
+    props = {},
+  }
 end
 
 function M._parse_heading(line, line_idx)
