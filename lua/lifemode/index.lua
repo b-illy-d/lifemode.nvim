@@ -14,6 +14,7 @@ function M.create()
       done = {},
     },
     nodes_by_date = {},
+    backlinks = {},
   }
 end
 
@@ -41,6 +42,22 @@ function M.add_node(idx, node, file_path, mtime)
     table.insert(idx.nodes_by_date[date_str], { id = node.id, file = file_path })
   else
     table.insert(idx.nodes_by_date[date_str], { node = node, file = file_path })
+  end
+
+  if node.refs then
+    local source_id = node.id or (file_path .. ':' .. node.line)
+    for _, ref in ipairs(node.refs) do
+      if ref.type == 'wikilink' and ref.target then
+        if not idx.backlinks[ref.target] then
+          idx.backlinks[ref.target] = {}
+        end
+        table.insert(idx.backlinks[ref.target], {
+          source_id = source_id,
+          file = file_path,
+          line = node.line,
+        })
+      end
+    end
   end
 
   return idx
@@ -129,6 +146,17 @@ function M.update_file(file_path, mtime)
     _index.nodes_by_date[date_str] = new_entries
   end
 
+  for target, links in pairs(_index.backlinks) do
+    local new_links = {}
+    for _, link in ipairs(links) do
+      local link_normalized = vim.fn.simplify(link.file)
+      if link_normalized ~= normalized_path then
+        table.insert(new_links, link)
+      end
+    end
+    _index.backlinks[target] = new_links
+  end
+
   local blocks = parser.parse_file(file_path)
 
   for _, block in ipairs(blocks) do
@@ -166,6 +194,12 @@ function M.setup_autocommands(vault_root)
       end
     end,
   })
+end
+
+function M.get_backlinks(target, idx)
+  idx = idx or _index
+  if not idx then return {} end
+  return idx.backlinks[target] or {}
 end
 
 function M._reset_state()

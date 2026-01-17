@@ -149,6 +149,7 @@ function M._setup_keymaps(bufnr)
   vim.keymap.set('n', '<Space>tp', function() M._inc_priority() end, opts)
   vim.keymap.set('n', '<Space>tP', function() M._dec_priority() end, opts)
   vim.keymap.set('n', '<Space>g', function() M._cycle_grouping() end, opts)
+  vim.keymap.set('n', 'gr', function() M._backlinks_at_cursor() end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
 end
 
@@ -309,6 +310,50 @@ function M._jump_to_source()
   if line then
     vim.api.nvim_win_set_cursor(0, {line + 1, 0})
   end
+end
+
+function M._show_backlinks(target)
+  if not require_setup() then return end
+  if not target then return end
+
+  local index = require('lifemode.index')
+  local cv = state.current_view
+
+  local idx = cv and cv.index
+  local backlinks = index.get_backlinks(target, idx)
+
+  if #backlinks == 0 then
+    vim.notify('No backlinks found for: ' .. target, vim.log.levels.INFO)
+    return
+  end
+
+  local qf_items = {}
+  for _, link in ipairs(backlinks) do
+    table.insert(qf_items, {
+      filename = link.file,
+      lnum = (link.line or 0) + 1,
+      text = 'References: ' .. target,
+    })
+  end
+
+  vim.fn.setqflist(qf_items)
+  vim.cmd('copen')
+end
+
+function M._backlinks_at_cursor()
+  local extmarks = require('lifemode.extmarks')
+  local metadata = extmarks.get_instance_at_cursor()
+
+  if not metadata then return end
+  if metadata.lens and metadata.lens:match('^date/') then return end
+
+  local node = metadata.node
+  if not node then return end
+
+  local target = node.text or node.id
+  if not target then return end
+
+  M._show_backlinks(target)
 end
 
 function M.debug_span()

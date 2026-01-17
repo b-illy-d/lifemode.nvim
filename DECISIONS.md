@@ -45,3 +45,17 @@ Quick notes on decisions made during development.
 ### Task sorting by priority within groups
 **Why**: Even in due-date or tag grouping, highest priority tasks should appear first.
 **Implementation**: `sort_by_priority()` applied before any grouping.
+
+## Phase 8: Wikilinks and References
+
+### Backlinks use file:line as source_id for nodes without ID
+**Why**: Not all nodes have IDs, but we still need to track where references come from.
+**Pattern**: `source_id = node.id or (file_path .. ':' .. node.line)`
+
+### Wikilink module separate from parser
+**Why**: Cursor-based wikilink detection is runtime behavior, not parsing.
+**Trade-off**: Could share parsing logic, but separation keeps concerns clear.
+
+### Heading lookup strips block IDs
+**Why**: `## Section ^block-id` should match `[[Page#Section]]`.
+**Fix**: Strip `%^[%w%-_:]+%s*$` pattern before comparing heading text.

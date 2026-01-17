@@ -59,6 +59,7 @@ function M._parse_heading(line, line_idx)
   local hashes, rest = line:match('^(#+)%s+(.*)$')
   local level = #hashes
   local text, id = M._extract_id(rest)
+  local refs = M._extract_wikilinks(line)
 
   return {
     type = 'heading',
@@ -66,6 +67,7 @@ function M._parse_heading(line, line_idx)
     level = level,
     text = text,
     id = id,
+    refs = refs,
   }
 end
 
@@ -77,6 +79,7 @@ function M._parse_task(line, line_idx)
   local priority = M._extract_priority(text)
   local due = M._extract_due(text)
   local tags = M._extract_tags(text)
+  local refs = M._extract_wikilinks(text)
 
   text = M._strip_metadata(text)
 
@@ -89,18 +92,21 @@ function M._parse_task(line, line_idx)
     priority = priority,
     due = due,
     tags = tags,
+    refs = refs,
   }
 end
 
 function M._parse_list_item(line, line_idx)
   local rest = line:match('^%s*%-%s+(.*)$')
   local text, id = M._extract_id(rest)
+  local refs = M._extract_wikilinks(rest)
 
   return {
     type = 'list_item',
     line = line_idx,
     text = text,
     id = id,
+    refs = refs,
   }
 end
 
@@ -170,6 +176,40 @@ function M._strip_metadata(text)
   text = vim.trim(text)
   text = text:gsub('%s+', ' ')
   return text
+end
+
+function M._extract_wikilinks(text)
+  local refs = {}
+  local pos = 1
+
+  while pos <= #text do
+    local start_pos = text:find('%[%[', pos)
+    if not start_pos then break end
+
+    local end_pos = text:find('%]%]', start_pos + 2)
+    if not end_pos then break end
+
+    local content = text:sub(start_pos + 2, end_pos - 1)
+    local target, display = content:match('^([^|]+)|(.+)$')
+
+    if not target then
+      target = content
+      display = nil
+    end
+
+    table.insert(refs, {
+      type = 'wikilink',
+      target = target,
+      display = display,
+    })
+
+    pos = end_pos + 2
+  end
+
+  if #refs > 0 then
+    return refs
+  end
+  return nil
 end
 
 return M

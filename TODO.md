@@ -331,34 +331,46 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 8: Wikilinks and References
+## Phase 8: Wikilinks and References ✅ COMPLETE
 
-### T29: Wikilink parsing
+### T29: Wikilink parsing ✅ DONE
 - Extend parser to extract wikilinks: `[[Page]]`, `[[Page#Heading]]`, `[[Page^block-id]]`
 - Store refs in node: `refs: [{ type: "wikilink", target, display }]`
 - Handle all three formats per §C2
 - **Aligns with**: §C2 Wikilinks, §B1 Node refs
+- **Evidence**:
+  - `lua/lifemode/parser.lua` (`_extract_wikilinks()`)
+  - `tests/test_t29_wikilink_parsing.lua` (6/6 tests)
 
-### T30: Backlinks index
+### T30: Backlinks index ✅ DONE
 - Add `backlinks` to index structure: `{ [target] = [source_ids] }`
 - Populate during index build by inverting refs
 - Implement `index.get_backlinks(target)` query
 - Handle page, heading, and block-id targets
 - **Aligns with**: §A2 Index data structures (backlinks)
+- **Evidence**:
+  - `lua/lifemode/index.lua` (`backlinks`, `get_backlinks()`)
+  - `tests/test_t30_backlinks_index.lua` (7/7 tests)
 
-### T31: References/backlinks view (gr)
+### T31: References/backlinks view (gr) ✅ DONE
 - Implement `gr` keymap in view and vault buffers
 - Get node at cursor, query backlinks from index
 - Show results in quickfix list with file:line format
 - Allow jumping to each reference
 - **Aligns with**: §D5 Navigation semantics (References)
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_show_backlinks()`, `_backlinks_at_cursor()`, `gr` keymap)
+  - `tests/test_t31_backlinks_view.lua` (5/5 tests)
 
-### T32: Go-to-definition for wikilinks (gd in vault)
+### T32: Go-to-definition for wikilinks (gd in vault) ✅ DONE
 - Implement `gd` in vault file buffers for wikilinks
 - Detect wikilink under cursor
 - Resolve target: Page → file, Page#Heading → heading, Page^id → block
 - Jump to target location
 - **Aligns with**: §C2 Definition for "go-to", §D5 Definition navigation
+- **Evidence**:
+  - `lua/lifemode/wikilink.lua` (`get_at_cursor()`, `goto_definition()`)
+  - `tests/test_t32_wikilink_gd.lua` (7/7 tests)
 
 ---
 
@@ -556,9 +568,10 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 5: Navigation | ✅ Complete | T18-T19 (2/2) |
 | Phase 6: Task Management | ✅ Complete | T20-T24 (5/5) |
 | Phase 7: All Tasks View | ✅ Complete | T25-T28 (4/4) |
-| Phase 8-15 | Not Started | (0/27) |
+| Phase 8: Wikilinks | ✅ Complete | T29-T32 (4/4) |
+| Phase 9-15 | Not Started | (0/23) |
 
-**Total: 28/55 tasks complete (51%)**
+**Total: 32/55 tasks complete (58%)**
 
 ---
 
