@@ -191,8 +191,25 @@ function M.build_tree(idx, options)
   options = options or {}
   local grouping = options.grouping or 'by_due_date'
   local include_done = options.include_done or false
+  local filter = options.filter
 
   local tasks_list = get_all_todo_tasks(idx)
+
+  if filter and not vim.tbl_isempty(filter) then
+    local query = require('lifemode.query')
+    local nodes = vim.tbl_map(function(t) return t.node end, tasks_list)
+    local matching_nodes = query.execute(filter, nodes)
+
+    local node_set = {}
+    for _, node in ipairs(matching_nodes) do
+      node_set[node] = true
+    end
+
+    tasks_list = vim.tbl_filter(function(t)
+      return node_set[t.node]
+    end, tasks_list)
+  end
+
   sort_by_priority(tasks_list)
 
   local root_instances
