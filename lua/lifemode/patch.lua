@@ -1,53 +1,43 @@
 local M = {}
 
-local function read_file_lines(path)
-  if not path or vim.fn.filereadable(path) == 0 then
-    return nil
-  end
-  local lines = vim.fn.readfile(path)
-  if not lines or #lines == 0 then return nil end
-  return lines
-end
-
-local function write_file_lines(path, lines)
-  vim.fn.writefile(lines, path)
-end
+local files = require('lifemode.core.files')
 
 local function get_node_location(node_id, idx)
   if not idx or not idx.node_locations then return nil end
   return idx.node_locations[node_id]
 end
 
+local function get_line_at(loc)
+  local lines = files.read_lines(loc.file)
+  if not lines then return nil, nil end
+  local line_num = loc.line + 1
+  local line = lines[line_num]
+  if not line then return nil, nil end
+  return lines, line_num
+end
+
 function M.generate_id()
   local template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-  local id = template:gsub('[xy]', function(c)
+  return template:gsub('[xy]', function(c)
     local v = (c == 'x') and math.random(0, 15) or math.random(8, 11)
     return string.format('%x', v)
   end)
-  return id
-end
-
-local function extract_existing_id(text)
-  local id = text:match('%^([%w%-_:]+)%s*$')
-  return id
 end
 
 function M.ensure_id(file, line_idx)
-  local lines = read_file_lines(file)
+  local lines = files.read_lines(file)
   if not lines then return nil end
 
   local line_num = line_idx + 1
   local line = lines[line_num]
   if not line then return nil end
 
-  local existing = extract_existing_id(line)
-  if existing then
-    return existing
-  end
+  local existing = line:match('%^([%w%-_:]+)%s*$')
+  if existing then return existing end
 
   local new_id = M.generate_id()
   lines[line_num] = line .. ' ^' .. new_id
-  write_file_lines(file, lines)
+  files.write_lines(file, lines)
 
   return new_id
 end
@@ -56,14 +46,12 @@ function M.toggle_task_state(node_id, idx)
   local loc = get_node_location(node_id, idx)
   if not loc then return nil end
 
-  local lines = read_file_lines(loc.file)
+  local lines, line_num = get_line_at(loc)
   if not lines then return nil end
 
-  local line_num = loc.line + 1
   local line = lines[line_num]
-  if not line then return nil end
-
   local new_line, new_state
+
   if line:match('%- %[ %]') then
     new_line = line:gsub('%- %[ %]', '- [x]', 1)
     new_state = 'done'
@@ -75,7 +63,7 @@ function M.toggle_task_state(node_id, idx)
   end
 
   lines[line_num] = new_line
-  write_file_lines(loc.file, lines)
+  files.write_lines(loc.file, lines)
 
   return new_state
 end
@@ -97,81 +85,60 @@ local function replace_priority(line, old_priority, new_priority)
   return line
 end
 
-function M.inc_priority(node_id, idx)
+local function compute_new_priority(current, direction)
+  if direction > 0 then
+    if not current then return 3 end
+    return math.max(1, current - 1)
+  else
+    if not current then return nil end
+    if current >= 5 then return nil end
+    return current + 1
+  end
+end
+
+local function change_priority(node_id, idx, direction)
   local loc = get_node_location(node_id, idx)
   if not loc then return nil end
 
-  local lines = read_file_lines(loc.file)
+  local lines, line_num = get_line_at(loc)
   if not lines then return nil end
 
-  local line_num = loc.line + 1
   local line = lines[line_num]
-  if not line then return nil end
-
   local current = extract_priority(line)
-  local new_priority
 
-  if not current then
-    new_priority = 3
-  elseif current > 1 then
-    new_priority = current - 1
-  else
-    new_priority = 1
-  end
+  if direction < 0 and not current then return nil end
 
+  local new_priority = compute_new_priority(current, direction)
   lines[line_num] = replace_priority(line, current, new_priority)
-  write_file_lines(loc.file, lines)
+  files.write_lines(loc.file, lines)
 
   return new_priority
+end
+
+function M.inc_priority(node_id, idx)
+  return change_priority(node_id, idx, 1)
 end
 
 function M.dec_priority(node_id, idx)
-  local loc = get_node_location(node_id, idx)
-  if not loc then return nil end
-
-  local lines = read_file_lines(loc.file)
-  if not lines then return nil end
-
-  local line_num = loc.line + 1
-  local line = lines[line_num]
-  if not line then return nil end
-
-  local current = extract_priority(line)
-  local new_priority
-
-  if not current then
-    return nil
-  elseif current < 5 then
-    new_priority = current + 1
-  else
-    new_priority = nil
-  end
-
-  lines[line_num] = replace_priority(line, current, new_priority)
-  write_file_lines(loc.file, lines)
-
-  return new_priority
+  return change_priority(node_id, idx, -1)
 end
 
-local function validate_date(date)
-  if not date then return false end
-  return date:match('^%d%d%d%d%-%d%d%-%d%d$') ~= nil
+local function is_valid_date(date)
+  return date and date:match('^%d%d%d%d%-%d%d%-%d%d$') ~= nil
 end
 
 function M.set_due(node_id, date, idx)
-  if not validate_date(date) then return nil end
+  if not is_valid_date(date) then return nil end
 
   local loc = get_node_location(node_id, idx)
   if not loc then return nil end
 
-  local lines = read_file_lines(loc.file)
+  local lines, line_num = get_line_at(loc)
   if not lines then return nil end
 
-  local line_num = loc.line + 1
   local line = lines[line_num]
-  if not line then return nil end
-
   local new_line
+
   if line:match('@due%([^)]+%)') then
     new_line = line:gsub('@due%([^)]+%)', '@due(' .. date .. ')')
   else
@@ -180,7 +147,7 @@ function M.set_due(node_id, date, idx)
   end
 
   lines[line_num] = new_line
-  write_file_lines(loc.file, lines)
+  files.write_lines(loc.file, lines)
 
   return date
 end
@@ -189,20 +156,14 @@ function M.clear_due(node_id, idx)
   local loc = get_node_location(node_id, idx)
   if not loc then return false end
 
-  local lines = read_file_lines(loc.file)
+  local lines, line_num = get_line_at(loc)
   if not lines then return false end
 
-  local line_num = loc.line + 1
   local line = lines[line_num]
-  if not line then return false end
+  if not line:match('@due%([^)]+%)') then return false end
 
-  if not line:match('@due%([^)]+%)') then
-    return false
-  end
-
-  local new_line = line:gsub('%s*@due%([^)]+%)', '')
-  lines[line_num] = new_line
-  write_file_lines(loc.file, lines)
+  lines[line_num] = line:gsub('%s*@due%([^)]+%)', '')
+  files.write_lines(loc.file, lines)
 
   return true
 end
@@ -212,37 +173,29 @@ local function escape_pattern(str)
 end
 
 local function has_tag(line, tag)
-  local pattern = '#' .. escape_pattern(tag) .. '([^%w_/%-]|$)'
-  if line:match('#' .. escape_pattern(tag) .. '$') then return true end
-  if line:match('#' .. escape_pattern(tag) .. '[^%w_/%-]') then return true end
-  return false
+  local escaped = escape_pattern(tag)
+  return line:match('#' .. escaped .. '$') or line:match('#' .. escaped .. '[^%w_/%-]')
 end
 
 function M.add_tag(node_id, tag, idx)
   local loc = get_node_location(node_id, idx)
   if not loc then return false end
 
-  local lines = read_file_lines(loc.file)
+  local lines, line_num = get_line_at(loc)
   if not lines then return false end
 
-  local line_num = loc.line + 1
   local line = lines[line_num]
-  if not line then return false end
+  if has_tag(line, tag) then return false end
 
-  if has_tag(line, tag) then
-    return false
-  end
-
-  local id_match = line:match('%s*%^[%w%-_:]+%s*$')
   local new_line
-  if id_match then
+  if line:match('%s*%^[%w%-_:]+%s*$') then
     new_line = line:gsub('%s*(%^[%w%-_:]+)%s*$', ' #' .. tag .. ' %1')
   else
     new_line = line .. ' #' .. tag
   end
 
   lines[line_num] = new_line
-  write_file_lines(loc.file, lines)
+  files.write_lines(loc.file, lines)
 
   return true
 end
@@ -251,20 +204,14 @@ function M.remove_tag(node_id, tag, idx)
   local loc = get_node_location(node_id, idx)
   if not loc then return false end
 
-  local lines = read_file_lines(loc.file)
+  local lines, line_num = get_line_at(loc)
   if not lines then return false end
 
-  local line_num = loc.line + 1
   local line = lines[line_num]
-  if not line then return false end
+  if not has_tag(line, tag) then return false end
 
-  if not has_tag(line, tag) then
-    return false
-  end
-
-  local new_line = line:gsub('%s*#' .. escape_pattern(tag), '')
-  lines[line_num] = new_line
-  write_file_lines(loc.file, lines)
+  lines[line_num] = line:gsub('%s*#' .. escape_pattern(tag), '')
+  files.write_lines(loc.file, lines)
 
   return true
 end

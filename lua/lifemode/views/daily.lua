@@ -1,18 +1,12 @@
 local M = {}
 
+local base = require('lifemode.views.base')
 local dates = require('lifemode.core.dates')
 local lens = require('lifemode.lens')
 
-local instance_counter = 0
-
-local function next_instance_id()
-  instance_counter = instance_counter + 1
-  return 'inst_' .. instance_counter
-end
-
 local function create_leaf_instance(ref)
   return {
-    instance_id = next_instance_id(),
+    instance_id = base.next_id('daily'),
     lens = 'task/brief',
     depth = 3,
     target_id = ref.id,
@@ -23,7 +17,7 @@ end
 
 local function create_day_instance(day, refs, is_today, expanded_depth)
   return {
-    instance_id = next_instance_id(),
+    instance_id = base.next_id('daily'),
     lens = 'date/day',
     date = day,
     depth = 2,
@@ -43,7 +37,7 @@ local function create_month_instance(month, days_data, today_parts, expanded_dep
   end
 
   return {
-    instance_id = next_instance_id(),
+    instance_id = base.next_id('daily'),
     lens = 'date/month',
     date = month,
     depth = 1,
@@ -62,7 +56,7 @@ local function create_year_instance(year, year_data, today_parts, expanded_depth
   end
 
   return {
-    instance_id = next_instance_id(),
+    instance_id = base.next_id('daily'),
     lens = 'date/year',
     date = year,
     depth = 0,
@@ -154,21 +148,7 @@ end
 
 local function render_date_instance(inst, indent, current_line, output)
   local result = lens.render(inst, inst.lens, { collapsed = inst.collapsed })
-
-  for _, content_line in ipairs(result.lines) do
-    table.insert(output.lines, indent .. content_line)
-    for _, hl in ipairs(result.highlights) do
-      table.insert(output.highlights, {
-        line = current_line,
-        col_start = #indent + hl.col_start,
-        col_end = #indent + hl.col_end,
-        hl_group = hl.hl_group,
-      })
-    end
-    current_line = current_line + 1
-  end
-
-  return current_line
+  return base.apply_lens_result(result, indent, current_line, output)
 end
 
 local function render_leaf_instance(inst, indent, current_line, output, index)
@@ -181,32 +161,18 @@ local function render_leaf_instance(inst, indent, current_line, output, index)
 
   local node_lens = select_lens_for_node(node, inst.lens)
   local result = lens.render(node, node_lens)
-
-  for _, content_line in ipairs(result.lines) do
-    table.insert(output.lines, indent .. content_line)
-    for _, hl in ipairs(result.highlights) do
-      table.insert(output.highlights, {
-        line = current_line,
-        col_start = #indent + hl.col_start,
-        col_end = #indent + hl.col_end,
-        hl_group = hl.hl_group,
-      })
-    end
-    current_line = current_line + 1
-  end
-
-  return current_line
+  return base.apply_lens_result(result, indent, current_line, output)
 end
 
 local function render_instance(inst, current_line, output, options)
   local line_start = current_line
-  local indent = string.rep(options.indent, inst.depth)
+  local indent = base.get_indent(inst.depth, options.indent)
   local is_date = inst.lens:match('^date/')
 
   if is_date then
     current_line = render_date_instance(inst, indent, current_line, output)
 
-    table.insert(output.spans, {
+    base.add_span(output, {
       line_start = line_start,
       line_end = current_line - 1,
       instance_id = inst.instance_id,
@@ -225,7 +191,7 @@ local function render_instance(inst, current_line, output, options)
   else
     current_line = render_leaf_instance(inst, indent, current_line, output, options.index)
 
-    table.insert(output.spans, {
+    base.add_span(output, {
       line_start = line_start,
       line_end = current_line - 1,
       instance_id = inst.instance_id,
@@ -245,7 +211,7 @@ function M.render(tree, options)
   options = options or {}
   options.indent = options.indent or '  '
 
-  local output = { lines = {}, spans = {}, highlights = {} }
+  local output = base.create_output()
 
   local current_line = 0
   for _, root in ipairs(tree.root_instances) do
@@ -278,7 +244,7 @@ function M.find_today_line(spans)
 end
 
 function M._reset_counter()
-  instance_counter = 0
+  base.reset_counter()
 end
 
 return M

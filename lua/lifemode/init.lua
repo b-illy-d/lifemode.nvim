@@ -1,12 +1,10 @@
 local M = {}
 
 local config = require('lifemode.config')
-local navigation = require('lifemode.navigation')
 
 local state = {
   config = nil,
   initialized = false,
-  current_view = nil,
 }
 
 local function require_setup()
@@ -44,7 +42,7 @@ end
 function M._reset_state()
   state.config = nil
   state.initialized = false
-  state.current_view = nil
+  require('lifemode.controller')._reset_state()
 end
 
 function M.hello()
@@ -63,6 +61,7 @@ function M.open_view(view_type)
 
   local index = require('lifemode.index')
   local view = require('lifemode.view')
+  local controller = require('lifemode.controller')
 
   local idx = index.get_or_build(state.config.vault_root)
   local tree, rendered
@@ -78,17 +77,17 @@ function M.open_view(view_type)
   end
 
   local bufnr = view.create_buffer()
-  M._apply_rendered_content(bufnr, rendered)
+  view.apply_rendered_content(bufnr, rendered)
 
-  state.current_view = {
+  controller.set_current_view({
     bufnr = bufnr,
     tree = tree,
     index = idx,
     spans = rendered.spans,
     view_type = view_type,
-  }
+  })
 
-  M._setup_keymaps(bufnr)
+  controller.setup_keymaps(bufnr, state.config)
   vim.api.nvim_win_set_buf(0, bufnr)
 
   if view_type == 'daily' then
@@ -100,395 +99,114 @@ function M.open_view(view_type)
   end
 end
 
-function M._apply_rendered_content(bufnr, rendered)
-  local extmarks = require('lifemode.extmarks')
-  local ns = extmarks.create_namespace()
-
-  vim.bo[bufnr].modifiable = true
-  vim.bo[bufnr].readonly = false
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, rendered.lines)
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
-
-  for _, span in ipairs(rendered.spans) do
-    extmarks.set_instance_span(bufnr, span.line_start, span.line_end, span)
-  end
-
-  for _, hl in ipairs(rendered.highlights) do
-    pcall(vim.api.nvim_buf_add_highlight, bufnr, ns, hl.hl_group, hl.line, hl.col_start, hl.col_end)
-  end
-
-  vim.bo[bufnr].modifiable = false
-  vim.bo[bufnr].readonly = true
-end
-
-function M._refresh_view()
-  local cv = state.current_view
-  if not cv then return end
-
-  local daily = require('lifemode.views.daily')
-  local rendered = daily.render(cv.tree, { index = cv.index })
-
-  M._apply_rendered_content(cv.bufnr, rendered)
-  cv.spans = rendered.spans
-end
-
-local function setup_highlight_groups()
-  vim.api.nvim_set_hl(0, 'LifeModeActive', { bold = true, underline = true })
-end
-
-function M._update_active_node()
-  local extmarks = require('lifemode.extmarks')
-  local cv = state.current_view
-  if not cv then return end
-
-  local metadata = extmarks.get_instance_at_cursor()
-  state.active_instance = metadata
-end
-
-function M.get_statusline_info()
-  local meta = state.active_instance
-  if not meta then return '' end
-
-  local parts = {}
-
-  local node = meta.node
-  if node then
-    table.insert(parts, node.type or 'unknown')
-  end
-
-  if meta.lens then
-    table.insert(parts, '[' .. meta.lens .. ']')
-  end
-
-  local id = meta.target_id or (node and node.id)
-  if id then
-    local short_id = #id > 12 and (id:sub(1, 12) .. '...') or id
-    table.insert(parts, '^' .. short_id)
-  end
-
-  if meta.depth then
-    table.insert(parts, 'd:' .. meta.depth)
-  end
-
-  return table.concat(parts, ' ')
-end
-
-local function setup_cursor_autocmd(bufnr)
-  vim.api.nvim_create_autocmd('CursorMoved', {
-    buffer = bufnr,
-    callback = function()
-      M._update_active_node()
-    end,
-  })
-end
-
-function M._setup_keymaps(bufnr)
-  setup_highlight_groups()
-  setup_cursor_autocmd(bufnr)
-
-  local opts = { buffer = bufnr, silent = true }
-  local refresh = function() M._refresh_view() end
-  local cv = function() return state.current_view end
-
-  vim.keymap.set('n', '<Space>e', function() navigation.expand_at_cursor(cv(), refresh) end, opts)
-  vim.keymap.set('n', '<Space>E', function() navigation.collapse_at_cursor(cv(), refresh) end, opts)
-  vim.keymap.set('n', ']d', function() navigation.jump(cv(), 'date/day', 1, refresh) end, opts)
-  vim.keymap.set('n', '[d', function() navigation.jump(cv(), 'date/day', -1, refresh) end, opts)
-  vim.keymap.set('n', ']m', function() navigation.jump(cv(), 'date/month', 1, refresh) end, opts)
-  vim.keymap.set('n', '[m', function() navigation.jump(cv(), 'date/month', -1, refresh) end, opts)
-  vim.keymap.set('n', 'gd', function() M._jump_to_source() end, opts)
-  vim.keymap.set('n', '<CR>', function() M._jump_to_source() end, opts)
-  vim.keymap.set('n', '<Space><Space>', function() M._toggle_task() end, opts)
-  vim.keymap.set('n', '<Space>tp', function() M._inc_priority() end, opts)
-  vim.keymap.set('n', '<Space>tP', function() M._dec_priority() end, opts)
-  vim.keymap.set('n', '<Space>g', function() M._cycle_grouping() end, opts)
-  vim.keymap.set('n', 'gr', function() M._backlinks_at_cursor() end, opts)
-  vim.keymap.set('n', '<Space>l', function() M._cycle_lens_at_cursor(1) end, opts)
-  vim.keymap.set('n', '<Space>L', function() M._cycle_lens_at_cursor(-1) end, opts)
-  vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
-end
-
 function M._get_current_view()
-  return state.current_view
+  return require('lifemode.controller').get_current_view()
 end
 
 function M._get_last_view_bufnr()
-  return state.last_view_bufnr
+  return require('lifemode.controller').get_last_view_bufnr()
 end
 
 function M._return_to_view()
-  if not state.last_view_bufnr then return end
-  if not vim.api.nvim_buf_is_valid(state.last_view_bufnr) then
-    state.last_view_bufnr = nil
-    return
-  end
-  vim.api.nvim_set_current_buf(state.last_view_bufnr)
+  require('lifemode.controller').return_to_view()
+end
+
+function M._refresh_view()
+  require('lifemode.controller').refresh_view(state.config)
+end
+
+function M._setup_keymaps(bufnr)
+  require('lifemode.controller').setup_keymaps(bufnr, state.config)
+end
+
+function M._apply_rendered_content(bufnr, rendered)
+  require('lifemode.view').apply_rendered_content(bufnr, rendered)
+end
+
+function M._update_active_node()
+  require('lifemode.controller').update_active_node()
+end
+
+function M.get_statusline_info()
+  return require('lifemode.controller').get_statusline_info()
 end
 
 function M._expand_at_cursor()
-  navigation.expand_at_cursor(state.current_view, function() M._refresh_view() end)
+  require('lifemode.controller').expand_at_cursor(state.config)
 end
 
 function M._collapse_at_cursor()
-  navigation.collapse_at_cursor(state.current_view, function() M._refresh_view() end)
+  require('lifemode.controller').collapse_at_cursor(state.config)
 end
 
 function M._jump_day(direction)
-  navigation.jump(state.current_view, 'date/day', direction, function() M._refresh_view() end)
+  require('lifemode.controller').jump_day(direction, state.config)
 end
 
 function M._jump_month(direction)
-  navigation.jump(state.current_view, 'date/month', direction, function() M._refresh_view() end)
-end
-
-local function get_task_node_id()
-  local extmarks = require('lifemode.extmarks')
-  local metadata = extmarks.get_instance_at_cursor()
-
-  if not metadata then return nil end
-  if metadata.lens and metadata.lens:match('^date/') then return nil end
-
-  local node = metadata.node
-  if not node or node.type ~= 'task' then return nil end
-
-  return metadata.target_id or (node and node.id)
-end
-
-local function refresh_after_patch()
-  local index = require('lifemode.index')
-  local daily = require('lifemode.views.daily')
-  local cv = state.current_view
-  if not cv then return end
-
-  index._reset_state()
-  local idx = index.get_or_build(state.config.vault_root)
-  local tree = daily.build_tree(idx, state.config)
-
-  cv.index = idx
-  cv.tree = tree
-
-  M._refresh_view()
+  require('lifemode.controller').jump_month(direction, state.config)
 end
 
 function M._toggle_task()
-  local patch = require('lifemode.patch')
-
-  local node_id = get_task_node_id()
-  if not node_id then
-    vim.notify('No task under cursor', vim.log.levels.WARN)
-    return
-  end
-
-  local cv = state.current_view
-  if not cv then return end
-
-  local new_state = patch.toggle_task_state(node_id, cv.index)
-  if not new_state then return end
-
-  local msg = new_state == 'done' and 'Task completed' or 'Task reopened'
-  vim.notify(msg, vim.log.levels.INFO)
-  refresh_after_patch()
+  require('lifemode.controller').toggle_task(state.config)
 end
 
 function M._inc_priority()
-  local patch = require('lifemode.patch')
-
-  local node_id = get_task_node_id()
-  if not node_id then
-    vim.notify('No task under cursor', vim.log.levels.WARN)
-    return
-  end
-
-  local cv = state.current_view
-  if not cv then return end
-
-  local new_priority = patch.inc_priority(node_id, cv.index)
-  if new_priority then
-    vim.notify('Priority: !' .. new_priority, vim.log.levels.INFO)
-  end
-  refresh_after_patch()
+  require('lifemode.controller').inc_priority(state.config)
 end
 
 function M._dec_priority()
-  local patch = require('lifemode.patch')
-
-  local node_id = get_task_node_id()
-  if not node_id then
-    vim.notify('No task under cursor', vim.log.levels.WARN)
-    return
-  end
-
-  local cv = state.current_view
-  if not cv then return end
-
-  local new_priority = patch.dec_priority(node_id, cv.index)
-  if new_priority then
-    vim.notify('Priority: !' .. new_priority, vim.log.levels.INFO)
-  else
-    vim.notify('Priority removed', vim.log.levels.INFO)
-  end
-  refresh_after_patch()
-end
-
-local GROUPING_CYCLE = {'by_due_date', 'by_priority', 'by_tag'}
-
-function M._cycle_grouping()
-  local cv = state.current_view
-  if not cv then return end
-  if cv.view_type ~= 'tasks' then return end
-
-  local current = cv.tree and cv.tree.grouping or 'by_due_date'
-  local next_idx = 1
-  for i, g in ipairs(GROUPING_CYCLE) do
-    if g == current then
-      next_idx = (i % #GROUPING_CYCLE) + 1
-      break
-    end
-  end
-
-  local new_grouping = GROUPING_CYCLE[next_idx]
-  local tasks_view = require('lifemode.views.tasks')
-
-  local tree = tasks_view.build_tree(cv.index, { grouping = new_grouping })
-  local rendered = tasks_view.render(tree, { index = cv.index })
-
-  cv.tree = tree
-  M._apply_rendered_content(cv.bufnr, rendered)
-  cv.spans = rendered.spans
+  require('lifemode.controller').dec_priority(state.config)
 end
 
 function M._jump_to_source()
-  local extmarks = require('lifemode.extmarks')
-  local metadata = extmarks.get_instance_at_cursor()
-
-  if not metadata then return end
-  if metadata.lens and metadata.lens:match('^date/') then return end
-
-  local file = metadata.file
-  local line = metadata.node and metadata.node.line
-
-  if not file then
-    if metadata.target_id and state.current_view and state.current_view.index then
-      local loc = state.current_view.index.node_locations[metadata.target_id]
-      if loc then
-        file = loc.file
-        line = loc.line
-      end
-    end
-  end
-
-  if not file then return end
-
-  state.last_view_bufnr = vim.api.nvim_get_current_buf()
-  vim.cmd('edit ' .. vim.fn.fnameescape(file))
-  if line then
-    vim.api.nvim_win_set_cursor(0, {line + 1, 0})
-  end
+  require('lifemode.controller').jump_to_source()
 end
 
 function M._show_backlinks(target)
   if not require_setup() then return end
-  if not target then return end
-
+  local controller = require('lifemode.controller')
+  local cv = controller.get_current_view()
   local index = require('lifemode.index')
-  local cv = state.current_view
-
-  local idx = cv and cv.index
-  local backlinks = index.get_backlinks(target, idx)
+  local backlinks = index.get_backlinks(target, cv and cv.index)
 
   if #backlinks == 0 then
     vim.notify('No backlinks found for: ' .. target, vim.log.levels.INFO)
     return
   end
 
-  local qf_items = {}
-  for _, link in ipairs(backlinks) do
-    table.insert(qf_items, {
+  local qf_items = vim.tbl_map(function(link)
+    return {
       filename = link.file,
       lnum = (link.line or 0) + 1,
       text = 'References: ' .. target,
-    })
-  end
+    }
+  end, backlinks)
 
   vim.fn.setqflist(qf_items)
   vim.cmd('copen')
 end
 
 function M._backlinks_at_cursor()
-  local extmarks = require('lifemode.extmarks')
-  local metadata = extmarks.get_instance_at_cursor()
-
-  if not metadata then return end
-  if metadata.lens and metadata.lens:match('^date/') then return end
-
-  local node = metadata.node
-  if not node then return end
-
-  local target = node.text or node.id
-  if not target then return end
-
-  M._show_backlinks(target)
+  require('lifemode.controller').backlinks_at_cursor()
 end
 
 function M._cycle_lens_at_cursor(direction)
-  local extmarks = require('lifemode.extmarks')
-  local lens_module = require('lifemode.lens')
+  require('lifemode.controller').cycle_lens_at_cursor(direction, state.config)
+end
 
-  local metadata = extmarks.get_instance_at_cursor()
-  if not metadata then return end
-  if metadata.lens and metadata.lens:match('^date/') then return end
-
-  local node = metadata.node
-  if not node then return end
-
-  local current_lens = metadata.lens or lens_module.get_available_lenses(node.type)[1]
-  local next_lens = lens_module.cycle(current_lens, node.type, direction)
-
-  if next_lens ~= current_lens then
-    metadata.lens = next_lens
-    M._refresh_view()
-  end
+function M._cycle_grouping()
+  require('lifemode.controller').cycle_grouping(state.config)
 end
 
 function M._show_bible_backlinks(verse_id)
   if not require_setup() then return end
-  if not verse_id then return end
-
-  local index = require('lifemode.index')
-  local idx = index.get_or_build(state.config.vault_root)
-  local backlinks = index.get_backlinks(verse_id, idx)
-
-  if #backlinks == 0 then
-    vim.notify('No notes reference: ' .. verse_id, vim.log.levels.INFO)
-    return
-  end
-
-  local qf_items = {}
-  for _, link in ipairs(backlinks) do
-    table.insert(qf_items, {
-      filename = link.file,
-      lnum = (link.line or 0) + 1,
-      text = 'References: ' .. verse_id,
-    })
-  end
-
-  vim.fn.setqflist(qf_items)
-  vim.cmd('copen')
+  M._show_backlinks(verse_id)
 end
 
 function M._bible_backlinks_at_cursor()
   if not require_setup() then return end
-
-  local bible = require('lifemode.bible')
-  local ref = bible.get_ref_at_cursor()
-
-  if not ref then
-    vim.notify('No Bible reference at cursor', vim.log.levels.INFO)
-    return
-  end
-
-  local verse_id = bible.generate_verse_id(ref.book, ref.chapter, ref.verse_start)
-  M._show_bible_backlinks(verse_id)
+  require('lifemode.controller').bible_backlinks_at_cursor(state.config)
 end
 
 function M.debug_span()

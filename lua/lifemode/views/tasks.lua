@@ -1,11 +1,7 @@
 local M = {}
 
-local instance_counter = 0
-
-local function next_instance_id()
-  instance_counter = instance_counter + 1
-  return 'tasks_inst_' .. instance_counter
-end
+local base = require('lifemode.views.base')
+local lens = require('lifemode.lens')
 
 local function get_today()
   return os.date('%Y-%m-%d')
@@ -28,11 +24,11 @@ local function classify_due_date(due)
 end
 
 local function get_all_todo_tasks(idx)
-  local tasks = {}
   if not idx or not idx.tasks_by_state or not idx.tasks_by_state.todo then
-    return tasks
+    return {}
   end
 
+  local tasks = {}
   for _, task_entry in ipairs(idx.tasks_by_state.todo) do
     table.insert(tasks, {
       node = task_entry,
@@ -46,7 +42,7 @@ end
 
 local function create_task_instance(ref)
   return {
-    instance_id = next_instance_id(),
+    instance_id = base.next_id('tasks'),
     lens = 'task/brief',
     depth = 1,
     target_id = ref.id,
@@ -57,7 +53,7 @@ end
 
 local function create_group_instance(name, children, depth)
   return {
-    instance_id = next_instance_id(),
+    instance_id = base.next_id('tasks'),
     lens = 'group/header',
     display = name,
     depth = depth or 0,
@@ -79,14 +75,7 @@ local function sort_by_priority(tasks_list)
 end
 
 local function group_by_priority(tasks_list)
-  local groups = {
-    [1] = {},
-    [2] = {},
-    [3] = {},
-    [4] = {},
-    [5] = {},
-    none = {},
-  }
+  local groups = { [1] = {}, [2] = {}, [3] = {}, [4] = {}, [5] = {}, none = {} }
 
   for _, ref in ipairs(tasks_list) do
     local priority = ref.node and ref.node.priority
@@ -121,19 +110,14 @@ local function group_by_tag(tasks_list)
     local tags = ref.node and ref.node.tags
     if tags and #tags > 0 then
       local first_tag = tags[1]
-      if not groups[first_tag] then
-        groups[first_tag] = {}
-      end
+      groups[first_tag] = groups[first_tag] or {}
       table.insert(groups[first_tag], ref)
     else
       table.insert(untagged, ref)
     end
   end
 
-  local tag_order = {}
-  for tag in pairs(groups) do
-    table.insert(tag_order, tag)
-  end
+  local tag_order = vim.tbl_keys(groups)
   table.sort(tag_order)
 
   local result = {}
@@ -151,21 +135,13 @@ local function group_by_tag(tasks_list)
 end
 
 local function group_by_due_date(tasks_list)
-  local groups = {
-    overdue = {},
-    today = {},
-    this_week = {},
-    later = {},
-    no_due = {},
-  }
+  local groups = { overdue = {}, today = {}, this_week = {}, later = {}, no_due = {} }
 
   for _, ref in ipairs(tasks_list) do
     local due = ref.node and ref.node.due
     local category = classify_due_date(due)
     table.insert(groups[category], ref)
   end
-
-  local result = {}
 
   local category_names = {
     overdue = 'Overdue',
@@ -175,9 +151,8 @@ local function group_by_due_date(tasks_list)
     no_due = 'No Due Date',
   }
 
-  local order = {'overdue', 'today', 'this_week', 'later', 'no_due'}
-
-  for _, key in ipairs(order) do
+  local result = {}
+  for _, key in ipairs({'overdue', 'today', 'this_week', 'later', 'no_due'}) do
     if #groups[key] > 0 then
       local children = vim.tbl_map(create_task_instance, groups[key])
       table.insert(result, create_group_instance(category_names[key], children, 0))
@@ -187,66 +162,49 @@ local function group_by_due_date(tasks_list)
   return result
 end
 
+local function apply_filter(tasks_list, filter)
+  if not filter or vim.tbl_isempty(filter) then
+    return tasks_list
+  end
+
+  local query = require('lifemode.query')
+  local nodes = vim.tbl_map(function(t) return t.node end, tasks_list)
+  local matching_nodes = query.execute(filter, nodes)
+
+  local node_set = {}
+  for _, node in ipairs(matching_nodes) do
+    node_set[node] = true
+  end
+
+  return vim.tbl_filter(function(t) return node_set[t.node] end, tasks_list)
+end
+
 function M.build_tree(idx, options)
   options = options or {}
   local grouping = options.grouping or 'by_due_date'
-  local include_done = options.include_done or false
-  local filter = options.filter
 
   local tasks_list = get_all_todo_tasks(idx)
-
-  if filter and not vim.tbl_isempty(filter) then
-    local query = require('lifemode.query')
-    local nodes = vim.tbl_map(function(t) return t.node end, tasks_list)
-    local matching_nodes = query.execute(filter, nodes)
-
-    local node_set = {}
-    for _, node in ipairs(matching_nodes) do
-      node_set[node] = true
-    end
-
-    tasks_list = vim.tbl_filter(function(t)
-      return node_set[t.node]
-    end, tasks_list)
-  end
-
+  tasks_list = apply_filter(tasks_list, options.filter)
   sort_by_priority(tasks_list)
 
-  local root_instances
+  local groupers = {
+    by_priority = group_by_priority,
+    by_tag = group_by_tag,
+    by_due_date = group_by_due_date,
+  }
 
-  if grouping == 'by_priority' then
-    root_instances = group_by_priority(tasks_list)
-  elseif grouping == 'by_tag' then
-    root_instances = group_by_tag(tasks_list)
-  else
-    root_instances = group_by_due_date(tasks_list)
-  end
-
-  return { root_instances = root_instances, grouping = grouping }
+  local grouper = groupers[grouping] or group_by_due_date
+  return { root_instances = grouper(tasks_list), grouping = grouping }
 end
 
 local function render_task_instance(inst, current_line, output, options)
   local line_start = current_line
-  local indent = string.rep(options.indent, inst.depth)
+  local indent = base.get_indent(inst.depth, options.indent)
 
-  local lens = require('lifemode.lens')
-  local node = inst.node
-  local result = lens.render(node, inst.lens)
+  local result = lens.render(inst.node, inst.lens)
+  current_line = base.apply_lens_result(result, indent, current_line, output)
 
-  for _, content_line in ipairs(result.lines) do
-    table.insert(output.lines, indent .. content_line)
-    for _, hl in ipairs(result.highlights) do
-      table.insert(output.highlights, {
-        line = current_line,
-        col_start = #indent + hl.col_start,
-        col_end = #indent + hl.col_end,
-        hl_group = hl.hl_group,
-      })
-    end
-    current_line = current_line + 1
-  end
-
-  table.insert(output.spans, {
+  base.add_span(output, {
     line_start = line_start,
     line_end = current_line - 1,
     instance_id = inst.instance_id,
@@ -263,7 +221,7 @@ end
 
 local function render_group_instance(inst, current_line, output, options)
   local line_start = current_line
-  local indent = string.rep(options.indent, inst.depth)
+  local indent = base.get_indent(inst.depth, options.indent)
 
   local display = inst.display or 'Group'
   local child_count = inst.children and #inst.children or 0
@@ -278,7 +236,7 @@ local function render_group_instance(inst, current_line, output, options)
   })
   current_line = current_line + 1
 
-  table.insert(output.spans, {
+  base.add_span(output, {
     line_start = line_start,
     line_end = current_line - 1,
     instance_id = inst.instance_id,
@@ -301,7 +259,7 @@ function M.render(tree, options)
   options = options or {}
   options.indent = options.indent or '  '
 
-  local output = { lines = {}, spans = {}, highlights = {} }
+  local output = base.create_output()
 
   local current_line = 0
   for _, group in ipairs(tree.root_instances) do
@@ -312,7 +270,7 @@ function M.render(tree, options)
 end
 
 function M._reset_counter()
-  instance_counter = 0
+  base.reset_counter()
 end
 
 return M

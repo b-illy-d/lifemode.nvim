@@ -105,32 +105,24 @@ function M._parse_line(line, line_idx)
   return nil
 end
 
-function M._parse_source(line, line_idx)
+local function parse_typed_list_item(line, line_idx, item_type)
   local text, id = M._extract_id(line:match('^%s*%-%s+(.*)$') or '')
-  local refs = M._extract_all_refs(line)
-
   return {
-    type = 'source',
+    type = item_type,
     line = line_idx,
     text = text,
     id = id,
-    refs = refs,
+    refs = M._extract_all_refs(line),
     props = {},
   }
 end
 
-function M._parse_citation(line, line_idx)
-  local text, id = M._extract_id(line:match('^%s*%-%s+(.*)$') or '')
-  local refs = M._extract_all_refs(line)
+function M._parse_source(line, line_idx)
+  return parse_typed_list_item(line, line_idx, 'source')
+end
 
-  return {
-    type = 'citation',
-    line = line_idx,
-    text = text,
-    id = id,
-    refs = refs,
-    props = {},
-  }
+function M._parse_citation(line, line_idx)
+  return parse_typed_list_item(line, line_idx, 'citation')
 end
 
 function M._parse_heading(line, line_idx)
