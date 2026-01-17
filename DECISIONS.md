@@ -59,3 +59,21 @@ Quick notes on decisions made during development.
 ### Heading lookup strips block IDs
 **Why**: `## Section ^block-id` should match `[[Page#Section]]`.
 **Fix**: Strip `%^[%w%-_:]+%s*$` pattern before comparing heading text.
+
+## Phase 9: Bible References
+
+### Bible verse ID format: `bible:book:chapter:verse`
+**Why**: Deterministic, human-readable, easy to parse.
+**Pattern**: `bible:john:17:20` - book lowercased, spaces become hyphens.
+
+### Range refs expand to individual verse IDs in backlinks
+**Why**: `John 17:18-23` should show up when querying for any verse in range.
+**Implementation**: `expand_range()` creates IDs for each verse, all indexed as backlinks.
+
+### Bible gd shows URL, not inline text
+**Why**: Inline text requires Bible text provider (API, local database).
+**MVP**: Generate Bible Gateway URL and notify user. Real provider deferred.
+
+### Parser extracts both wikilinks and Bible refs
+**Why**: Need unified refs system for backlinks.
+**Pattern**: `_extract_all_refs()` combines `_extract_wikilinks()` and `_extract_bible_refs()`.

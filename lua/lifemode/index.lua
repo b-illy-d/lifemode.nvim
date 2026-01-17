@@ -46,16 +46,25 @@ function M.add_node(idx, node, file_path, mtime)
 
   if node.refs then
     local source_id = node.id or (file_path .. ':' .. node.line)
+    local link_entry = {
+      source_id = source_id,
+      file = file_path,
+      line = node.line,
+    }
+
     for _, ref in ipairs(node.refs) do
       if ref.type == 'wikilink' and ref.target then
         if not idx.backlinks[ref.target] then
           idx.backlinks[ref.target] = {}
         end
-        table.insert(idx.backlinks[ref.target], {
-          source_id = source_id,
-          file = file_path,
-          line = node.line,
-        })
+        table.insert(idx.backlinks[ref.target], link_entry)
+      elseif ref.type == 'bible' and ref.verse_ids then
+        for _, verse_id in ipairs(ref.verse_ids) do
+          if not idx.backlinks[verse_id] then
+            idx.backlinks[verse_id] = {}
+          end
+          table.insert(idx.backlinks[verse_id], link_entry)
+        end
       end
     end
   end

@@ -374,41 +374,58 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 9: Bible References (Core Feature)
+## Phase 9: Bible References (Core Feature) ✅ COMPLETE
 
-### T33: Bible reference parsing
+### T33: Bible reference parsing ✅ DONE
 - Create `lua/lifemode/bible.lua` module
 - Implement regex patterns for verse references: `John 17:20`, `John 17:18-23`, `Rom 8:28`
 - Support abbreviated book names (map to canonical)
 - Extract single verses and ranges from markdown text
 - **Aligns with**: §C6 Bible verses (reference formats)
+- **Evidence**:
+  - `lua/lifemode/bible.lua` (`extract_refs()`, `BOOK_ALIASES`)
+  - `tests/test_t33_bible_parsing.lua` (8/8 tests)
 
-### T34: Bible verse ID generation
+### T34: Bible verse ID generation ✅ DONE
 - Implement deterministic ID format: `bible:john:17:20`
 - Handle ranges by expanding to individual verse IDs
 - Add verse refs to node.refs during parsing
 - Store in index for backlink queries
 - **Aligns with**: §C6 "Verse nodes use deterministic IDs", P3 (stable identity)
+- **Evidence**:
+  - `lua/lifemode/bible.lua` (`generate_verse_id()`, `expand_range()`)
+  - `tests/test_t34_bible_verse_id.lua` (7/7 tests)
 
-### T35: Bible reference backlinks
+### T35: Bible reference backlinks ✅ DONE
 - Ensure range references index as refs to each verse in range
 - `John 17:18-23` creates backlinks to verses 18, 19, 20, 21, 22, 23
 - Query: "show all notes referencing John 17:20" finds range mentions
 - **Aligns with**: §C6 "A range mention must count as a reference to each verse"
+- **Evidence**:
+  - `lua/lifemode/parser.lua` (`_extract_bible_refs()`, `_extract_all_refs()`)
+  - `lua/lifemode/index.lua` (Bible ref backlink indexing)
+  - `tests/test_t35_bible_backlinks.lua` (4/4 tests)
 
-### T36: Bible reference navigation (gd on verse)
+### T36: Bible reference navigation (gd on verse) ✅ DONE
 - Implement `gd` on Bible reference in vault/view buffers
 - Detect verse reference under cursor
 - Show verse text inline (expand) or in floating window
 - Requires Bible text provider (stub for MVP, real provider later)
 - **Aligns with**: §C6 Navigation (gd on verse reference)
+- **Evidence**:
+  - `lua/lifemode/bible.lua` (`get_ref_at_cursor()`, `get_verse_url()`, `goto_definition()`)
+  - `tests/test_t36_bible_gd.lua` (5/5 tests)
+- **Note**: MVP uses Bible Gateway URL; inline text deferred
 
-### T37: Bible verse references view (gr on verse)
+### T37: Bible verse references view (gr on verse) ✅ DONE
 - Implement `gr` on Bible verse reference
 - Query all notes referencing that verse (direct + range mentions)
 - Show in quickfix or dedicated view
 - Critical for cross-study workflow per §C6
 - **Aligns with**: §C6 "gr on a verse shows all notes that reference this verse"
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_show_bible_backlinks()`, `_bible_backlinks_at_cursor()`)
+  - `tests/test_t37_bible_gr.lua` (3/3 tests)
 
 ---
 
@@ -569,9 +586,10 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 6: Task Management | ✅ Complete | T20-T24 (5/5) |
 | Phase 7: All Tasks View | ✅ Complete | T25-T28 (4/4) |
 | Phase 8: Wikilinks | ✅ Complete | T29-T32 (4/4) |
-| Phase 9-15 | Not Started | (0/23) |
+| Phase 9: Bible References | ✅ Complete | T33-T37 (5/5) |
+| Phase 10-15 | Not Started | (0/18) |
 
-**Total: 32/55 tasks complete (58%)**
+**Total: 37/55 tasks complete (67%)**
 
 ---
 

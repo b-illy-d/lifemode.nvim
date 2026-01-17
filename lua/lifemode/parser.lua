@@ -59,7 +59,7 @@ function M._parse_heading(line, line_idx)
   local hashes, rest = line:match('^(#+)%s+(.*)$')
   local level = #hashes
   local text, id = M._extract_id(rest)
-  local refs = M._extract_wikilinks(line)
+  local refs = M._extract_all_refs(line)
 
   return {
     type = 'heading',
@@ -79,7 +79,7 @@ function M._parse_task(line, line_idx)
   local priority = M._extract_priority(text)
   local due = M._extract_due(text)
   local tags = M._extract_tags(text)
-  local refs = M._extract_wikilinks(text)
+  local refs = M._extract_all_refs(text)
 
   text = M._strip_metadata(text)
 
@@ -99,7 +99,7 @@ end
 function M._parse_list_item(line, line_idx)
   local rest = line:match('^%s*%-%s+(.*)$')
   local text, id = M._extract_id(rest)
-  local refs = M._extract_wikilinks(rest)
+  local refs = M._extract_all_refs(rest)
 
   return {
     type = 'list_item',
@@ -204,6 +204,41 @@ function M._extract_wikilinks(text)
     })
 
     pos = end_pos + 2
+  end
+
+  return refs
+end
+
+function M._extract_bible_refs(text)
+  local bible = require('lifemode.bible')
+  local bible_refs = bible.extract_refs(text)
+  if not bible_refs then return {} end
+
+  local refs = {}
+  for _, br in ipairs(bible_refs) do
+    table.insert(refs, {
+      type = 'bible',
+      book = br.book,
+      chapter = br.chapter,
+      verse_start = br.verse_start,
+      verse_end = br.verse_end,
+      verse_ids = br.verse_ids,
+    })
+  end
+  return refs
+end
+
+function M._extract_all_refs(text)
+  local refs = {}
+
+  local wikilinks = M._extract_wikilinks(text)
+  for _, ref in ipairs(wikilinks) do
+    table.insert(refs, ref)
+  end
+
+  local bible_refs = M._extract_bible_refs(text)
+  for _, ref in ipairs(bible_refs) do
+    table.insert(refs, ref)
   end
 
   if #refs > 0 then

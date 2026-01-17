@@ -356,6 +356,47 @@ function M._backlinks_at_cursor()
   M._show_backlinks(target)
 end
 
+function M._show_bible_backlinks(verse_id)
+  if not require_setup() then return end
+  if not verse_id then return end
+
+  local index = require('lifemode.index')
+  local idx = index.get_or_build(state.config.vault_root)
+  local backlinks = index.get_backlinks(verse_id, idx)
+
+  if #backlinks == 0 then
+    vim.notify('No notes reference: ' .. verse_id, vim.log.levels.INFO)
+    return
+  end
+
+  local qf_items = {}
+  for _, link in ipairs(backlinks) do
+    table.insert(qf_items, {
+      filename = link.file,
+      lnum = (link.line or 0) + 1,
+      text = 'References: ' .. verse_id,
+    })
+  end
+
+  vim.fn.setqflist(qf_items)
+  vim.cmd('copen')
+end
+
+function M._bible_backlinks_at_cursor()
+  if not require_setup() then return end
+
+  local bible = require('lifemode.bible')
+  local ref = bible.get_ref_at_cursor()
+
+  if not ref then
+    vim.notify('No Bible reference at cursor', vim.log.levels.INFO)
+    return
+  end
+
+  local verse_id = bible.generate_verse_id(ref.book, ref.chapter, ref.verse_start)
+  M._show_bible_backlinks(verse_id)
+end
+
 function M.debug_span()
   if not require_setup() then return end
 
