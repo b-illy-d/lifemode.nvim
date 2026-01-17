@@ -5,102 +5,150 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 1: Foundation
+## Phase 1: Foundation ✅ COMPLETE
 
-### T01: Plugin bootstrap with setup() function
+### T01: Plugin bootstrap with setup() function ✅ DONE
 - Create `lua/lifemode/init.lua` with `setup({ vault_root, ... })` function
 - Validate required `vault_root` setting exists and is a directory
 - Store config in module-level state with defaults per SPEC §A0
 - Create `:LifeMode` command stub that prints config (placeholder)
 - **Aligns with**: §A0 Configuration, P1 (durable/portable setup)
+- **Evidence**:
+  - `lua/lifemode/init.lua` (201 lines)
+  - `tests/test_validation.lua` (16/16 tests)
+  - `tests/test_duplicate_setup.lua` (3/3 tests)
+  - `tests/test_manual.lua` (5/5 tests)
 
-### T02: Vault file discovery
+### T02: Vault file discovery ✅ DONE
 - Create `lua/lifemode/vault.lua` module
 - Implement `vault.list_files()` to find all `.md` files in vault_root recursively
 - Return list with file paths and mtime (for date tracking per §A2)
 - Handle edge cases: empty vault, missing vault_root, non-existent paths
 - **Aligns with**: §A1 Vault, P1 (markdown files are source of truth)
+- **Evidence**:
+  - `lua/lifemode/vault.lua` (29 lines)
+  - `tests/test_t02_vault.lua`
+  - `tests/test_t02_vault_edge_cases.lua` (7/7 tests)
 
-### T03: Basic markdown parsing - heading and text nodes
+### T03: Basic markdown parsing - heading and text nodes ✅ DONE
 - Create `lua/lifemode/parser.lua` module
 - Implement `parser.parse_file(path)` returning list of nodes
 - Extract heading nodes (`# Heading`) with level, text, line number
 - Extract text/paragraph nodes with line ranges
 - Node structure: `{ type, body_md, line_start, line_end }`
 - **Aligns with**: §B1 Node, §A2 Core Engine, P2 (nodes are truth)
+- **Evidence**:
+  - `lua/lifemode/parser.lua` (175 lines)
+  - `tests/test_t03_acceptance.lua` (9/9 tests)
+  - `tests/test_t03_edge_cases.lua` (9/9 tests)
 
-### T04: Node ID extraction and generation
+### T04: Node ID extraction and generation ✅ DONE
 - Add `^id` parsing to extract existing block IDs from markdown
 - Implement `parser.generate_id()` using UUID v4 format
 - Update node structure to include `id` field (nil if no ID present)
 - Validate ID format matches `^[a-f0-9-]{36}$` pattern
 - **Aligns with**: §C1 Node IDs, P3 (stable identity is non-negotiable)
+- **Evidence**:
+  - `lua/lifemode/parser.lua` (`_extract_id()` function)
+  - `tests/test_id_pattern.lua`
+  - `tests/test_id_pattern_comprehensive.lua`
+  - `tests/test_colon_id.lua`
 
-### T05: Task node parsing
+### T05: Task node parsing ✅ DONE
 - Extend parser to detect task list items (`- [ ]` and `- [x]`)
 - Extract task metadata: state (todo/done), priority (!1-!5), due date (@due), tags (#tag)
 - Parse inline metadata with regex patterns per §C3
 - Return task nodes with `type: "task"` and props for state/priority/due/tags
 - **Aligns with**: §C3 Tasks, §B1 Node props
+- **Evidence**:
+  - `lua/lifemode/parser.lua` (`_extract_priority`, `_extract_due`, `_extract_tags`, `_strip_metadata`)
+  - `tests/test_t05_metadata.lua` (10/10 tests)
+  - `tests/test_t05_metadata_edge_cases.lua` (15/15 tests)
+  - `tests/test_comprehensive_metadata.lua`
 
 ---
 
-## Phase 2: Index System
+## Phase 2: Index System ✅ COMPLETE
 
-### T06: Basic index data structure
+### T06: Basic index data structure ✅ DONE
 - Create `lua/lifemode/index.lua` module
 - Define index structure: `{ node_locations, tasks_by_state, nodes_by_date }`
 - Implement `index.create()` returning empty index
 - Implement `index.add_node(idx, node, file_path, mtime)`
 - **Aligns with**: §A2 Index data structures, P2 (separate truth from projection)
+- **Evidence**:
+  - `lua/lifemode/index.lua` (180 lines)
+  - `tests/test_t06_index_structure.lua`
 
-### T07: Full index build from vault
+### T07: Full index build from vault ✅ DONE
 - Implement `index.build(vault_root)` using vault.list_files() + parser.parse_file()
 - Populate node_locations: `{ [node_id] = { file, line, mtime } }`
 - Populate tasks_by_state: `{ todo = {...}, done = {...} }`
 - Populate nodes_by_date: `{ ["2026-01-15"] = { node_ids } }` using file mtime
 - **Aligns with**: §A2 Automatic Indexing Strategy
+- **Evidence**:
+  - `lua/lifemode/index.lua` (`build()` function)
+  - `tests/test_t07_index_build.lua`
 
-### T08: Lazy index initialization
+### T08: Lazy index initialization ✅ DONE
 - Add `M._index` to store built index (module state)
 - Implement `index.get_or_build()` for lazy initialization
 - Only build index on first access (first `:LifeMode` call)
 - Add `index.is_built()` check
 - **Aligns with**: §A2 "Lazy initialization: Build index on first :LifeMode invocation"
+- **Evidence**:
+  - `lua/lifemode/index.lua` (`get_or_build()`, `is_built()`, `invalidate()`)
+  - `tests/test_t08_lazy_index.lua`
 
-### T09: Incremental index updates on file save
+### T09: Incremental index updates on file save ✅ DONE
 - Set up `BufWritePost` autocmd for files in vault_root
 - Implement `index.update_file(file_path)` to re-parse single file
 - Remove old entries for file, add new entries
 - Only trigger for `.md` files within vault_root
 - **Aligns with**: §A2 "Incremental updates: On BufWritePost for files in vault_root"
+- **Evidence**:
+  - `lua/lifemode/index.lua` (`update_file()`, `setup_autocommands()`)
+  - `tests/test_t09_incremental_update.lua`
+  - `tests/test_t09_autocommands.lua`
 
 ---
 
-## Phase 3: View Infrastructure
+## Phase 3: View Infrastructure ✅ COMPLETE
 
-### T10: View buffer creation utility
+### T10: View buffer creation utility ✅ DONE
 - Create `lua/lifemode/view.lua` module
 - Implement `view.create_buffer(name)` returning bufnr with `buftype=nofile`
 - Set buffer options: nomodifiable (initially), noswapfile, bufhidden=wipe
 - Add buffer-local variable to identify as LifeMode view buffer
 - **Aligns with**: §D4 Buffer model, §A3 "View buffers: buftype=nofile"
+- **Evidence**:
+  - `lua/lifemode/view.lua` (23 lines)
+  - `tests/test_view_creation.lua`
+  - `tests/test_t01_acceptance.lua`
 
-### T11: Extmark-based span mapping
+### T11: Extmark-based span mapping ✅ DONE
 - Create `lua/lifemode/spans.lua` module
 - Implement `spans.create_namespace()` for LifeMode extmarks
 - Implement `spans.set_span(bufnr, line_start, line_end, data)` storing instance/node info
 - Implement `spans.get_span_at_cursor(bufnr)` returning span data for current line
 - Data includes: instance_id, node_id, depth, lens, collapsed state
 - **Aligns with**: §D4 "Every rendered block gets an extmark"
+- **Evidence**:
+  - `lua/lifemode/extmarks.lua` (92 lines) - note: named extmarks.lua not spans.lua
+  - `tests/test_t02_acceptance.lua` (5/5 tests)
+  - `tests/test_t02_edge_cases.lua` (8/8 tests)
 
-### T12: Basic lens renderer interface
+### T12: Basic lens renderer interface ✅ DONE
 - Create `lua/lifemode/lens.lua` module
 - Define lens interface: `lens.render(node, params) -> { lines, highlights }`
 - Implement `task/brief` lens: state icon + title + due + priority on one line
 - Implement `node/raw` lens: raw markdown body
 - Return both text lines and highlight ranges for extmarks
 - **Aligns with**: §D1 Lenses, P4 (lenses are deterministic renderers)
+- **Evidence**:
+  - `lua/lifemode/lens.lua` (139 lines)
+  - `tests/test_t12_lens_basic.lua` (12 tests)
+  - `tests/test_t12_lens_edge_cases.lua` (14 tests)
 
 ---
 
@@ -439,11 +487,25 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ## Milestone Checkpoints
 
-- **After T09**: Index system complete - pause for testing
+- **After T09**: Index system complete - pause for testing ✅ REACHED
 - **After T17**: Daily view complete - pause for user testing (per §H)
 - **After T24**: Task management complete - pause for user testing
 - **After T37**: Bible references complete - pause for user testing (per §H)
 - **After T48**: Query system complete - feature complete MVP
+
+---
+
+## Progress Summary
+
+| Phase | Status | Tasks Done |
+|-------|--------|------------|
+| Phase 1: Foundation | ✅ Complete | T01-T05 (5/5) |
+| Phase 2: Index System | ✅ Complete | T06-T09 (4/4) |
+| Phase 3: View Infrastructure | ✅ Complete | T10-T12 (3/3) |
+| Phase 4: Daily View | Not Started | (0/5) |
+| Phase 5-15 | Not Started | (0/37) |
+
+**Total: 12/55 tasks complete (22%)**
 
 ---
 

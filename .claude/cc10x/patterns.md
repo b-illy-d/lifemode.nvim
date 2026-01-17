@@ -16,10 +16,18 @@
 - lua/lifemode/view.lua: View buffer creation utilities
 - lua/lifemode/extmarks.lua: Extmark-based span tracking for metadata
 - lua/lifemode/parser.lua: Markdown block parser (headings, tasks, list items)
+- lua/lifemode/vault.lua: Vault file discovery
+- lua/lifemode/index.lua: Index system for fast lookups
+- lua/lifemode/lens.lua: Lens renderers for view display
 - plugin/lifemode.vim: Autoload guard
-- tests/: Test files (manual tests for now)
-- test_*.lua: Root-level test files for each feature
+- tests/: **ALL test files go here - NEVER at root level**
 - Makefile: Test runner automation
+
+## CRITICAL: Test File Location
+**ALL test files MUST be placed in the `tests/` directory.**
+- Correct: `tests/test_foo.lua`
+- WRONG: `test_foo.lua` (root level)
+Never create test files at the project root. This is a hard requirement.
 
 ## Testing Patterns
 - Manual tests via nvim --headless for T00
@@ -27,6 +35,7 @@
 - Future: Will add plenary.nvim integration tests
 - **Edge case testing required**: Happy path tests miss silent failures
 - **Test both success and failure paths**: Type errors, edge cases, invalid input
+- **CRITICAL: Run tests with `nvim --headless -c "set runtimepath+=." -c "luafile test.lua"`**
 
 ## Common Gotchas
 - Commands must be created after setup() is called
@@ -36,6 +45,9 @@
 - **CRITICAL: Check for whitespace-only strings, not just empty strings**
 - **CRITICAL: nvim_create_user_command allows duplicate registration without error**
 - **nvim_buf_set_option deprecated in 0.10+, use vim.bo[bufnr].option instead**
+- **CRITICAL: Autocmds can be registered multiple times - track IDs and delete before re-registering**
+- **CRITICAL: Path prefix matching needs trailing slash - /vault matches /vault2 without it**
+- **CRITICAL: Use vim.startswith() for path prefix checks, not string.find()**
 
 ## Dependencies
 - None yet (pure Lua + Neovim API)
@@ -60,35 +72,71 @@
 - **Buffer API can fail - check return values or use pcall**
 - **Unique buffer names**: Use counter pattern to avoid E95 errors on multiple creates
 
+## Autocmd Management Pattern (REQUIRED)
+```lua
+local _autocmd_id = nil
+
+function M.setup_autocommands(vault_root)
+  if _autocmd_id then
+    vim.api.nvim_del_autocmd(_autocmd_id)
+    _autocmd_id = nil
+  end
+
+  local normalized_vault = vim.fn.simplify(vault_root)
+  if not vim.endswith(normalized_vault, '/') then
+    normalized_vault = normalized_vault .. '/'
+  end
+
+  _autocmd_id = vim.api.nvim_create_autocmd('BufWritePost', {
+    pattern = '*.md',
+    callback = function(args)
+      local file_path = vim.fn.simplify(args.file)
+      if not vim.startswith(file_path, normalized_vault) then
+        return
+      end
+      -- Handle file
+    end,
+  })
+end
+
+function M._reset_state()
+  if _autocmd_id then
+    pcall(vim.api.nvim_del_autocmd, _autocmd_id)
+    _autocmd_id = nil
+  end
+end
+```
+
+**Why this pattern:**
+- Track autocmd ID in module-local variable
+- Delete existing autocmd before creating new one (prevents duplicates)
+- Add trailing slash to vault path for prefix matching (prevents /vault matching /vault2)
+- Use vim.startswith() instead of string.find() for path prefix check
+- Provide _reset_state() for test cleanup
+
 ## Config Validation Pattern (REQUIRED)
 ```lua
 function M.setup(opts)
   opts = opts or {}
 
-  -- Duplicate setup guard
   if state.initialized then
     error('setup() already called - duplicate setup not allowed')
   end
 
-  -- Required field validation (check BEFORE merge)
   if not opts.vault_root or opts.vault_root == '' then
     error('vault_root is required')
   end
 
-  -- Type validation for required fields (check BEFORE merge)
   if type(opts.vault_root) ~= 'string' then
     error('vault_root must be a string')
   end
 
-  -- Whitespace validation for required fields (check BEFORE merge)
   if vim.trim(opts.vault_root) == '' then
     error('vault_root cannot be whitespace only')
   end
 
-  -- Merge config
   state.config = vim.tbl_deep_extend('force', default_config, opts)
 
-  -- Type + range validation for ALL config fields (check AFTER merge)
   if type(state.config.max_depth) ~= 'number' or state.config.max_depth <= 0 then
     error('max_depth must be a positive number')
   end
@@ -97,7 +145,6 @@ function M.setup(opts)
     error('auto_index_on_startup must be a boolean')
   end
 
-  -- Set initialized flag at end
   state.initialized = true
 end
 
@@ -114,18 +161,18 @@ end
 4. **Duplicate registration**: Not checking if already initialized
 5. **Unchecked API calls**: Buffer/window operations without pcall
 6. **Generic errors**: Not providing user-friendly error messages
+7. **Duplicate autocmds**: Not tracking and deleting before re-registering
+8. **Path prefix false positives**: Using string.find() instead of vim.startswith() with trailing slash
 
 ## Buffer Creation Validation Pattern (REQUIRED)
 ```lua
 function M.create_buffer()
   local bufnr = vim.api.nvim_create_buf(false, true)
 
-  -- CRITICAL: Validate buffer creation succeeded
   if bufnr == 0 or not bufnr then
     error('Failed to create buffer')
   end
 
-  -- Safe to proceed with buffer operations
   vim.bo[bufnr].buftype = 'nofile'
   vim.bo[bufnr].swapfile = false
   vim.bo[bufnr].bufhidden = 'wipe'
@@ -143,15 +190,12 @@ end
 
 ## Silent Failure Testing Pattern
 ```lua
--- Test API failure modes by mocking
 local original_api = vim.api.nvim_create_buf
 vim.api.nvim_create_buf = function()
-  return 0  -- Simulate failure
+  return 0
 end
 
 local success, result = pcall(my_function)
--- Check: Did function detect failure?
--- Check: Was error raised or silent corruption?
 
 vim.api.nvim_create_buf = original_api
 ```
@@ -304,10 +348,230 @@ end
 ```lua
 {
   type = 'heading' | 'task' | 'list_item',
-  line = number,  -- 0-indexed line number
-  level = number, -- heading level (1-6), only for headings
-  text = string,  -- text content (^id suffix removed)
-  state = 'todo' | 'done', -- only for tasks
-  id = string | nil, -- extracted from ^id suffix
+  line = number,
+  level = number,
+  text = string,
+  state = 'todo' | 'done',
+  id = string | nil,
 }
 ```
+
+## Index System Pattern
+
+```lua
+local M = {}
+local vault = require('lifemode.vault')
+local parser = require('lifemode.parser')
+
+local _index = nil
+local _vault_root = nil
+local _autocmd_id = nil
+
+function M.create()
+  return {
+    node_locations = {},
+    tasks_by_state = { todo = {}, done = {} },
+    nodes_by_date = {},
+  }
+end
+
+function M.add_node(idx, node, file_path, mtime)
+  if node.id then
+    idx.node_locations[node.id] = {
+      file = file_path,
+      line = node.line,
+      mtime = mtime,
+    }
+  end
+
+  if node.type == 'task' then
+    local state = node.state or 'todo'
+    local task_entry = vim.tbl_extend('force', node, { _file = file_path })
+    table.insert(idx.tasks_by_state[state], task_entry)
+  end
+
+  local date_str = os.date('%Y-%m-%d', mtime)
+  if not idx.nodes_by_date[date_str] then
+    idx.nodes_by_date[date_str] = {}
+  end
+
+  if node.id then
+    table.insert(idx.nodes_by_date[date_str], { id = node.id, file = file_path })
+  else
+    table.insert(idx.nodes_by_date[date_str], { node = node, file = file_path })
+  end
+
+  return idx
+end
+
+function M.setup_autocommands(vault_root)
+  if _autocmd_id then
+    vim.api.nvim_del_autocmd(_autocmd_id)
+    _autocmd_id = nil
+  end
+
+  local normalized_vault = vim.fn.simplify(vault_root)
+  if not vim.endswith(normalized_vault, '/') then
+    normalized_vault = normalized_vault .. '/'
+  end
+
+  _autocmd_id = vim.api.nvim_create_autocmd('BufWritePost', {
+    pattern = '*.md',
+    callback = function(args)
+      local file_path = vim.fn.simplify(args.file)
+      if not vim.startswith(file_path, normalized_vault) then
+        return
+      end
+
+      local stat = vim.loop.fs_stat(file_path)
+      if stat and stat.type == 'file' then
+        M.update_file(file_path, stat.mtime.sec)
+      end
+    end,
+  })
+end
+
+function M._reset_state()
+  _index = nil
+  _vault_root = nil
+  if _autocmd_id then
+    pcall(vim.api.nvim_del_autocmd, _autocmd_id)
+    _autocmd_id = nil
+  end
+end
+```
+
+**Why this pattern:**
+- Module-level state (_index, _vault_root, _autocmd_id) for lazy initialization
+- Track autocmd ID and delete before re-registering (prevents duplicates)
+- Add trailing slash to vault path for prefix matching (prevents /vault matching /vault2)
+- Use vim.startswith() for path prefix check (not string.find())
+- node_locations: Maps node IDs to file locations (file, line, mtime)
+- tasks_by_state: Stores tasks with _file field for incremental updates
+- nodes_by_date: Stores {id, file} or {node, file} for date-based views
+- vim.fn.simplify() for path normalization (handles // vs / properly)
+- Incremental update removes all entries from file, then re-parses
+- BufWritePost autocmd triggers index updates on file save
+
+**Index structure:**
+```lua
+{
+  node_locations = {
+    ['node-id'] = { file = '/path/file.md', line = 5, mtime = 1705363200 }
+  },
+  tasks_by_state = {
+    todo = { { type = 'task', id = 'task-1', _file = '/path/file.md', ... } },
+    done = { { type = 'task', id = 'task-2', _file = '/path/file.md', ... } }
+  },
+  nodes_by_date = {
+    ['2026-01-16'] = {
+      { id = 'node-id', file = '/path/file.md' },
+      { node = { ... }, file = '/path/file.md' }
+    }
+  }
+}
+```
+
+## Lens Renderer Pattern
+
+```lua
+local M = {}
+
+function M.render(node, lens_name, params)
+  if not node then
+    error('node is required')
+  end
+  if not lens_name then
+    error('lens_name is required')
+  end
+
+  if lens_name == 'task/brief' then
+    return M._render_task_brief(node)
+  elseif lens_name == 'node/raw' then
+    return M._render_node_raw(node)
+  else
+    error('Unknown lens: ' .. lens_name)
+  end
+end
+
+function M._render_task_brief(node)
+  local state_icon = node.state == 'done' and '[x]' or '[ ]'
+  local parts = {state_icon, node.text}
+
+  if node.priority then
+    table.insert(parts, '!' .. node.priority)
+  end
+
+  if node.due then
+    table.insert(parts, '@due(' .. node.due .. ')')
+  end
+
+  local line = table.concat(parts, ' ')
+  local highlights = {}
+
+  if node.state == 'done' then
+    table.insert(highlights, {
+      line = 0,
+      col_start = 0,
+      col_end = #line,
+      hl_group = 'LifeModeDone',
+    })
+  else
+    if node.priority and (node.priority == 1 or node.priority == 2) then
+      local priority_text = '!' .. node.priority
+      local priority_start = line:find(priority_text, 1, true)
+      if priority_start then
+        table.insert(highlights, {
+          line = 0,
+          col_start = priority_start - 1,
+          col_end = priority_start + #priority_text - 1,
+          hl_group = 'LifeModePriorityHigh',
+        })
+      end
+    end
+  end
+
+  return {
+    lines = {line},
+    highlights = highlights,
+  }
+end
+
+function M.get_available_lenses(node_type)
+  if node_type == 'task' then
+    return {'task/brief', 'node/raw'}
+  elseif node_type == 'heading' then
+    return {'heading/brief', 'node/raw'}
+  else
+    return {'node/raw'}
+  end
+end
+```
+
+**Why this pattern:**
+- Module pattern (M = {}, return M) for consistency
+- Dispatcher function (render) routes to specific lens renderers
+- Each lens returns {lines, highlights} structure
+- Highlights use 0-based column indices (Neovim API convention)
+- string.find() with plain=true (3rd arg) for exact text search
+- Done state overrides all other highlights (simplifies visual hierarchy)
+- Priority highlighting only for extremes (!1-!2 high, !4-!5 low)
+- get_available_lenses() for lens discovery by node type
+
+**Render output structure:**
+```lua
+{
+  lines = { "[ ] Task text !2 @due(2026-01-20)" },
+  highlights = {
+    { line = 0, col_start = 12, col_end = 14, hl_group = "LifeModePriorityHigh" },
+    { line = 0, col_start = 15, col_end = 32, hl_group = "LifeModeDue" }
+  }
+}
+```
+
+**Highlight groups used:**
+- LifeModeDone: Entire line for completed tasks
+- LifeModePriorityHigh: !1 and !2 priorities
+- LifeModePriorityLow: !4 and !5 priorities
+- LifeModeDue: @due(...) date markers
+- LifeModeHeading: Heading lines

@@ -1,239 +1,124 @@
 # Active Context
 
 ## Current Focus
-T03 COMPLETE - MINIMAL MARKDOWN BLOCK PARSER IMPLEMENTED
+PHASE 3 COMPLETE - VIEW INFRASTRUCTURE PRODUCTION-READY (T10-T12)
 
 ## Recent Changes
-- IMPLEMENTED: lua/lifemode/parser.lua module with TDD (2026-01-16 22:00 EST)
-  - parse_buffer(bufnr): Parses Markdown into list of blocks
-  - Block structure: {type, line, level, text, state, id}
-  - Types: 'heading', 'task', 'list_item'
-  - Extracts task checkbox state: [ ] (todo) vs [x]/[X] (done)
-  - Extracts ^id suffix: UUID v4 or alphanumeric IDs
-  - Added :LifeModeParse command to show block/task counts
-  - TDD cycle: RED (module not found) → GREEN (9/9 acceptance tests pass) → VERIFIED (9/9 edge cases pass)
-  - Zero regressions: All T00+T01+T02 tests still pass
-- FIXED: CRITICAL memory leak in lua/lifemode/extmarks.lua (2026-01-16 21:00 EST)
-  - Problem: _metadata_store[bufnr] persisted after buffer deletion
-  - Impact: Memory accumulation in long-running sessions (8+ hour dev sessions)
-  - Fix: Added BufDelete/BufWipeout autocmd to clean _metadata_store[bufnr]
-  - Evidence: test_memory_leak.lua exit 0 (no leak detected after fix)
-  - Also removed redundant nvim_buf_set_extmark call (lines 30-36) for performance
-- VERIFIED: T02 integration with Decision 004 (2026-01-16 21:00 EST)
-  - Integration-verifier found 1 CRITICAL memory leak (confidence 72/100)
-  - Followed T00/T01 precedent: Fix critical silent failures before completion
-  - All tests pass after fix: make test exit 0, edge cases 8/8 PASS
-- IMPLEMENTED: lua/lifemode/extmarks.lua module with TDD (2026-01-16 20:00 EST)
-  - create_namespace(): Returns singleton extmark namespace
-  - set_instance_span(bufnr, start_line, end_line, metadata): Attaches metadata to line range
-  - get_instance_at_cursor(): Retrieves metadata at cursor position
-  - Metadata stored in module-local _metadata_store table (bufnr → mark_id → metadata)
-  - Added :LifeModeDebugSpan command to print metadata
-  - TDD cycle: RED (module not found) → GREEN (all tests pass) → REFACTOR (memory leak fix)
-- FIXED: CRITICAL buffer validation in view.create_buffer() (2026-01-16 19:30 EST)
-- VERIFIED: T01 integration complete (2026-01-16 19:30 EST)
+- COMPLETED: T12 - Basic lens renderer interface (2026-01-16)
+  - lua/lifemode/lens.lua created with full lens rendering functionality
+  - task/brief lens: renders tasks with state, priority, due date + highlights
+  - node/raw lens: returns raw markdown for any node type
+  - heading/brief lens: renders headings with level + highlights
+  - get_available_lenses() helper for lens discovery
+  - All tests pass: test_t12_lens_basic.lua (12 tests), test_t12_lens_edge_cases.lua (14 tests)
+  - Zero regressions in Phase 1 and Phase 2 tests
+
+- VERIFIED + FIXED: Phase 2 (T06-T09) - Integration Verification (2026-01-16)
+  - All 5 Phase 2 tests pass (T06, T07, T08, T09 x2)
+  - All Phase 1 regression tests pass (T01, T02, T03, T05)
+  - Two MEDIUM review findings FIXED:
+    1. Autocmd cleanup - now stores autocmd_id and deletes on re-setup
+    2. Path matching edge case - now uses vim.startswith with trailing slash
+
+- COMPLETED: Phase 2 (T06-T09) - Index System (2026-01-16)
+  - lua/lifemode/index.lua created with full index functionality
+  - parser.parse_file() added to parse files from disk
+  - All 5 new tests pass (T06, T07, T08, T09 x2)
+  - Zero regressions in Phase 1 tests
 
 ## Next Steps
-1. Update progress.md with T03 final status
-2. Commit T03 changes
-3. Proceed to T04 - Ensure IDs for indexable blocks
+1. Phase 4: Daily View (T13-T17) - the actual user-facing UI
+2. After T17: First usable :LifeMode command showing vault content
 
 ## Active Decisions
 | Decision | Choice | Why |
 |----------|--------|-----|
-| Config validation | Error on missing vault_root | Required setting, user must provide |
-| Default leader | `<Space>` | Common Neovim convention, easy to override |
-| Command names | `:LifeModeHello`, `:LifeMode`, `:LifeModeOpen` | Clear, namespaced, follows spec |
-| Buffer type | nofile | View buffers are compiled, not file-backed |
-| Test strategy | Manual tests via Makefile | Simpler than plenary setup for T00 |
-| Validation strategy | Type + range checks after merge | Silent failures discovered in audit - must validate all config |
-| Optional string validation | Type-only, no whitespace check | Spec doesn't define constraints; empty strings safe (won't crash) |
-| **T00 production readiness** | **APPROVED** | **All critical issues fixed, comprehensive tests, zero regressions** |
-| **Buffer API error handling** | **CRITICAL (upgraded from medium)** | **Silent failure hunt revealed silent corruption risk** |
-| **View module separation** | **Separate lua/lifemode/view.lua** | **Clean separation of concerns, follows module pattern** |
-| **Buffer name uniqueness** | **Counter-based naming** | **Prevents E95 "buffer with this name already exists" errors** |
-| **Filetype for views** | **lifemode** | **Clearly marks view buffers, enables future syntax/ftplugin extensions** |
-| **T01 critical fix decision** | **FIX BEFORE COMPLETION** | **Matches T00 precedent, prevents silent corruption, 2-line fix** |
-| **T02 metadata storage** | **Module-local table (not extmark ext_data)** | **Neovim extmark ext_data API incomplete/unstable, separate storage more reliable** |
-| **T02 namespace** | **Singleton namespace** | **All span tracking uses same namespace for simplicity, easy to query** |
-| **T02 memory leak fix** | **FIX BEFORE COMPLETION** | **Matches T00/T01 precedent, prevents resource exhaustion, simple autocmd fix** |
-| **T03 parser implementation** | **Line-by-line string pattern matching** | **Simple Lua string patterns sufficient for MVP, no need for tree-sitter yet** |
-| **T03 ID extraction** | **Pattern: `^(.-)%s*%^([%w%-]+)%s*$`** | **Matches ^id at end of line, flexible for UUID and alphanumeric IDs** |
-| **T03 task state** | **Accept both [x] and [X]** | **Case-insensitive for done state matches common usage** |
+| Index data structure | nodes_by_date stores {id, file} or {node, file} | Allows incremental update to filter by file path |
+| Task tracking in index | tasks_by_state stores tasks with _file field | Enables filtering by file during incremental updates |
+| Path normalization | vim.fn.simplify() for all path comparisons | fnamemodify(':p') doesn't normalize // vs / properly |
+| Incremental update strategy | Remove all entries from file, re-parse and re-add | Simpler than tracking individual node changes |
+| HIGH review finding (file race in build/update) | NO FIX NEEDED | Error propagates correctly; race window negligible |
+| MEDIUM review finding (autocmd cleanup) | FIXED | Added _autocmd_id tracking, delete before re-setup |
+| MEDIUM review finding (path matching edge) | FIXED | Use vim.startswith() with trailing slash |
+| Phase 2 production readiness | APPROVED | All tests pass, review findings addressed |
+| Lens highlight strategy | Done state overrides all highlights | Simplifies visual hierarchy - done tasks get single highlight |
+| Lens priority highlighting | !1-!2 = High, !4-!5 = Low, !3 = none | Focuses attention on extremes only |
+| Lens return format | {lines = {string}, highlights = {highlight}} | Simple, extensible structure for view rendering |
 
 ## Learnings This Session
-- vim.tbl_deep_extend does NOT validate types - manual validation required AFTER merge
-- vim.trim() is essential for catching whitespace-only strings (for REQUIRED fields)
-- Type validation pattern: check type(value) ~= 'expected_type' then error()
-- Range validation pattern: check numeric_value <= 0 for positive-only values
-- Duplicate setup guard: Use state.initialized flag, set after successful setup, check at start
-- TDD red-green cycle for validation: Write comprehensive test → watch fail → implement → verify
-- Silent failures are caught by testing INVALID inputs, not just valid ones
-- Validation layer adds ~50 lines but prevents runtime crashes and provides clear error messages
-- Test suite expansion: From 5 tests (happy path) to 21 tests (happy + edge cases)
-- Fresh evidence required for all verification claims - no exceptions
-- **Integration verification requires running ALL test suites with fresh evidence**
-- **Production readiness = functional + tests + quality + zero regressions**
-- **TDD workflow**: Write failing test first → implement minimal solution → refactor → verify
-- **Module counter pattern**: Use local counter for unique buffer names (prevents E95 errors)
-- **vim.bo[bufnr] is preferred over nvim_buf_set_option**: Modern API, not deprecated in 0.10+
-- **Separate modules for features**: view.lua for view utilities, extmarks.lua for span tracking
-- **CRITICAL: nvim_create_buf can return 0 on failure** - must validate before using
-- **CRITICAL: vim.bo[0] operates on CURRENT buffer** - using unchecked 0 corrupts current buffer
-- **Silent failure hunting requires testing API failure modes** - not just happy path
-- **Decision precedent matters** - T00/T01/T02 all followed same pattern: fix critical before completion
-- **Extmark API limitation**: nvim_buf_set_extmark with ext_data parameter exists but unreliable
-- **Metadata storage pattern**: Separate table keyed by bufnr → mark_id works better than ext_data
-- **CRITICAL: Extmarks auto-cleaned on buffer deletion but metadata table persists** - must add autocmd cleanup
-- **Autocmd cleanup pattern**: Register BufDelete/BufWipeout once on first metadata_store init
-- **Memory leak detection**: Test by creating metadata, deleting buffer, checking if metadata persists
-- **Integration verification finds issues component-builder misses**: Memory leaks, resource exhaustion
-- **Lua pattern matching for Markdown**: string.match() with patterns sufficient for MVP parser
-- **Pattern: `^(#+)%s+(.*)$`**: Matches headings (1-6 hashes + space + text)
-- **Pattern: `^%s*%-%s+%[([%sxX])%]%s+(.*)$`**: Matches tasks (optional indent + dash + checkbox + text)
-- **Pattern: `^%s*%-%s+(.*)$`**: Matches list items (optional indent + dash + text)
-- **ID suffix extraction**: Match `%s*%^([%w%-]+)%s*$` at end, trim text before ID
+- vim.fn.fnamemodify(':p') doesn't normalize paths with '//' - use vim.fn.simplify() instead
+- Incremental update requires storing file_path with each index entry to filter correctly
+- BufWritePost autocmd works for detecting file saves in vault
+- os.date('%Y-%m-%d', timestamp) converts unix timestamp to date string
+- nvim_buf_get_lines throws proper errors on invalid buffers without needing pcall
+- Silent empty return for non-existent vault is correct for startup scenarios
+- Review findings require TESTING before accepting - HIGH/MEDIUM labels may be false alarms
+- Fresh verification evidence is essential - no assumptions
+- Path prefix matching needs trailing slash to avoid /vault matching /vault2
+- Autocmd IDs must be stored to enable cleanup on re-registration
+- string.find() for highlight position needs plain search (3rd param = true)
+- Lua string indices are 1-based, but highlight col ranges are 0-based
+- Test files need -u NONE flag to avoid loading user config that might interfere
 
 ## Blockers / Issues
-NONE - All critical issues resolved
+NONE - Phase 3 VERIFIED AND COMPLETE
 
-## T02 Final Verification Results (After Memory Leak Fix)
+## Phase 3 Summary
 
-### Acceptance Tests
-- ✅ make test: exit 0 (all T00+T01+T02 tests pass)
-- ✅ T02 acceptance tests: 5/5 PASS
-  - Extmark namespace creation works
-  - Set instance span stores metadata
-  - Get instance at cursor retrieves metadata
-  - Get instance returns nil when no extmark
-  - :LifeModeDebugSpan command prints metadata
-- ✅ Zero regressions (all T00 and T01 tests still pass)
+### Components Verified
+| Task | Component | File | Status | Tests |
+|------|-----------|------|--------|-------|
+| T10 | View buffer creation | lua/lifemode/view.lua | PASS | test_view_creation.lua |
+| T11 | Extmark span mapping | lua/lifemode/extmarks.lua | PASS | test_t02_acceptance.lua, test_t02_edge_cases.lua |
+| T12 | Lens renderer interface | lua/lifemode/lens.lua | PASS | test_t12_lens_basic.lua (12), test_t12_lens_edge_cases.lua (14) |
 
-### Edge Cases
-- ✅ Invalid buffer error: Properly raises error
-- ✅ Multiple extmarks in buffer: Each retrievable correctly
-- ✅ Overlapping spans: Returns first match (FIFO behavior, documented)
-- ✅ Single-line span: Works
-- ✅ Multiline span: All lines within span return metadata
-- ✅ Namespace persistence: Same namespace across calls
-- ✅ Metadata with all fields: All fields preserved
-- ✅ Buffer deletion cleanup: No stale metadata after deletion (CRITICAL FIX VERIFIED)
+### Lens API
+```lua
+lens.render(node, lens_name, params) -> { lines = {string}, highlights = {highlight} }
+lens.get_available_lenses(node_type) -> {string}
+```
 
-### Memory Leak Fix Verification
-- ✅ test_memory_leak.lua: exit 0 (no leak detected)
-  - Before fix: _metadata_store[bufnr] persisted after vim.api.nvim_buf_delete()
-  - After fix: _metadata_store[bufnr] == nil after deletion
+**Lenses implemented:**
+- task/brief: `[ ] Task text !2 @due(2026-01-20)` with highlights
+- heading/brief: `## Heading text` with LifeModeHeading highlight
+- node/raw: Raw markdown for any node type
 
-### Buffer Validation Coverage
-- ✅ test_buffer_validation.lua: exit 0 (4/4 invalid buffers caught)
-  - bufnr=0, nil: Caught by our validation
-  - bufnr=-1, 9999: Caught by Neovim API
-  - Silent-failure-hunter FALSE ALARM identified and documented
+## Phase 2 Final Summary
 
-### Confidence Score
-**99/100** - Production-ready with memory leak fixed
+### Components Verified
+| Task | Component | File | Status | Tests |
+|------|-----------|------|--------|-------|
+| T06 | Basic index structure | lua/lifemode/index.lua | PASS | test_t06_index_structure.lua |
+| T07 | Full index build | lua/lifemode/index.lua + parser.parse_file() | PASS | test_t07_index_build.lua |
+| T08 | Lazy initialization | lua/lifemode/index.lua | PASS | test_t08_lazy_index.lua |
+| T09 | Incremental updates | lua/lifemode/index.lua | PASS | test_t09_incremental_update.lua, test_t09_autocommands.lua |
 
-## T02 Production-Ready Assessment (Final)
+### Review Findings Assessment
+| Finding | Severity | Assessment | Evidence |
+|---------|----------|------------|----------|
+| File race in build() | HIGH | NO FIX NEEDED | Error propagates correctly; race window negligible for personal vault |
+| File race in update_file() | HIGH | NO FIX NEEDED | Same as above - error propagation is correct |
+| Autocmd cleanup missing | MEDIUM | FIXED | Added _autocmd_id tracking, now deletes before re-setup |
+| Path matching edge case | MEDIUM | FIXED | Now uses vim.startswith() with trailing slash |
 
-| Criterion | Status | Evidence |
-|-----------|--------|----------|
-| Functional requirements | COMPLETE | All SPEC.md T02 requirements met |
-| Test coverage | COMPREHENSIVE | Acceptance (5) + edge cases (8) + memory leak (1) + validation (1) = 15 tests |
-| Error handling | EXCELLENT | Invalid buffer validation, nil checks, autocmd cleanup |
-| Code quality | EXCELLENT | Clean, no unnecessary comments, CLAUDE.md compliant |
-| Silent failures | ELIMINATED | 1/1 critical memory leak fixed |
-| Regressions | NONE | All T00 and T01 tests still pass |
-| Memory safety | EXCELLENT | Autocmd cleanup prevents resource exhaustion |
-
-**STATUS: T02 PRODUCTION-READY (WITH MEMORY LEAK FIX)**
+### Index API (Updated)
+```lua
+index.create() -> { node_locations, tasks_by_state, nodes_by_date }
+index.add_node(idx, node, file_path, mtime) -> idx
+index.build(vault_root) -> idx
+index.get_or_build(vault_root) -> idx
+index.is_built() -> boolean
+index.invalidate() -> void
+index.update_file(file_path, mtime) -> void
+index.setup_autocommands(vault_root) -> void
+index._reset_state() -> void  -- NEW: For testing, clears all state including autocmd
+```
 
 ## User Preferences Discovered
 - CRITICAL: No comments in code unless absolutely necessary (CLAUDE.md)
-- User wants TDD approach: RED → GREEN → REFACTOR
+- User wants TDD approach: RED -> GREEN -> REFACTOR
 - User wants clean, minimal implementations (YAGNI)
 - User expects evidence-based verification (fresh test runs, not assumptions)
-- User said "Do not ask for input, pick best choice and document in DECISIONS.md"
-
-## T03 Final Verification Results
-
-### Acceptance Tests
-- ✅ make test: exit 0 (all T00+T01+T02+T03 tests pass)
-- ✅ T03 acceptance tests: 9/9 PASS
-  - Parse empty buffer works
-  - Parse single heading extracts type/level/text/line
-  - Parse heading with ID extracts ^id suffix
-  - Parse task todo recognizes [ ] state
-  - Parse task done recognizes [x] and [X] state
-  - Parse task with ID extracts ^id suffix
-  - Parse list item distinguishes from tasks
-  - Parse mixed content (headings, tasks, list items)
-  - Parse buffer counts (block count + task count)
-- ✅ Zero regressions (all T00, T01, T02 tests still pass)
-
-### Edge Cases
-- ✅ Invalid buffer error: Properly raises error
-- ✅ Headings multiple levels: Parses 1-6 hash levels
-- ✅ Task with uppercase X: [X] recognized as done
-- ✅ Indented list items: Parses nested items
-- ✅ ID with hyphens: UUID format supported
-- ✅ ID without hyphens: Alphanumeric IDs supported
-- ✅ Text with caret not ID: ^C in middle not treated as ID
-- ✅ Whitespace around ID: Trimming works correctly
-- ✅ Ignore non-markdown lines: Regular text skipped
-
-### Confidence Score
-**100/100** - Production-ready, comprehensive test coverage
-
-## T03 Production-Ready Assessment
-
-| Criterion | Status | Evidence |
-|-----------|--------|----------|
-| Functional requirements | COMPLETE | All SPEC.md T03 requirements met |
-| Test coverage | COMPREHENSIVE | Acceptance (9) + edge cases (9) = 18 tests |
-| Error handling | EXCELLENT | Invalid buffer validation, nil checks |
-| Code quality | EXCELLENT | Clean, minimal, no unnecessary comments |
-| Silent failures | NONE | All edge cases tested and handled |
-| Regressions | NONE | All T00, T01, T02 tests still pass |
-
-**STATUS: T03 PRODUCTION-READY**
 
 ## Last Updated
-2026-01-16 22:15 EST (T03 complete - Markdown parser implemented with TDD)
-
-## Code Review Findings (T03)
-
-### Stage 1: Spec Compliance ✅
-- All SPEC.md T03 requirements met
-- Headings (1-6 levels), tasks ([ ]/[x]/[X]), list items parsed
-- ^id suffix extraction working (UUID + alphanumeric)
-- Block structure correct: {type, line, level, text, state, id}
-- :LifeModeParse command implemented
-
-### Stage 2: Code Quality ✅
-**Security:** No issues (confidence 95)
-- Buffer validation at entry: `bufnr == 0 or not bufnr`
-
-**Performance:** No issues (confidence 100)
-- Single-pass parsing, efficient pattern matching
-- No N+1 queries, no unnecessary loops
-
-**Quality:** Excellent (confidence 95-100)
-- Naming: Clear and descriptive
-- Function design: Single responsibility, DRY
-- No duplication: `_extract_id` shared across block types
-- CLAUDE.md compliant: Zero unnecessary comments
-
-**Pattern Correctness:** All verified (confidence 95)
-- Heading: `^(#+)%s+(.*)$` - Correct
-- Task: `^%s*%-%s+%[([%sxX])%]%s+(.*)$` - Correct
-- List: `^%s*%-%s+(.*)$` - Correct
-- ID: `^(.-)%s*%^([%w%-]+)%s*$` - Correct
-
-### Stage 3: Integration ✅
-- Zero regressions (all T00+T01+T02 tests pass)
-- Module structure: Clean separation, no global state
-- Test coverage: 18 tests (9 acceptance + 9 edge cases)
-
-### Verdict
-**APPROVE** - Production-ready, zero issues found
-
+2026-01-16 (T12 COMPLETE - Basic lens renderer interface)
