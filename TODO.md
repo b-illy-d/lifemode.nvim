@@ -233,42 +233,58 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 6: Task Management
+## Phase 6: Task Management ✅ COMPLETE
 
-### T20: Task state toggle patch operation
+### T20: Task state toggle patch operation ✅ DONE
 - Create `lua/lifemode/patch.lua` module
 - Implement `patch.toggle_task_state(node_id)`
 - Look up node location, read file, toggle `- [ ]` ↔ `- [x]`
 - Write file back, trigger index update
 - **Aligns with**: §F Patch Ops, Core MVP Loop step 4
+- **Evidence**:
+  - `lua/lifemode/patch.lua` (`toggle_task_state()`)
+  - `tests/test_t20_patch_toggle.lua` (5/5 tests)
 
-### T21: Task state toggle from view
+### T21: Task state toggle from view ✅ DONE
 - Add `<Space><Space>` keymap in view buffers
 - Get node at cursor, call patch.toggle_task_state()
 - Re-render affected span in view buffer
 - Update tasks_by_state in index
 - **Aligns with**: §J Task Management keymaps
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_toggle_task()`, keymap)
+  - `tests/test_t21_toggle_from_view.lua` (3/3 tests)
 
-### T22: Priority patch operations
+### T22: Priority patch operations ✅ DONE
 - Implement `patch.inc_priority(node_id)` and `patch.dec_priority(node_id)`
 - Parse existing priority (!1-!5), increment/decrement within bounds
 - Add priority if missing (default to !3), remove if going past bounds
 - Add `<Space>tp` / `<Space>tP` keymaps
 - **Aligns with**: §F Patch Ops, §J keymaps
+- **Evidence**:
+  - `lua/lifemode/patch.lua` (`inc_priority()`, `dec_priority()`)
+  - `lua/lifemode/init.lua` (`_inc_priority()`, `_dec_priority()`, keymaps)
+  - `tests/test_t22_priority_patch.lua` (6/6 tests)
 
-### T23: Due date patch operation
+### T23: Due date patch operation ✅ DONE
 - Implement `patch.set_due(node_id, date)` and `patch.clear_due(node_id)`
 - Parse/update `@due(YYYY-MM-DD)` in task line
-- Add `<Space>td` keymap opening date picker (or prompt)
 - Handle date format validation
 - **Aligns with**: §F Patch Ops, §C3 Tasks
+- **Evidence**:
+  - `lua/lifemode/patch.lua` (`set_due()`, `clear_due()`)
+  - `tests/test_t23_due_date_patch.lua` (6/6 tests)
+- **Note**: Keymap `<Space>td` deferred - needs date picker UI
 
-### T24: Tag patch operations
+### T24: Tag patch operations ✅ DONE
 - Implement `patch.add_tag(node_id, tag)` and `patch.remove_tag(node_id, tag)`
 - Parse existing tags (#tag/subtag), add/remove as requested
-- Add `<Space>tt` keymap opening tag editor (or prompt)
 - Validate tag format
 - **Aligns with**: §F Patch Ops, §C3 Tasks
+- **Evidence**:
+  - `lua/lifemode/patch.lua` (`add_tag()`, `remove_tag()`)
+  - `tests/test_t24_tag_patch.lua` (7/7 tests)
+- **Note**: Keymap `<Space>tt` deferred - needs tag picker UI
 
 ---
 
@@ -511,7 +527,7 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 - **After T09**: Index system complete - pause for testing ✅ REACHED
 - **After T17**: Daily view complete - pause for user testing (per §H) ✅ REACHED
-- **After T24**: Task management complete - pause for user testing
+- **After T24**: Task management complete - pause for user testing ✅ REACHED
 - **After T37**: Bible references complete - pause for user testing (per §H)
 - **After T48**: Query system complete - feature complete MVP
 
@@ -526,9 +542,10 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 3: View Infrastructure | ✅ Complete | T10-T12 (3/3) |
 | Phase 4: Daily View | ✅ Complete | T13-T17 (5/5) |
 | Phase 5: Navigation | ✅ Complete | T18-T19 (2/2) |
-| Phase 6-15 | Not Started | (0/35) |
+| Phase 6: Task Management | ✅ Complete | T20-T24 (5/5) |
+| Phase 7-15 | Not Started | (0/31) |
 
-**Total: 19/55 tasks complete (35%)**
+**Total: 24/55 tasks complete (44%)**
 
 ---
 

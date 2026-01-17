@@ -15,3 +15,20 @@ Quick notes on decisions made during development.
 ### Tests updated for :LifeMode (not :LifeModeOpen)
 **Why**: Old tests expected a command that didn't exist.
 **Note**: The actual command is `:LifeMode`, not `:LifeModeOpen`.
+
+## Phase 6: Task Management
+
+### Date/tag picker keymaps deferred
+**Why**: `<Space>td` (date) and `<Space>tt` (tag) need UI pickers/prompts.
+**Decision**: Core patch operations implemented; keymaps deferred to future phase.
+
+### Priority bounds: !1 (highest) to !5 (lowest)
+**Why**: Matches org-mode convention where lower number = higher priority.
+**Behavior**:
+- inc_priority at !1 stays at !1
+- dec_priority at !5 removes priority entirely
+- inc_priority on no-priority adds !3 (middle)
+
+### Patch module architecture
+**Why**: Clean separation between view logic and file modification.
+**Pattern**: All patch ops take `(node_id, idx)` and return result + modify file.

@@ -130,6 +130,9 @@ function M._setup_keymaps(bufnr)
   vim.keymap.set('n', '[m', function() navigation.jump(cv(), 'date/month', -1, refresh) end, opts)
   vim.keymap.set('n', 'gd', function() M._jump_to_source() end, opts)
   vim.keymap.set('n', '<CR>', function() M._jump_to_source() end, opts)
+  vim.keymap.set('n', '<Space><Space>', function() M._toggle_task() end, opts)
+  vim.keymap.set('n', '<Space>tp', function() M._inc_priority() end, opts)
+  vim.keymap.set('n', '<Space>tP', function() M._dec_priority() end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
 end
 
@@ -164,6 +167,76 @@ end
 
 function M._jump_month(direction)
   navigation.jump(state.current_view, 'date/month', direction, function() M._refresh_view() end)
+end
+
+local function get_task_node_id()
+  local extmarks = require('lifemode.extmarks')
+  local metadata = extmarks.get_instance_at_cursor()
+
+  if not metadata then return nil end
+  if metadata.lens and metadata.lens:match('^date/') then return nil end
+
+  local node = metadata.node
+  if not node or node.type ~= 'task' then return nil end
+
+  return metadata.target_id or (node and node.id)
+end
+
+local function refresh_after_patch()
+  local index = require('lifemode.index')
+  local daily = require('lifemode.views.daily')
+  local cv = state.current_view
+  if not cv then return end
+
+  index._reset_state()
+  local idx = index.get_or_build(state.config.vault_root)
+  local tree = daily.build_tree(idx, state.config)
+
+  cv.index = idx
+  cv.tree = tree
+
+  M._refresh_view()
+end
+
+function M._toggle_task()
+  local patch = require('lifemode.patch')
+
+  local node_id = get_task_node_id()
+  if not node_id then return end
+
+  local cv = state.current_view
+  if not cv then return end
+
+  local new_state = patch.toggle_task_state(node_id, cv.index)
+  if not new_state then return end
+
+  refresh_after_patch()
+end
+
+function M._inc_priority()
+  local patch = require('lifemode.patch')
+
+  local node_id = get_task_node_id()
+  if not node_id then return end
+
+  local cv = state.current_view
+  if not cv then return end
+
+  patch.inc_priority(node_id, cv.index)
+  refresh_after_patch()
+end
+
+function M._dec_priority()
+  local patch = require('lifemode.patch')
+
+  local node_id = get_task_node_id()
+  if not node_id then return end
+
+  local cv = state.current_view
+  if not cv then return end
+
+  patch.dec_priority(node_id, cv.index)
+  refresh_after_patch()
 end
 
 function M._jump_to_source()
