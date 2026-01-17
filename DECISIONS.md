@@ -32,3 +32,16 @@ Quick notes on decisions made during development.
 ### Patch module architecture
 **Why**: Clean separation between view logic and file modification.
 **Pattern**: All patch ops take `(node_id, idx)` and return result + modify file.
+
+## Phase 7: All Tasks View
+
+### Grouping cycle order: due_date → priority → tag
+**Why**: Most common workflow is checking what's due, then by urgency, then by project.
+
+### Filter toggle deferred
+**Why**: `<Space>f` for done tasks filter needs done task support in grouping.
+**Decision**: Implemented grouping cycling, filter toggle can be added later.
+
+### Task sorting by priority within groups
+**Why**: Even in due-date or tag grouping, highest priority tasks should appear first.
+**Implementation**: `sort_by_priority()` applied before any grouping.

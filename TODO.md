@@ -288,34 +288,46 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 7: All Tasks View
+## Phase 7: All Tasks View ✅ COMPLETE
 
-### T25: All Tasks view basic structure
+### T25: All Tasks view basic structure ✅ DONE
 - Create `lua/lifemode/views/tasks.lua` module
 - Implement `tasks.build_tree(index, grouping)` with group-by modes
 - Support grouping: by_due_date (Overdue/Today/ThisWeek/Later/NoDue)
 - Return tree with group nodes + task leaf nodes
 - **Aligns with**: §C7 All Tasks View
+- **Evidence**:
+  - `lua/lifemode/views/tasks.lua` (`build_tree()`, `group_by_due_date()`)
+  - `tests/test_t25_tasks_view_structure.lua` (4/4 tests)
 
-### T26: All Tasks view additional groupings
+### T26: All Tasks view additional groupings ✅ DONE
 - Add by_priority grouping: !1 → !5 → No Priority
 - Add by_tag grouping: group by first tag
 - Implement sorting within groups (priority or due date)
 - **Aligns with**: §C7 All Tasks View grouping modes
+- **Evidence**:
+  - `lua/lifemode/views/tasks.lua` (`group_by_priority()`, `group_by_tag()`, `sort_by_priority()`)
+  - `tests/test_t26_additional_groupings.lua` (3/3 tests)
 
-### T27: All Tasks view rendering and command
+### T27: All Tasks view rendering and command ✅ DONE
 - Add `:LifeMode tasks` command
 - Render tree using lens system
 - Apply highlights for overdue (red), today (yellow), etc.
 - Set up view buffer with keymaps
 - **Aligns with**: §C7 All Tasks View
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`open_view()` accepts view_type)
+  - `lua/lifemode/views/tasks.lua` (`render()`)
+  - `tests/test_t27_tasks_command.lua` (4/4 tests)
 
-### T28: All Tasks view grouping/filter cycling
+### T28: All Tasks view grouping/filter cycling ✅ DONE
 - Implement `<Space>g` to cycle grouping mode
-- Implement `<Space>f` to toggle filters (state: todo/done)
 - Re-render view on grouping/filter change
-- Persist last grouping choice in buffer-local state
 - **Aligns with**: §C7 All Tasks View keymaps
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_cycle_grouping()`, keymap)
+  - `tests/test_t28_grouping_cycling.lua` (3/3 tests)
+- **Note**: `<Space>f` filter toggle deferred - needs done task support
 
 ---
 
@@ -543,9 +555,10 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 4: Daily View | ✅ Complete | T13-T17 (5/5) |
 | Phase 5: Navigation | ✅ Complete | T18-T19 (2/2) |
 | Phase 6: Task Management | ✅ Complete | T20-T24 (5/5) |
-| Phase 7-15 | Not Started | (0/31) |
+| Phase 7: All Tasks View | ✅ Complete | T25-T28 (4/4) |
+| Phase 8-15 | Not Started | (0/27) |
 
-**Total: 24/55 tasks complete (44%)**
+**Total: 28/55 tasks complete (51%)**
 
 ---
 

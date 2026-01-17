@@ -19,7 +19,10 @@ end
 
 local function register_commands()
   vim.api.nvim_create_user_command('LifeModeHello', function() M.hello() end, {})
-  vim.api.nvim_create_user_command('LifeMode', function() M.open_view() end, {})
+  vim.api.nvim_create_user_command('LifeMode', function(opts)
+    local view_type = opts.args and opts.args ~= '' and opts.args or 'daily'
+    M.open_view(view_type)
+  end, { nargs = '?' })
   vim.api.nvim_create_user_command('LifeModeDebugSpan', function() M.debug_span() end, {})
   vim.api.nvim_create_user_command('LifeModeParse', function() M.parse_current_buffer() end, {})
 end
@@ -54,17 +57,25 @@ function M.hello()
   vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
 end
 
-function M.open_view()
+function M.open_view(view_type)
   if not require_setup() then return end
+  view_type = view_type or 'daily'
 
   local index = require('lifemode.index')
-  local daily = require('lifemode.views.daily')
   local view = require('lifemode.view')
-  local extmarks = require('lifemode.extmarks')
 
   local idx = index.get_or_build(state.config.vault_root)
-  local tree = daily.build_tree(idx, state.config)
-  local rendered = daily.render(tree, { index = idx })
+  local tree, rendered
+
+  if view_type == 'tasks' then
+    local tasks_view = require('lifemode.views.tasks')
+    tree = tasks_view.build_tree(idx, state.config)
+    rendered = tasks_view.render(tree, { index = idx })
+  else
+    local daily = require('lifemode.views.daily')
+    tree = daily.build_tree(idx, state.config)
+    rendered = daily.render(tree, { index = idx })
+  end
 
   local bufnr = view.create_buffer()
   M._apply_rendered_content(bufnr, rendered)
@@ -74,14 +85,18 @@ function M.open_view()
     tree = tree,
     index = idx,
     spans = rendered.spans,
+    view_type = view_type,
   }
 
   M._setup_keymaps(bufnr)
   vim.api.nvim_win_set_buf(0, bufnr)
 
-  local today_line = daily.find_today_line(rendered.spans)
-  if today_line > 0 then
-    vim.api.nvim_win_set_cursor(0, {today_line + 1, 0})
+  if view_type == 'daily' then
+    local daily = require('lifemode.views.daily')
+    local today_line = daily.find_today_line(rendered.spans)
+    if today_line > 0 then
+      vim.api.nvim_win_set_cursor(0, {today_line + 1, 0})
+    end
   end
 end
 
@@ -133,6 +148,7 @@ function M._setup_keymaps(bufnr)
   vim.keymap.set('n', '<Space><Space>', function() M._toggle_task() end, opts)
   vim.keymap.set('n', '<Space>tp', function() M._inc_priority() end, opts)
   vim.keymap.set('n', '<Space>tP', function() M._dec_priority() end, opts)
+  vim.keymap.set('n', '<Space>g', function() M._cycle_grouping() end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
 end
 
@@ -237,6 +253,33 @@ function M._dec_priority()
 
   patch.dec_priority(node_id, cv.index)
   refresh_after_patch()
+end
+
+local GROUPING_CYCLE = {'by_due_date', 'by_priority', 'by_tag'}
+
+function M._cycle_grouping()
+  local cv = state.current_view
+  if not cv then return end
+  if cv.view_type ~= 'tasks' then return end
+
+  local current = cv.tree and cv.tree.grouping or 'by_due_date'
+  local next_idx = 1
+  for i, g in ipairs(GROUPING_CYCLE) do
+    if g == current then
+      next_idx = (i % #GROUPING_CYCLE) + 1
+      break
+    end
+  end
+
+  local new_grouping = GROUPING_CYCLE[next_idx]
+  local tasks_view = require('lifemode.views.tasks')
+
+  local tree = tasks_view.build_tree(cv.index, { grouping = new_grouping })
+  local rendered = tasks_view.render(tree, { index = cv.index })
+
+  cv.tree = tree
+  M._apply_rendered_content(cv.bufnr, rendered)
+  cv.spans = rendered.spans
 end
 
 function M._jump_to_source()
