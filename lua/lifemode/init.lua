@@ -128,11 +128,26 @@ function M._setup_keymaps(bufnr)
   vim.keymap.set('n', '[d', function() navigation.jump(cv(), 'date/day', -1, refresh) end, opts)
   vim.keymap.set('n', ']m', function() navigation.jump(cv(), 'date/month', 1, refresh) end, opts)
   vim.keymap.set('n', '[m', function() navigation.jump(cv(), 'date/month', -1, refresh) end, opts)
+  vim.keymap.set('n', 'gd', function() M._jump_to_source() end, opts)
+  vim.keymap.set('n', '<CR>', function() M._jump_to_source() end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
 end
 
 function M._get_current_view()
   return state.current_view
+end
+
+function M._get_last_view_bufnr()
+  return state.last_view_bufnr
+end
+
+function M._return_to_view()
+  if not state.last_view_bufnr then return end
+  if not vim.api.nvim_buf_is_valid(state.last_view_bufnr) then
+    state.last_view_bufnr = nil
+    return
+  end
+  vim.api.nvim_set_current_buf(state.last_view_bufnr)
 end
 
 function M._expand_at_cursor()
@@ -149,6 +164,35 @@ end
 
 function M._jump_month(direction)
   navigation.jump(state.current_view, 'date/month', direction, function() M._refresh_view() end)
+end
+
+function M._jump_to_source()
+  local extmarks = require('lifemode.extmarks')
+  local metadata = extmarks.get_instance_at_cursor()
+
+  if not metadata then return end
+  if metadata.lens and metadata.lens:match('^date/') then return end
+
+  local file = metadata.file
+  local line = metadata.node and metadata.node.line
+
+  if not file then
+    if metadata.target_id and state.current_view and state.current_view.index then
+      local loc = state.current_view.index.node_locations[metadata.target_id]
+      if loc then
+        file = loc.file
+        line = loc.line
+      end
+    end
+  end
+
+  if not file then return end
+
+  state.last_view_bufnr = vim.api.nvim_get_current_buf()
+  vim.cmd('edit ' .. vim.fn.fnameescape(file))
+  if line then
+    vim.api.nvim_win_set_cursor(0, {line + 1, 0})
+  end
 end
 
 function M.debug_span()

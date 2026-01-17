@@ -17,11 +17,11 @@ if bufnr and bufnr > 0 then
   local bufhidden = vim.api.nvim_buf_get_option(bufnr, 'bufhidden')
   local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
 
-  if buftype == 'nofile' and not swapfile and bufhidden == 'wipe' and filetype == 'lifemode' then
+  if buftype == 'nofile' and not swapfile and bufhidden == 'hide' and filetype == 'lifemode' then
     print('   PASS: Buffer created with correct settings')
     print('     - buftype: nofile ✓')
     print('     - swapfile: false ✓')
-    print('     - bufhidden: wipe ✓')
+    print('     - bufhidden: hide ✓')
     print('     - filetype: lifemode ✓')
   else
     print('   FAIL: Buffer settings incorrect')
@@ -32,28 +32,28 @@ else
   test_passed = false
 end
 
-print('\n2. :LifeModeOpen command exists and opens view buffer')
-local has_command = vim.fn.exists(':LifeModeOpen') == 2
+print('\n2. :LifeMode command exists and opens view buffer')
+local has_command = vim.fn.exists(':LifeMode') == 2
 if has_command then
-  print('   PASS: :LifeModeOpen command exists')
+  print('   PASS: :LifeMode command exists')
 
-  vim.cmd('LifeModeOpen')
+  vim.cmd('LifeMode')
   local current_bufnr = vim.api.nvim_get_current_buf()
   local current_buftype = vim.api.nvim_buf_get_option(current_bufnr, 'buftype')
   local current_filetype = vim.api.nvim_buf_get_option(current_bufnr, 'filetype')
   local bufname = vim.api.nvim_buf_get_name(current_bufnr)
 
   if current_buftype == 'nofile' and current_filetype == 'lifemode' and bufname:match('LifeMode') then
-    print('   PASS: :LifeModeOpen opened view buffer correctly')
+    print('   PASS: :LifeMode opened view buffer correctly')
     print('     - Buffer is nofile ✓')
     print('     - Filetype is lifemode ✓')
     print('     - Name contains "LifeMode" ✓')
   else
-    print('   FAIL: :LifeModeOpen did not open correct buffer')
+    print('   FAIL: :LifeMode did not open correct buffer')
     test_passed = false
   end
 else
-  print('   FAIL: :LifeModeOpen command does not exist')
+  print('   FAIL: :LifeMode command does not exist')
   test_passed = false
 end
 

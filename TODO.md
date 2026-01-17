@@ -152,62 +152,84 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 4: Daily View (MVP Core)
+## Phase 4: Daily View (MVP Core) ✅ COMPLETE
 
-### T13: Daily view date tree structure
+### T13: Daily view date tree structure ✅ DONE
 - Create `lua/lifemode/views/daily.lua` module
 - Implement `daily.build_tree(index)` returning Year > Month > Day hierarchy
 - Group nodes by date using nodes_by_date from index
 - Return tree structure with synthetic group nodes (year/month/day) + leaf nodes
 - **Aligns with**: §C7 Daily View structure
+- **Evidence**:
+  - `lua/lifemode/views/daily.lua` (`build_tree()`, `group_nodes_by_date()`)
+  - `tests/test_t13_daily_tree.lua` (9/9 tests)
 
-### T14: Daily view rendering
+### T14: Daily view rendering ✅ DONE
 - Implement `daily.render(tree, options)` producing lines + spans for buffer
 - Render year/month headers as collapsible group lines
 - Render day headers with node count
 - Render leaf nodes using lens system (task/brief or node/raw)
 - Track line ranges for each rendered element
 - **Aligns with**: §C7 Daily View, §D3 Rendering mechanics
+- **Evidence**:
+  - `lua/lifemode/views/daily.lua` (`render()`, `render_instance()`)
+  - `tests/test_t14_daily_render.lua` (10/10 tests)
 
-### T15: Daily view buffer and :LifeMode command
+### T15: Daily view buffer and :LifeMode command ✅ DONE
 - Update `:LifeMode` command to open Daily view by default
 - Create view buffer, render tree, set content
 - Apply extmarks for spans and highlights
 - Set buffer as read-only after rendering
 - Focus cursor on today's date section (expanded by default)
 - **Aligns with**: §A0 ":LifeMode invocable from anywhere", Core MVP Loop step 1-2
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`open_view()`, `_apply_rendered_content()`)
+  - `tests/test_t15_daily_command.lua` (6/6 tests)
 
-### T16: Daily view expand/collapse
+### T16: Daily view expand/collapse ✅ DONE
 - Implement expand/collapse for date group nodes
 - `<Space>e`: Expand node under cursor (show children)
 - `<Space>E`: Collapse node under cursor (hide children)
 - Update spans and re-render affected line ranges
 - Track collapsed state in span data
 - **Aligns with**: §C7 Keymaps, P5 (lazy expansion)
+- **Evidence**:
+  - `lua/lifemode/navigation.lua` (`expand_at_cursor()`, `collapse_at_cursor()`)
+  - `tests/test_t16_expand_collapse.lua` (6/6 tests)
 
-### T17: Daily view date navigation
+### T17: Daily view date navigation ✅ DONE
 - Implement `]d` / `[d`: Jump to next/previous day
 - Implement `]m` / `[m`: Jump to next/previous month
 - Use extmark data to find date boundaries
 - Auto-expand target date if collapsed
 - **Aligns with**: §C7 Daily View keymaps
+- **Evidence**:
+  - `lua/lifemode/navigation.lua` (`jump()`, `jump_to_span()`)
+  - `tests/test_t17_date_navigation.lua` (5/5 tests)
 
 ---
 
-## Phase 5: Navigation (LSP-like)
+## Phase 5: Navigation (LSP-like) ✅ COMPLETE
 
-### T18: Jump to source file (gd / Enter)
+### T18: Jump to source file (gd / Enter) ✅ DONE
 - Implement `gd` / `Enter` on view buffer to jump to source
 - Get node_id from span at cursor
 - Look up file + line in index.node_locations
 - Open file in split/current window at correct line
 - **Aligns with**: Core MVP Loop step 5, §D5 Navigation semantics
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_jump_to_source()`, `_setup_keymaps()`)
+  - `tests/test_t18_jump_to_source.lua` (6/6 tests)
 
-### T19: Return to view from source
+### T19: Return to view from source ✅ DONE
 - Track last view buffer when jumping to source
 - Provide command/keymap to return to view (e.g., `<C-o>` or `:LifeMode`)
 - Refresh view if index changed during source editing
 - **Aligns with**: Core MVP Loop "Edit source when needed"
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_return_to_view()`, `_get_last_view_bufnr()`)
+  - `lua/lifemode/view.lua` (changed `bufhidden` to `'hide'` for persistence)
+  - `tests/test_t19_return_to_view.lua` (4/4 tests)
 
 ---
 
@@ -488,7 +510,7 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 ## Milestone Checkpoints
 
 - **After T09**: Index system complete - pause for testing ✅ REACHED
-- **After T17**: Daily view complete - pause for user testing (per §H)
+- **After T17**: Daily view complete - pause for user testing (per §H) ✅ REACHED
 - **After T24**: Task management complete - pause for user testing
 - **After T37**: Bible references complete - pause for user testing (per §H)
 - **After T48**: Query system complete - feature complete MVP
@@ -502,10 +524,11 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 1: Foundation | ✅ Complete | T01-T05 (5/5) |
 | Phase 2: Index System | ✅ Complete | T06-T09 (4/4) |
 | Phase 3: View Infrastructure | ✅ Complete | T10-T12 (3/3) |
-| Phase 4: Daily View | Not Started | (0/5) |
-| Phase 5-15 | Not Started | (0/37) |
+| Phase 4: Daily View | ✅ Complete | T13-T17 (5/5) |
+| Phase 5: Navigation | ✅ Complete | T18-T19 (2/2) |
+| Phase 6-15 | Not Started | (0/35) |
 
-**Total: 12/55 tasks complete (22%)**
+**Total: 19/55 tasks complete (35%)**
 
 ---
 

@@ -82,7 +82,7 @@ local test_buf = view.create_buffer()
 local checks = {
   { name = 'buftype', expected = 'nofile', actual = vim.bo[test_buf].buftype },
   { name = 'swapfile', expected = false, actual = vim.bo[test_buf].swapfile },
-  { name = 'bufhidden', expected = 'wipe', actual = vim.bo[test_buf].bufhidden },
+  { name = 'bufhidden', expected = 'hide', actual = vim.bo[test_buf].bufhidden },
   { name = 'filetype', expected = 'lifemode', actual = vim.bo[test_buf].filetype },
 }
 
@@ -112,7 +112,7 @@ print('\nTEST 6: Buffer name format validation')
 local name_buf = view.create_buffer()
 local name = vim.api.nvim_buf_get_name(name_buf)
 
-if not name:match('LifeMode View #%d+') then
+if not name:match('LifeMode %[%d+%]') then
   print('  FAIL: Buffer name format incorrect: ' .. name)
   record_failure('MEDIUM', 'Buffer name does not match expected pattern', 'lua/lifemode/view.lua:14')
 else
@@ -128,14 +128,14 @@ else
   print('  PASS: Valid buffer number returned: ' .. ret_buf)
 end
 
-print('\nTEST 8: open_view_buffer command integration')
+print('\nTEST 8: open_view command integration')
 success = pcall(function()
-  vim.cmd('LifeModeOpen')
+  vim.cmd('LifeMode')
 end)
 
 if not success then
-  print('  FAIL: :LifeModeOpen command failed')
-  record_failure('CRITICAL', ':LifeModeOpen command execution failed', 'lua/lifemode/init.lua:80-82')
+  print('  FAIL: :LifeMode command failed')
+  record_failure('CRITICAL', ':LifeMode command execution failed', 'lua/lifemode/init.lua:80-82')
 else
   local current = vim.api.nvim_get_current_buf()
   local ft = vim.bo[current].filetype

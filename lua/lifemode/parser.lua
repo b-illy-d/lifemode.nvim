@@ -105,7 +105,7 @@ function M._parse_list_item(line, line_idx)
 end
 
 function M._extract_id(text)
-  local before_id, id = text:match('^(.-)%s*%^([%w%-:]+)%s*$')
+  local before_id, id = text:match('^(.-)%s*%^([%w%-_:]+)%s*$')
   if before_id and id then
     return vim.trim(before_id), id
   end

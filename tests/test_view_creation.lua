@@ -41,8 +41,8 @@ if swapfile then
   all_passed = false
 end
 
-if bufhidden ~= 'wipe' then
-  print('FAIL: bufhidden should be "wipe", got "' .. bufhidden .. '"')
+if bufhidden ~= 'hide' then
+  print('FAIL: bufhidden should be "hide", got "' .. bufhidden .. '"')
   all_passed = false
 end
 
@@ -56,28 +56,28 @@ if not bufname:match('LifeMode') then
   all_passed = false
 end
 
-print('\n=== Testing :LifeModeOpen command ===')
+print('\n=== Testing :LifeMode command ===')
 
-local has_command = vim.fn.exists(':LifeModeOpen') == 2
+local has_command = vim.fn.exists(':LifeMode') == 2
 if not has_command then
-  print('FAIL: :LifeModeOpen command does not exist')
+  print('FAIL: :LifeMode command does not exist')
   all_passed = false
 else
-  print('SUCCESS: :LifeModeOpen command exists')
+  print('SUCCESS: :LifeMode command exists')
 
-  vim.cmd('LifeModeOpen')
+  vim.cmd('LifeMode')
 
   local current_bufnr = vim.api.nvim_get_current_buf()
   local current_buftype = vim.api.nvim_buf_get_option(current_bufnr, 'buftype')
   local current_filetype = vim.api.nvim_buf_get_option(current_bufnr, 'filetype')
 
   if current_buftype ~= 'nofile' then
-    print('FAIL: :LifeModeOpen did not create nofile buffer')
+    print('FAIL: :LifeMode did not create nofile buffer')
     all_passed = false
   end
 
   if current_filetype ~= 'lifemode' then
-    print('FAIL: :LifeModeOpen buffer does not have lifemode filetype')
+    print('FAIL: :LifeMode buffer does not have lifemode filetype')
     all_passed = false
   end
 end

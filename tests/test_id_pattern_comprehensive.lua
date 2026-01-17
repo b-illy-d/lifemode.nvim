@@ -11,12 +11,12 @@ local test_cases = {
   { text = 'text ^block-id', expected = 'block-id', desc = 'Hyphenated' },
 }
 
-print('Testing ID pattern: ^(.-)%s*%^([%w%-]+)%s*$')
+print('Testing ID pattern: ^(.-)%s*%^([%w%-_:]+)%s*$')
 print('')
 
 local fail_count = 0
 for i, test in ipairs(test_cases) do
-  local before, actual_id = test.text:match('^(.-)%s*%^([%w%-]+)%s*$')
+  local before, actual_id = test.text:match('^(.-)%s*%^([%w%-_:]+)%s*$')
 
   local status = (actual_id == test.expected) and 'PASS' or 'FAIL'
   if status == 'FAIL' then

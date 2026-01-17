@@ -1,7 +1,5 @@
 local M = {}
 
-local buffer_counter = 0
-
 function M.create_buffer()
   local bufnr = vim.api.nvim_create_buf(false, true)
 
@@ -11,11 +9,11 @@ function M.create_buffer()
 
   vim.bo[bufnr].buftype = 'nofile'
   vim.bo[bufnr].swapfile = false
-  vim.bo[bufnr].bufhidden = 'wipe'
+  vim.bo[bufnr].bufhidden = 'hide'
   vim.bo[bufnr].filetype = 'lifemode'
 
-  buffer_counter = buffer_counter + 1
-  vim.api.nvim_buf_set_name(bufnr, 'LifeMode View #' .. buffer_counter)
+  local name = string.format('LifeMode [%d]', bufnr)
+  pcall(vim.api.nvim_buf_set_name, bufnr, name)
 
   return bufnr
 end
