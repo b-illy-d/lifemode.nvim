@@ -274,7 +274,10 @@ function M._toggle_task()
   local patch = require('lifemode.patch')
 
   local node_id = get_task_node_id()
-  if not node_id then return end
+  if not node_id then
+    vim.notify('No task under cursor', vim.log.levels.WARN)
+    return
+  end
 
   local cv = state.current_view
   if not cv then return end
@@ -282,6 +285,8 @@ function M._toggle_task()
   local new_state = patch.toggle_task_state(node_id, cv.index)
   if not new_state then return end
 
+  local msg = new_state == 'done' and 'Task completed' or 'Task reopened'
+  vim.notify(msg, vim.log.levels.INFO)
   refresh_after_patch()
 end
 
@@ -289,12 +294,18 @@ function M._inc_priority()
   local patch = require('lifemode.patch')
 
   local node_id = get_task_node_id()
-  if not node_id then return end
+  if not node_id then
+    vim.notify('No task under cursor', vim.log.levels.WARN)
+    return
+  end
 
   local cv = state.current_view
   if not cv then return end
 
-  patch.inc_priority(node_id, cv.index)
+  local new_priority = patch.inc_priority(node_id, cv.index)
+  if new_priority then
+    vim.notify('Priority: !' .. new_priority, vim.log.levels.INFO)
+  end
   refresh_after_patch()
 end
 
@@ -302,12 +313,20 @@ function M._dec_priority()
   local patch = require('lifemode.patch')
 
   local node_id = get_task_node_id()
-  if not node_id then return end
+  if not node_id then
+    vim.notify('No task under cursor', vim.log.levels.WARN)
+    return
+  end
 
   local cv = state.current_view
   if not cv then return end
 
-  patch.dec_priority(node_id, cv.index)
+  local new_priority = patch.dec_priority(node_id, cv.index)
+  if new_priority then
+    vim.notify('Priority: !' .. new_priority, vim.log.levels.INFO)
+  else
+    vim.notify('Priority removed', vim.log.levels.INFO)
+  end
   refresh_after_patch()
 end
 
