@@ -132,7 +132,60 @@ function M._refresh_view()
   cv.spans = rendered.spans
 end
 
+local function setup_highlight_groups()
+  vim.api.nvim_set_hl(0, 'LifeModeActive', { bold = true, underline = true })
+end
+
+function M._update_active_node()
+  local extmarks = require('lifemode.extmarks')
+  local cv = state.current_view
+  if not cv then return end
+
+  local metadata = extmarks.get_instance_at_cursor()
+  state.active_instance = metadata
+end
+
+function M.get_statusline_info()
+  local meta = state.active_instance
+  if not meta then return '' end
+
+  local parts = {}
+
+  local node = meta.node
+  if node then
+    table.insert(parts, node.type or 'unknown')
+  end
+
+  if meta.lens then
+    table.insert(parts, '[' .. meta.lens .. ']')
+  end
+
+  local id = meta.target_id or (node and node.id)
+  if id then
+    local short_id = #id > 12 and (id:sub(1, 12) .. '...') or id
+    table.insert(parts, '^' .. short_id)
+  end
+
+  if meta.depth then
+    table.insert(parts, 'd:' .. meta.depth)
+  end
+
+  return table.concat(parts, ' ')
+end
+
+local function setup_cursor_autocmd(bufnr)
+  vim.api.nvim_create_autocmd('CursorMoved', {
+    buffer = bufnr,
+    callback = function()
+      M._update_active_node()
+    end,
+  })
+end
+
 function M._setup_keymaps(bufnr)
+  setup_highlight_groups()
+  setup_cursor_autocmd(bufnr)
+
   local opts = { buffer = bufnr, silent = true }
   local refresh = function() M._refresh_view() end
   local cv = function() return state.current_view end

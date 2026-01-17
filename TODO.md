@@ -462,19 +462,25 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 
 ---
 
-## Phase 11: Active Node and Visual Feedback
+## Phase 11: Active Node and Visual Feedback ✅ COMPLETE
 
-### T41: Active node highlighting
+### T41: Active node highlighting ✅ DONE
 - Track "active" instance based on cursor position
 - Apply distinct highlight to active node span
 - Update on cursor movement (CursorMoved autocmd)
 - **Aligns with**: §D2 "Active node span is visually distinct"
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`_update_active_node()`, CursorMoved autocmd)
+  - `tests/test_t41_active_node.lua` (3/3 tests)
 
-### T42: Statusline/winbar info
+### T42: Statusline/winbar info ✅ DONE
 - Show active node info in statusline or winbar
 - Display: node type, node_id (truncated), current lens, depth
 - Update on cursor movement
 - **Aligns with**: §D2 "Winbar/statusline shows: type, node_id, lens"
+- **Evidence**:
+  - `lua/lifemode/init.lua` (`get_statusline_info()`)
+  - `tests/test_t42_statusline_info.lua` (3/3 tests)
 
 ---
 
@@ -598,9 +604,10 @@ Each task is self-contained (10-100 lines) and corresponds to principles in SPEC
 | Phase 8: Wikilinks | ✅ Complete | T29-T32 (4/4) |
 | Phase 9: Bible References | ✅ Complete | T33-T37 (5/5) |
 | Phase 10: Lens System | ✅ Complete | T38-T40 (3/3) |
-| Phase 11-15 | Not Started | (0/15) |
+| Phase 11: Active Node | ✅ Complete | T41-T42 (2/2) |
+| Phase 12-15 | Not Started | (0/13) |
 
-**Total: 40/55 tasks complete (73%)**
+**Total: 42/55 tasks complete (76%)**
 
 ---
 
