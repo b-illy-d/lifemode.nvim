@@ -1,10 +1,5 @@
 local M = {}
 
-local function get_node_location(node_id, idx)
-  if not idx or not idx.node_locations then return nil end
-  return idx.node_locations[node_id]
-end
-
 local function read_file_lines(path)
   local lines = vim.fn.readfile(path)
   if not lines or #lines == 0 then return nil end
@@ -13,6 +8,45 @@ end
 
 local function write_file_lines(path, lines)
   vim.fn.writefile(lines, path)
+end
+
+local function get_node_location(node_id, idx)
+  if not idx or not idx.node_locations then return nil end
+  return idx.node_locations[node_id]
+end
+
+function M.generate_id()
+  local template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+  local id = template:gsub('[xy]', function(c)
+    local v = (c == 'x') and math.random(0, 15) or math.random(8, 11)
+    return string.format('%x', v)
+  end)
+  return id
+end
+
+local function extract_existing_id(text)
+  local id = text:match('%^([%w%-_:]+)%s*$')
+  return id
+end
+
+function M.ensure_id(file, line_idx)
+  local lines = read_file_lines(file)
+  if not lines then return nil end
+
+  local line_num = line_idx + 1
+  local line = lines[line_num]
+  if not line then return nil end
+
+  local existing = extract_existing_id(line)
+  if existing then
+    return existing
+  end
+
+  local new_id = M.generate_id()
+  lines[line_num] = line .. ' ^' .. new_id
+  write_file_lines(file, lines)
+
+  return new_id
 end
 
 function M.toggle_task_state(node_id, idx)

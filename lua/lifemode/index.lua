@@ -220,4 +220,47 @@ function M._reset_state()
   end
 end
 
+local function needs_id(node)
+  if node.id then return false end
+  if node.type == 'task' then return true end
+  if node.type == 'heading' then return true end
+  if node.refs and #node.refs > 0 then return true end
+  return false
+end
+
+function M.find_nodes_needing_ids(nodes, file_path)
+  local results = {}
+  for _, node in ipairs(nodes) do
+    if needs_id(node) then
+      table.insert(results, { node = node, file = file_path, line = node.line })
+    end
+  end
+  return results
+end
+
+function M.assign_missing_ids(nodes_list)
+  local patch = require('lifemode.patch')
+  local count = 0
+
+  local by_file = {}
+  for _, entry in ipairs(nodes_list) do
+    if not by_file[entry.file] then
+      by_file[entry.file] = {}
+    end
+    table.insert(by_file[entry.file], entry.line)
+  end
+
+  for file, lines in pairs(by_file) do
+    table.sort(lines, function(a, b) return a > b end)
+    for _, line_idx in ipairs(lines) do
+      local result = patch.ensure_id(file, line_idx)
+      if result then
+        count = count + 1
+      end
+    end
+  end
+
+  return count
+end
+
 return M
