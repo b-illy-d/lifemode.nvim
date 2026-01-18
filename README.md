@@ -56,7 +56,7 @@ use {
 2. Run `:LifeMode` to open the Daily view
 3. Navigate with `j`/`k`, expand with `<Space>e`, jump to source with `gd`
 
-See [QUICKSTART.md](QUICKSTART.md) for a full tutorial.
+See [TUTORIAL.md](TUTORIAL.md) for a full tutorial.
 
 ## Configuration
 
@@ -149,7 +149,7 @@ Tasks use CommonMark checkbox syntax with inline metadata:
 ## Documentation
 
 - [PHILOSOPHY.md](PHILOSOPHY.md) - Core mental model (nodes, views, lenses, projects)
-- [QUICKSTART.md](QUICKSTART.md) - Hands-on tutorial
+- [TUTORIAL.md](TUTORIAL.md) - Hands-on tutorial
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Architecture and development guide
 - [SPEC.md](SPEC.md) - Design specification
 

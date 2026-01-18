@@ -1,6 +1,6 @@
-# LifeMode Quick Start Guide
+# LifeMode Tutorial
 
-This guide walks you through every feature of LifeMode. By the end, you'll be fully comfortable with the plugin.
+This tutorial walks you through every feature of LifeMode. By the end, you'll be fully comfortable with the plugin.
 
 ## Prerequisites
 
