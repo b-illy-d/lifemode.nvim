@@ -24,84 +24,43 @@ Add LifeMode to your plugin manager:
 
 Run `:LifeModeHello` to verify the plugin loaded correctly. You should see your configuration printed.
 
-## Creating a Test Vault
+## Setting Up the Example Vault
 
-Let's create some sample files to explore LifeMode's features. Create a directory (e.g., `~/notes`) and add these files:
+This plugin includes an `example_vault/` directory with sample files demonstrating all LifeMode features. You have two options:
 
-### tasks.md
+### Option 1: Use the Example Vault Directly
 
-```markdown
-# My Tasks
+Point your config at the example vault:
 
-## Work
-
-- [ ] Review PR #123 !1 @due(2026-01-20) #work ^pr-review
-- [ ] Write documentation !2 @due(2026-01-25) #work #docs ^write-docs
-- [ ] Team sync meeting !3 #work/meetings ^team-sync
-- [x] Submit timesheet #work ^timesheet
-
-## Personal
-
-- [ ] Buy groceries @due(2026-01-18) #personal ^groceries
-- [ ] Call mom !2 #personal/family ^call-mom
-- [ ] Gym workout #personal/health ^gym
+```lua
+require('lifemode').setup({
+  vault_root = vim.fn.expand('~/.local/share/nvim/lazy/lifemode.nvim/example_vault'),
+})
 ```
 
-### notes.md
+(Adjust the path based on where your plugin manager installs plugins.)
 
-```markdown
-# Project Notes
+### Option 2: Copy to Your Own Vault
 
-## Architecture Decision
+Copy the example files to your preferred vault location:
 
-We decided to use a view-first approach. See [[tasks#Work]] for related tasks.
-
-The key insight from [[Smith2019]] influenced this decision.
-
-## Meeting Notes
-
-Discussed the timeline with the team. Action items tracked in [[tasks]].
+```bash
+cp -r /path/to/lifemode.nvim/example_vault/* ~/notes/
 ```
 
-### bible-study.md
+Then configure your vault:
 
-```markdown
-# Romans Study
-
-## Chapter 8
-
-Key verses for understanding suffering and glory:
-
-- Romans 8:28 - All things work together for good
-- Romans 8:28-30 - The golden chain of salvation
-- John 17:20-23 - Jesus prays for unity
-
-Cross-reference with Gen 50:20 (Joseph's story).
-
-## Devotional Thoughts
-
-The promise in Rom 8:28 connects to the broader theme in John 3:16.
+```lua
+require('lifemode').setup({
+  vault_root = vim.fn.expand('~/notes'),
+})
 ```
 
-### sources.md
-
-```markdown
-# Sources
-
-- [[source:Smith2019]] ^s:smith2019
-  type:: source
-  title:: Theological Arguments in Romans
-  author:: John Smith
-  year:: 2019
-  kind:: book
-
-- [[source:BlogPost2024]] ^s:blog2024
-  type:: source
-  title:: Understanding Grace
-  author:: Jane Doe
-  url:: https://example.com/grace
-  kind:: blog
-```
+The example vault contains:
+- `tasks.md` - Sample tasks with priorities, due dates, and tags
+- `notes.md` - Project notes with wikilinks
+- `bible-study.md` - Bible references demonstrating verse backlinks
+- `sources.md` - Academic source/citation examples
 
 ## Tutorial 1: Opening Your First View
 
