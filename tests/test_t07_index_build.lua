@@ -1,21 +1,43 @@
 local index = require('lifemode.index')
 local vault = require('lifemode.vault')
 
-vim.fn.mkdir('test_vault_t07', 'p')
+vim.fn.delete('test_vault_t07', 'rf')
+vim.fn.mkdir('test_vault_t07/tasks', 'p')
+vim.fn.mkdir('test_vault_t07/notes', 'p')
 
 vim.fn.writefile({
+  'type:: task',
+  'id:: task-1',
+  'created:: 2026-01-15',
+  '',
+  '- [ ] Task one !2 @due(2026-01-20) #work',
+}, 'test_vault_t07/tasks/task-1.md')
+
+vim.fn.writefile({
+  'type:: task',
+  'id:: task-2',
+  'created:: 2026-01-15',
+  '',
+  '- [x] Task two',
+}, 'test_vault_t07/tasks/task-2.md')
+
+vim.fn.writefile({
+  'type:: task',
+  'id:: task-3',
+  'created:: 2026-01-16',
+  '',
+  '- [ ] Another task !3 #personal',
+}, 'test_vault_t07/tasks/task-3.md')
+
+vim.fn.writefile({
+  'type:: note',
+  'id:: note-1',
+  'created:: 2026-01-15',
+  '',
   '# My Notes',
   '',
-  '- [ ] Task one !2 @due(2026-01-20) #work ^task-1',
-  '- [x] Task two ^task-2',
-  '- Regular item',
-}, 'test_vault_t07/file1.md')
-
-vim.fn.writefile({
-  '## Heading Two ^heading-1',
-  '',
-  '- [ ] Another task !3 #personal ^task-3',
-}, 'test_vault_t07/file2.md')
+  'Some content here.',
+}, 'test_vault_t07/notes/note-1.md')
 
 local success, idx = pcall(index.build, 'test_vault_t07')
 
@@ -31,32 +53,26 @@ if type(idx) ~= 'table' then
   vim.cmd('cq 1')
 end
 
-if idx.node_locations['task-1'] == nil then
-  print('FAIL: task-1 should be in node_locations')
+if idx.nodes['task-1'] == nil then
+  print('FAIL: task-1 should be in nodes')
   vim.fn.delete('test_vault_t07', 'rf')
   vim.cmd('cq 1')
 end
 
-if not idx.node_locations['task-1'].file:match('file1%.md$') then
+if not idx.nodes['task-1']._file:match('task%-1%.md$') then
   print('FAIL: task-1 file path incorrect')
   vim.fn.delete('test_vault_t07', 'rf')
   vim.cmd('cq 1')
 end
 
-if idx.node_locations['task-1'].line ~= 2 then
-  print('FAIL: task-1 line should be 2, got ' .. idx.node_locations['task-1'].line)
+if idx.nodes['task-2'] == nil then
+  print('FAIL: task-2 should be in nodes')
   vim.fn.delete('test_vault_t07', 'rf')
   vim.cmd('cq 1')
 end
 
-if idx.node_locations['task-2'] == nil then
-  print('FAIL: task-2 should be in node_locations')
-  vim.fn.delete('test_vault_t07', 'rf')
-  vim.cmd('cq 1')
-end
-
-if idx.node_locations['heading-1'] == nil then
-  print('FAIL: heading-1 should be in node_locations')
+if idx.nodes['note-1'] == nil then
+  print('FAIL: note-1 should be in nodes')
   vim.fn.delete('test_vault_t07', 'rf')
   vim.cmd('cq 1')
 end
@@ -83,6 +99,18 @@ end
 
 if not has_dates then
   print('FAIL: nodes_by_date should have entries')
+  vim.fn.delete('test_vault_t07', 'rf')
+  vim.cmd('cq 1')
+end
+
+if #(idx.nodes_by_type['task'] or {}) ~= 3 then
+  print('FAIL: nodes_by_type should have 3 tasks, got ' .. #(idx.nodes_by_type['task'] or {}))
+  vim.fn.delete('test_vault_t07', 'rf')
+  vim.cmd('cq 1')
+end
+
+if #(idx.nodes_by_type['note'] or {}) ~= 1 then
+  print('FAIL: nodes_by_type should have 1 note, got ' .. #(idx.nodes_by_type['note'] or {}))
   vim.fn.delete('test_vault_t07', 'rf')
   vim.cmd('cq 1')
 end

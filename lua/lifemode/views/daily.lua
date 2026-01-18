@@ -4,25 +4,36 @@ local base = require('lifemode.views.base')
 local dates = require('lifemode.core.dates')
 local lens = require('lifemode.lens')
 
-local function create_leaf_instance(ref)
+local function create_leaf_instance(node)
+  local node_lens = 'node/brief'
+  if node.type == 'task' then
+    node_lens = 'task/brief'
+  elseif node.type == 'quote' then
+    node_lens = 'quote/brief'
+  elseif node.type == 'source' then
+    node_lens = 'source/biblio'
+  elseif node.type == 'project' then
+    node_lens = 'project/brief'
+  end
+
   return {
     instance_id = base.next_id('daily'),
-    lens = 'task/brief',
+    lens = node_lens,
     depth = 3,
-    target_id = ref.id,
-    node = ref.node,
-    file = ref.file,
+    target_id = node.id,
+    node = node,
+    file = node._file,
   }
 end
 
-local function create_day_instance(day, refs, is_today, expanded_depth)
+local function create_day_instance(day, nodes, is_today, expanded_depth)
   return {
     instance_id = base.next_id('daily'),
     lens = 'date/day',
     date = day,
     depth = 2,
     collapsed = not is_today or expanded_depth < 3,
-    children = vim.tbl_map(create_leaf_instance, refs),
+    children = vim.tbl_map(create_leaf_instance, nodes),
     display = dates.format_day(day),
   }
 end
@@ -70,9 +81,9 @@ local function group_nodes_by_date(nodes_by_date)
   local years = {}
   local year_order = {}
 
-  for date_str, node_refs in pairs(nodes_by_date) do
+  for date_str, nodes in pairs(nodes_by_date) do
     local parts = dates.parse(date_str)
-    if not parts or #node_refs == 0 then goto continue end
+    if not parts or #nodes == 0 then goto continue end
 
     if not years[parts.year] then
       years[parts.year] = { months = {}, month_order = {} }
@@ -91,8 +102,8 @@ local function group_nodes_by_date(nodes_by_date)
       table.insert(month_data.day_order, parts.day)
     end
 
-    for _, ref in ipairs(node_refs) do
-      table.insert(month_data.days[parts.day], ref)
+    for _, node in ipairs(nodes) do
+      table.insert(month_data.days[parts.day], node)
     end
 
     ::continue::
@@ -129,38 +140,20 @@ function M.build_tree(idx, config)
   return { root_instances = root_instances }
 end
 
-local function resolve_node(leaf, index)
-  if leaf.node then return leaf.node end
-  if not leaf.target_id or not index then return nil end
-
-  local loc = index.node_locations[leaf.target_id]
-  if not loc then return nil end
-
-  return { id = leaf.target_id, file = loc.file, line = loc.line }
-end
-
-local function select_lens_for_node(node, default_lens)
-  if node.type == 'heading' then return 'heading/brief' end
-  if node.type == 'task' then return 'task/brief' end
-  if node.type then return 'node/raw' end
-  return default_lens
-end
-
 local function render_date_instance(inst, indent, current_line, output)
   local result = lens.render(inst, inst.lens, { collapsed = inst.collapsed })
   return base.apply_lens_result(result, indent, current_line, output)
 end
 
-local function render_leaf_instance(inst, indent, current_line, output, index)
-  local node = resolve_node(inst, index)
+local function render_leaf_instance(inst, indent, current_line, output)
+  local node = inst.node
 
   if not node then
     table.insert(output.lines, indent .. '(unknown node)')
     return current_line + 1
   end
 
-  local node_lens = select_lens_for_node(node, inst.lens)
-  local result = lens.render(node, node_lens)
+  local result = lens.render(node, inst.lens)
   return base.apply_lens_result(result, indent, current_line, output)
 end
 
@@ -189,7 +182,7 @@ local function render_instance(inst, current_line, output, options)
       end
     end
   else
-    current_line = render_leaf_instance(inst, indent, current_line, output, options.index)
+    current_line = render_leaf_instance(inst, indent, current_line, output)
 
     base.add_span(output, {
       line_start = line_start,

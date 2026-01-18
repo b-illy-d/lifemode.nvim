@@ -8,48 +8,52 @@ local _autocmd_id = nil
 
 function M.create()
   return {
-    node_locations = {},
+    nodes = {},
+    nodes_by_type = {},
+    nodes_by_date = {},
     tasks_by_state = {
       todo = {},
       done = {},
     },
-    nodes_by_date = {},
     backlinks = {},
   }
 end
 
 function M.add_node(idx, node, file_path, mtime)
-  if node.id then
-    idx.node_locations[node.id] = {
-      file = file_path,
-      line = node.line,
-      mtime = mtime,
-    }
+  if not node.id then
+    local filename = vim.fn.fnamemodify(file_path, ':t:r')
+    node.id = filename
   end
 
-  if node.type == 'task' then
+  node._file = file_path
+  node._mtime = mtime
+
+  idx.nodes[node.id] = node
+
+  local node_type = node.type or 'note'
+  if not idx.nodes_by_type[node_type] then
+    idx.nodes_by_type[node_type] = {}
+  end
+  table.insert(idx.nodes_by_type[node_type], node)
+
+  if node_type == 'task' then
     local state = node.state or 'todo'
-    local task_entry = vim.tbl_extend('force', node, { _file = file_path })
-    table.insert(idx.tasks_by_state[state], task_entry)
+    if not idx.tasks_by_state[state] then
+      idx.tasks_by_state[state] = {}
+    end
+    table.insert(idx.tasks_by_state[state], node)
   end
 
-  local date_str = os.date('%Y-%m-%d', mtime)
+  local date_str = node.created or os.date('%Y-%m-%d', mtime)
   if not idx.nodes_by_date[date_str] then
     idx.nodes_by_date[date_str] = {}
   end
-
-  if node.id then
-    table.insert(idx.nodes_by_date[date_str], { id = node.id, file = file_path })
-  else
-    table.insert(idx.nodes_by_date[date_str], { node = node, file = file_path })
-  end
+  table.insert(idx.nodes_by_date[date_str], node)
 
   if node.refs then
-    local source_id = node.id or (file_path .. ':' .. node.line)
     local link_entry = {
-      source_id = source_id,
+      source_id = node.id,
       file = file_path,
-      line = node.line,
     }
 
     for _, ref in ipairs(node.refs) do
@@ -81,10 +85,9 @@ function M.build(vault_root)
   local files = vault.list_files(vault_root)
 
   for _, file_entry in ipairs(files) do
-    local blocks = parser.parse_file(file_entry.path)
-
-    for _, block in ipairs(blocks) do
-      M.add_node(idx, block, file_entry.path, file_entry.mtime)
+    local ok, node = pcall(parser.parse_file, file_entry.path)
+    if ok and node then
+      M.add_node(idx, node, file_entry.path, file_entry.mtime)
     end
   end
 
@@ -115,6 +118,54 @@ function M.get_or_build(vault_root)
   return _index
 end
 
+function M._remove_node_from_index(idx, node_id, file_path)
+  local normalized_path = vim.fn.simplify(file_path)
+
+  if idx.nodes[node_id] then
+    idx.nodes[node_id] = nil
+  end
+
+  for node_type, nodes in pairs(idx.nodes_by_type) do
+    local new_nodes = {}
+    for _, n in ipairs(nodes) do
+      if vim.fn.simplify(n._file) ~= normalized_path then
+        table.insert(new_nodes, n)
+      end
+    end
+    idx.nodes_by_type[node_type] = new_nodes
+  end
+
+  for state, tasks in pairs(idx.tasks_by_state) do
+    local new_tasks = {}
+    for _, task in ipairs(tasks) do
+      if vim.fn.simplify(task._file) ~= normalized_path then
+        table.insert(new_tasks, task)
+      end
+    end
+    idx.tasks_by_state[state] = new_tasks
+  end
+
+  for date_str, nodes in pairs(idx.nodes_by_date) do
+    local new_nodes = {}
+    for _, n in ipairs(nodes) do
+      if vim.fn.simplify(n._file) ~= normalized_path then
+        table.insert(new_nodes, n)
+      end
+    end
+    idx.nodes_by_date[date_str] = new_nodes
+  end
+
+  for target, links in pairs(idx.backlinks) do
+    local new_links = {}
+    for _, link in ipairs(links) do
+      if vim.fn.simplify(link.file) ~= normalized_path then
+        table.insert(new_links, link)
+      end
+    end
+    idx.backlinks[target] = new_links
+  end
+end
+
 function M.update_file(file_path, mtime)
   if not file_path or file_path == '' then
     error('file_path is required')
@@ -126,50 +177,16 @@ function M.update_file(file_path, mtime)
 
   local normalized_path = vim.fn.simplify(file_path)
 
-  for node_id, loc in pairs(_index.node_locations) do
-    local loc_normalized = vim.fn.simplify(loc.file)
-    if loc_normalized == normalized_path then
-      _index.node_locations[node_id] = nil
+  for node_id, node in pairs(_index.nodes) do
+    if vim.fn.simplify(node._file) == normalized_path then
+      M._remove_node_from_index(_index, node_id, file_path)
+      break
     end
   end
 
-  for state, tasks in pairs(_index.tasks_by_state) do
-    local new_tasks = {}
-    for _, task in ipairs(tasks) do
-      local task_normalized = vim.fn.simplify(task._file)
-      if task_normalized ~= normalized_path then
-        table.insert(new_tasks, task)
-      end
-    end
-    _index.tasks_by_state[state] = new_tasks
-  end
-
-  for date_str, entries in pairs(_index.nodes_by_date) do
-    local new_entries = {}
-    for _, entry in ipairs(entries) do
-      local entry_normalized = vim.fn.simplify(entry.file)
-      if entry_normalized ~= normalized_path then
-        table.insert(new_entries, entry)
-      end
-    end
-    _index.nodes_by_date[date_str] = new_entries
-  end
-
-  for target, links in pairs(_index.backlinks) do
-    local new_links = {}
-    for _, link in ipairs(links) do
-      local link_normalized = vim.fn.simplify(link.file)
-      if link_normalized ~= normalized_path then
-        table.insert(new_links, link)
-      end
-    end
-    _index.backlinks[target] = new_links
-  end
-
-  local blocks = parser.parse_file(file_path)
-
-  for _, block in ipairs(blocks) do
-    M.add_node(_index, block, file_path, mtime)
+  local ok, node = pcall(parser.parse_file, file_path)
+  if ok and node then
+    M.add_node(_index, node, file_path, mtime)
   end
 end
 
@@ -211,6 +228,29 @@ function M.get_backlinks(target, idx)
   return idx.backlinks[target] or {}
 end
 
+function M.get_node(node_id, idx)
+  idx = idx or _index
+  if not idx then return nil end
+  return idx.nodes[node_id]
+end
+
+function M.get_nodes_by_type(node_type, idx)
+  idx = idx or _index
+  if not idx then return {} end
+  return idx.nodes_by_type[node_type] or {}
+end
+
+function M.get_all_nodes(idx)
+  idx = idx or _index
+  if not idx then return {} end
+
+  local result = {}
+  for _, node in pairs(idx.nodes) do
+    table.insert(result, node)
+  end
+  return result
+end
+
 function M._reset_state()
   _index = nil
   _vault_root = nil
@@ -220,47 +260,8 @@ function M._reset_state()
   end
 end
 
-local function needs_id(node)
-  if node.id then return false end
-  if node.type == 'task' then return true end
-  if node.type == 'heading' then return true end
-  if node.refs and #node.refs > 0 then return true end
-  return false
-end
-
-function M.find_nodes_needing_ids(nodes, file_path)
-  local results = {}
-  for _, node in ipairs(nodes) do
-    if needs_id(node) then
-      table.insert(results, { node = node, file = file_path, line = node.line })
-    end
-  end
-  return results
-end
-
-function M.assign_missing_ids(nodes_list)
-  local patch = require('lifemode.patch')
-  local count = 0
-
-  local by_file = {}
-  for _, entry in ipairs(nodes_list) do
-    if not by_file[entry.file] then
-      by_file[entry.file] = {}
-    end
-    table.insert(by_file[entry.file], entry.line)
-  end
-
-  for file, lines in pairs(by_file) do
-    table.sort(lines, function(a, b) return a > b end)
-    for _, line_idx in ipairs(lines) do
-      local result = patch.ensure_id(file, line_idx)
-      if result then
-        count = count + 1
-      end
-    end
-  end
-
-  return count
+function M._get_cached_index()
+  return _index
 end
 
 return M

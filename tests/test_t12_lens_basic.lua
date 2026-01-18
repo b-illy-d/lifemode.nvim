@@ -38,7 +38,7 @@ end
 print('TEST: task/brief lens renders todo task with metadata')
 local task_node = {
   type = 'task',
-  line = 5,
+  id = 'task-1',
   state = 'todo',
   text = 'Write spec',
   priority = 2,
@@ -52,7 +52,7 @@ print('PASS')
 print('TEST: task/brief lens renders done task')
 local done_task = {
   type = 'task',
-  line = 10,
+  id = 'task-2',
   state = 'done',
   text = 'Finished task',
 }
@@ -73,7 +73,7 @@ print('PASS')
 print('TEST: task/brief highlights high priority')
 local high_priority_task = {
   type = 'task',
-  line = 0,
+  id = 'task-3',
   state = 'todo',
   text = 'Urgent task',
   priority = 1,
@@ -95,7 +95,7 @@ print('PASS')
 print('TEST: task/brief highlights low priority')
 local low_priority_task = {
   type = 'task',
-  line = 0,
+  id = 'task-4',
   state = 'todo',
   text = 'Low priority task',
   priority = 5,
@@ -117,7 +117,7 @@ print('PASS')
 print('TEST: task/brief highlights due date')
 local task_with_due = {
   type = 'task',
-  line = 0,
+  id = 'task-5',
   state = 'todo',
   text = 'Task with deadline',
   due = '2026-01-20',
@@ -136,34 +136,56 @@ if not found_due_hl then
 end
 print('PASS')
 
-print('TEST: node/raw lens returns raw markdown')
-local heading_node = {
-  type = 'heading',
-  line = 0,
-  level = 2,
-  text = 'Section Title',
+print('TEST: node/brief lens for notes')
+local note_node = {
+  type = 'note',
+  id = 'note-1',
+  content = '# My Thoughts\n\nSome content here.',
 }
-result = lens.render(heading_node, 'node/raw')
-assert_equal(result.lines[1], '## Section Title', 'raw heading preserves format')
-assert_equal(#result.highlights, 0, 'raw lens has no highlights')
+result = lens.render(note_node, 'node/brief')
+assert_equal(#result.lines, 1, 'node/brief should produce 1 line')
+if not result.lines[1]:match('My Thoughts') then
+  print('FAIL: node/brief should extract title')
+  print('  got: ' .. result.lines[1])
+  vim.cmd('cq 1')
+end
 print('PASS')
 
-print('TEST: node/raw lens for tasks')
-local task_for_raw = {
-  type = 'task',
-  line = 0,
-  state = 'todo',
-  text = 'Original task',
+print('TEST: quote/brief lens')
+local quote_node = {
+  type = 'quote',
+  id = 'quote-1',
+  content = '"The greatest challenge of the day..."',
+  props = { author = 'Dorothy Day' },
 }
-result = lens.render(task_for_raw, 'node/raw')
-assert_equal(result.lines[1], '- [ ] Original task', 'raw task format')
+result = lens.render(quote_node, 'quote/brief')
+assert_equal(#result.lines, 1, 'quote/brief should produce 1 line')
+if not result.lines[1]:match('Dorothy Day') then
+  print('FAIL: quote/brief should include author')
+  print('  got: ' .. result.lines[1])
+  vim.cmd('cq 1')
+end
 print('PASS')
 
-print('TEST: heading/brief lens')
-result = lens.render(heading_node, 'heading/brief')
-assert_equal(result.lines[1], '## Section Title', 'heading/brief preserves format')
-assert_equal(#result.highlights, 1, 'heading should have 1 highlight')
-assert_equal(result.highlights[1].hl_group, 'LifeModeHeading', 'heading highlight group')
+print('TEST: project/brief lens')
+local project_node = {
+  type = 'project',
+  id = 'project-1',
+  props = { title = 'Easter Sermon' },
+  references = {'note-1', 'quote-1'},
+}
+result = lens.render(project_node, 'project/brief')
+assert_equal(#result.lines, 1, 'project/brief should produce 1 line')
+if not result.lines[1]:match('Easter Sermon') then
+  print('FAIL: project/brief should show title')
+  print('  got: ' .. result.lines[1])
+  vim.cmd('cq 1')
+end
+if not result.lines[1]:match('2 items') then
+  print('FAIL: project/brief should show item count')
+  print('  got: ' .. result.lines[1])
+  vim.cmd('cq 1')
+end
 print('PASS')
 
 print('TEST: get_available_lenses for task')
@@ -171,15 +193,20 @@ local lenses = lens.get_available_lenses('task')
 assert_table_equal(lenses, {'task/brief', 'task/detail', 'node/raw'}, 'task lenses')
 print('PASS')
 
-print('TEST: get_available_lenses for heading')
-lenses = lens.get_available_lenses('heading')
-assert_table_equal(lenses, {'heading/brief', 'node/raw'}, 'heading lenses')
+print('TEST: get_available_lenses for note')
+lenses = lens.get_available_lenses('note')
+assert_table_equal(lenses, {'node/brief', 'node/full', 'node/raw'}, 'note lenses')
 print('PASS')
 
-print('TEST: get_available_lenses for list_item')
-lenses = lens.get_available_lenses('list_item')
-assert_table_equal(lenses, {'node/raw'}, 'list_item lenses')
+print('TEST: get_available_lenses for quote')
+lenses = lens.get_available_lenses('quote')
+assert_table_equal(lenses, {'quote/brief', 'quote/full', 'node/raw'}, 'quote lenses')
 print('PASS')
 
-print('\nAll tests passed')
+print('TEST: get_available_lenses for project')
+lenses = lens.get_available_lenses('project')
+assert_table_equal(lenses, {'project/brief', 'project/expanded', 'node/raw'}, 'project lenses')
+print('PASS')
+
+print('\nAll lens tests passed')
 vim.cmd('quit')

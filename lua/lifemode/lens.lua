@@ -19,12 +19,15 @@ end
 function M.get_available_lenses(node_type)
   local available = {
     task = {'task/brief', 'task/detail', 'node/raw'},
-    heading = {'heading/brief', 'node/raw'},
-    list_item = {'node/raw'},
+    note = {'node/brief', 'node/full', 'node/raw'},
+    quote = {'quote/brief', 'quote/full', 'node/raw'},
     source = {'source/biblio', 'node/raw'},
     citation = {'citation/brief', 'node/raw'},
+    project = {'project/brief', 'project/expanded', 'node/raw'},
+    heading = {'heading/brief', 'node/raw'},
+    list_item = {'node/raw'},
   }
-  return available[node_type] or {}
+  return available[node_type] or {'node/brief', 'node/raw'}
 end
 
 function M.cycle(current, node_type, direction)
@@ -73,9 +76,29 @@ local function full_line_highlight(line, hl_group)
   }
 end
 
+local function extract_title_from_content(content)
+  if not content then return nil end
+  local title = content:match('^#%s+([^\n]+)')
+  return title
+end
+
+local function extract_first_line(content)
+  if not content then return nil end
+  for line in content:gmatch('[^\n]+') do
+    local trimmed = vim.trim(line)
+    if trimmed ~= '' and not trimmed:match('^#') then
+      if #trimmed > 60 then
+        return trimmed:sub(1, 57) .. '...'
+      end
+      return trimmed
+    end
+  end
+  return nil
+end
+
 register('task/brief', function(node)
   local checkbox = node.state == 'done' and '[x]' or '[ ]'
-  local parts = {checkbox, node.text}
+  local parts = {checkbox, node.text or ''}
 
   if node.priority then table.insert(parts, '!' .. node.priority) end
   if node.due then table.insert(parts, '@due(' .. node.due .. ')') end
@@ -109,7 +132,7 @@ end)
 
 register('task/detail', function(node)
   local checkbox = node.state == 'done' and '[x]' or '[ ]'
-  local lines = {checkbox .. ' ' .. node.text}
+  local lines = {checkbox .. ' ' .. (node.text or '')}
   local highlights = {}
 
   if node.state == 'done' then
@@ -136,24 +159,126 @@ register('task/detail', function(node)
   return { lines = lines, highlights = highlights }
 end)
 
-register('node/raw', function(node)
-  local line
-  if node.type == 'heading' then
-    line = string.rep('#', node.level) .. ' ' .. node.text
-  elseif node.type == 'task' then
-    local checkbox = node.state == 'done' and '[x]' or '[ ]'
-    line = '- ' .. checkbox .. ' ' .. node.text
-  elseif node.type == 'list_item' then
-    line = '- ' .. node.text
-  else
-    line = node.text or ''
-  end
+register('node/brief', function(node)
+  local title = extract_title_from_content(node.content)
+  local first_line = extract_first_line(node.content)
+  local display = title or first_line or node.id or 'Note'
 
+  local line = '📝 ' .. display
   return { lines = {line}, highlights = {} }
 end)
 
+register('node/full', function(node)
+  local lines = {}
+
+  if node.content then
+    for line in (node.content .. '\n'):gmatch('([^\n]*)\n') do
+      table.insert(lines, line)
+    end
+  else
+    table.insert(lines, '(empty note)')
+  end
+
+  return { lines = lines, highlights = {} }
+end)
+
+register('node/raw', function(node)
+  local lines = {}
+
+  for key, value in pairs(node.props or {}) do
+    table.insert(lines, key .. ':: ' .. tostring(value))
+  end
+
+  if #lines > 0 then
+    table.insert(lines, '')
+  end
+
+  if node.content then
+    for line in (node.content .. '\n'):gmatch('([^\n]*)\n') do
+      table.insert(lines, line)
+    end
+  end
+
+  if #lines == 0 then
+    lines = {'(empty)'}
+  end
+
+  return { lines = lines, highlights = {} }
+end)
+
+register('quote/brief', function(node)
+  local quote_text = node.content or ''
+  local first_line = quote_text:match('^"?([^\n"]+)')
+  if first_line then
+    if #first_line > 50 then
+      first_line = first_line:sub(1, 47) .. '...'
+    end
+    first_line = '"' .. first_line .. '"'
+  else
+    first_line = '"..."'
+  end
+
+  local author = node.props and node.props.author
+  local line = first_line
+  if author then
+    line = line .. ' —' .. author
+  end
+
+  return {
+    lines = {line},
+    highlights = {full_line_highlight(line, 'LifeModeQuote')},
+  }
+end)
+
+register('quote/full', function(node)
+  local lines = {}
+  local quote_text = node.content or ''
+
+  table.insert(lines, quote_text)
+
+  local author = node.props and node.props.author
+  local source = node.props and node.props.source
+  if author or source then
+    local attribution = '— ' .. (author or '')
+    if source then
+      attribution = attribution .. ', ' .. source
+    end
+    table.insert(lines, attribution)
+  end
+
+  return { lines = lines, highlights = {} }
+end)
+
+register('project/brief', function(node)
+  local title = node.props and node.props.title or node.id or 'Project'
+  local ref_count = node.references and #node.references or 0
+
+  local line = '📁 ' .. title .. ' (' .. ref_count .. ' items)'
+  return {
+    lines = {line},
+    highlights = {full_line_highlight(line, 'LifeModeProject')},
+  }
+end)
+
+register('project/expanded', function(node, params)
+  local lines = {}
+  local title = node.props and node.props.title or node.id or 'Project'
+
+  table.insert(lines, '📁 ' .. title)
+  table.insert(lines, '')
+
+  if node.references then
+    for i, ref in ipairs(node.references) do
+      table.insert(lines, '  ' .. i .. '. [[' .. ref .. ']]')
+    end
+  end
+
+  return { lines = lines, highlights = {} }
+end)
+
 register('heading/brief', function(node)
-  local line = string.rep('#', node.level) .. ' ' .. node.text
+  local level = node.level or 1
+  local line = string.rep('#', level) .. ' ' .. (node.text or '')
   return {
     lines = {line},
     highlights = {full_line_highlight(line, 'LifeModeHeading')},

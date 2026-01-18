@@ -27,14 +27,14 @@ print('TEST: build_tree creates year/month/day hierarchy')
 local idx = {
   nodes_by_date = {
     ['2026-01-15'] = {
-      { id = 'task1', file = '/vault/a.md' },
-      { id = 'task2', file = '/vault/a.md' },
+      { type = 'task', id = 'task1', _file = '/vault/a.md', state = 'todo', text = 'Task 1' },
+      { type = 'task', id = 'task2', _file = '/vault/a.md', state = 'todo', text = 'Task 2' },
     },
     ['2026-01-14'] = {
-      { id = 'task3', file = '/vault/b.md' },
+      { type = 'task', id = 'task3', _file = '/vault/b.md', state = 'done', text = 'Task 3' },
     },
     ['2025-12-25'] = {
-      { id = 'task4', file = '/vault/c.md' },
+      { type = 'note', id = 'note4', _file = '/vault/c.md', content = 'A note' },
     },
   },
 }
@@ -71,7 +71,16 @@ assert_equal(#jan_15.children, 2, 'Jan 15 has 2 tasks')
 local leaf1 = jan_15.children[1]
 assert_equal(leaf1.target_id, 'task1', 'first leaf target_id')
 assert_equal(leaf1.depth, 3, 'leaf depth is 3')
-assert_equal(leaf1.lens, 'task/brief', 'leaf lens')
+assert_equal(leaf1.lens, 'task/brief', 'leaf lens for task')
+print('PASS')
+
+print('TEST: note nodes get note lens')
+local year_2025 = tree.root_instances[2]
+local dec_2025 = year_2025.children[1]
+local dec_25 = dec_2025.children[1]
+local note_leaf = dec_25.children[1]
+assert_equal(note_leaf.target_id, 'note4', 'note target_id')
+assert_equal(note_leaf.lens, 'node/brief', 'leaf lens for note')
 print('PASS')
 
 print('TEST: instance_id is unique for each node')
@@ -98,8 +107,8 @@ local today_month = today:sub(1, 7)
 
 local today_idx = {
   nodes_by_date = {
-    [today] = {{ id = 'today_task', file = '/vault/today.md' }},
-    ['2020-01-01'] = {{ id = 'old_task', file = '/vault/old.md' }},
+    [today] = {{ type = 'task', id = 'today_task', _file = '/vault/today.md', state = 'todo', text = 'Today' }},
+    ['2020-01-01'] = {{ type = 'task', id = 'old_task', _file = '/vault/old.md', state = 'todo', text = 'Old' }},
   },
 }
 local today_tree = daily.build_tree(today_idx, { daily_view_expanded_depth = 3 })
@@ -117,20 +126,6 @@ assert_truthy(old_year_inst, 'old year exists')
 assert_equal(old_year_inst.collapsed, true, 'old year is collapsed')
 print('PASS')
 
-print('TEST: nodes without ID use node field')
-daily._reset_counter()
-local node_without_id = { type = 'task', text = 'Inline task' }
-local idx_with_inline = {
-  nodes_by_date = {
-    ['2026-01-10'] = {{ node = node_without_id, file = '/vault/inline.md' }},
-  },
-}
-local inline_tree = daily.build_tree(idx_with_inline)
-local leaf = inline_tree.root_instances[1].children[1].children[1].children[1]
-assert_equal(leaf.target_id, nil, 'leaf without ID has no target_id')
-assert_equal(leaf.node, node_without_id, 'leaf has node reference')
-print('PASS')
-
 print('TEST: empty index produces empty tree')
 daily._reset_counter()
 local empty_idx = { nodes_by_date = {} }
@@ -142,7 +137,7 @@ print('TEST: day display includes weekday')
 daily._reset_counter()
 local wed_idx = {
   nodes_by_date = {
-    ['2026-01-14'] = {{ id = 'task', file = '/vault/a.md' }},
+    ['2026-01-14'] = {{ type = 'task', id = 'task', _file = '/vault/a.md', state = 'todo', text = 'Task' }},
   },
 }
 local wed_tree = daily.build_tree(wed_idx)

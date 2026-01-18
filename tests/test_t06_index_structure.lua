@@ -7,8 +7,13 @@ if type(idx) ~= 'table' then
   vim.cmd('cq 1')
 end
 
-if type(idx.node_locations) ~= 'table' then
-  print('FAIL: node_locations should be table')
+if type(idx.nodes) ~= 'table' then
+  print('FAIL: nodes should be table')
+  vim.cmd('cq 1')
+end
+
+if type(idx.nodes_by_type) ~= 'table' then
+  print('FAIL: nodes_by_type should be table')
   vim.cmd('cq 1')
 end
 
@@ -32,15 +37,20 @@ if type(idx.nodes_by_date) ~= 'table' then
   vim.cmd('cq 1')
 end
 
+if type(idx.backlinks) ~= 'table' then
+  print('FAIL: backlinks should be table')
+  vim.cmd('cq 1')
+end
+
 local test_node = {
   type = 'task',
-  line = 0,
   text = 'Test task',
   state = 'todo',
   id = 'test-id-123',
   priority = 2,
   due = '2026-01-20',
-  tags = {'work'}
+  tags = {'work'},
+  created = '2026-01-15',
 }
 
 local result = index.add_node(idx, test_node, '/test/file.md', 1705363200)
@@ -50,24 +60,19 @@ if result ~= idx then
   vim.cmd('cq 1')
 end
 
-if idx.node_locations['test-id-123'] == nil then
-  print('FAIL: node_locations should contain added node')
+if idx.nodes['test-id-123'] == nil then
+  print('FAIL: nodes should contain added node')
   vim.cmd('cq 1')
 end
 
-local loc = idx.node_locations['test-id-123']
-if loc.file ~= '/test/file.md' then
-  print('FAIL: node location file incorrect')
+local node = idx.nodes['test-id-123']
+if node._file ~= '/test/file.md' then
+  print('FAIL: node _file incorrect')
   vim.cmd('cq 1')
 end
 
-if loc.line ~= 0 then
-  print('FAIL: node location line incorrect')
-  vim.cmd('cq 1')
-end
-
-if loc.mtime ~= 1705363200 then
-  print('FAIL: node location mtime incorrect')
+if node._mtime ~= 1705363200 then
+  print('FAIL: node _mtime incorrect')
   vim.cmd('cq 1')
 end
 
@@ -84,9 +89,9 @@ if not found_in_todo then
   vim.cmd('cq 1')
 end
 
-local date_str = os.date('%Y-%m-%d', 1705363200)
+local date_str = '2026-01-15'
 if idx.nodes_by_date[date_str] == nil then
-  print('FAIL: nodes_by_date should have entry for date')
+  print('FAIL: nodes_by_date should have entry for created date')
   vim.cmd('cq 1')
 end
 
@@ -99,19 +104,18 @@ for _, entry in ipairs(idx.nodes_by_date[date_str]) do
 end
 
 if not found_in_date then
-  print('FAIL: node should be in nodes_by_date for its mtime date')
+  print('FAIL: node should be in nodes_by_date for its created date')
   vim.cmd('cq 1')
 end
 
-local heading_node = {
-  type = 'heading',
-  line = 5,
-  level = 1,
-  text = 'Test heading',
-  id = 'heading-id-456'
+local note_node = {
+  type = 'note',
+  id = 'note-id-456',
+  content = '# Test note',
+  created = '2026-01-15',
 }
 
-index.add_node(idx, heading_node, '/test/file.md', 1705363200)
+index.add_node(idx, note_node, '/test/note.md', 1705363200)
 
 if #idx.nodes_by_date[date_str] ~= 2 then
   print('FAIL: nodes_by_date should contain both nodes for same date')
@@ -123,16 +127,13 @@ if #idx.tasks_by_state.todo ~= 1 then
   vim.cmd('cq 1')
 end
 
-local node_without_id = {
-  type = 'list_item',
-  line = 10,
-  text = 'No ID item'
-}
+if #(idx.nodes_by_type['task'] or {}) ~= 1 then
+  print('FAIL: nodes_by_type should have 1 task')
+  vim.cmd('cq 1')
+end
 
-index.add_node(idx, node_without_id, '/test/file.md', 1705363200)
-
-if #idx.nodes_by_date[date_str] ~= 3 then
-  print('FAIL: nodes_by_date should contain all nodes (with or without IDs)')
+if #(idx.nodes_by_type['note'] or {}) ~= 1 then
+  print('FAIL: nodes_by_type should have 1 note')
   vim.cmd('cq 1')
 end
 

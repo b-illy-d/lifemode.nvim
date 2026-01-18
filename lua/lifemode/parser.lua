@@ -6,65 +6,7 @@ function M.parse_buffer(bufnr)
   end
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  return M._parse_lines(lines)
-end
-
-function M._parse_lines(lines)
-  local blocks = {}
-  local i = 1
-
-  while i <= #lines do
-    local line = lines[i]
-    local block = M._parse_line(line, i - 1)
-
-    if block and (block.type == 'source' or block.type == 'citation') then
-      local props, id, consumed = M._collect_properties(lines, i + 1)
-      block.props = props
-      if id and not block.id then
-        block.id = id
-      end
-      i = i + consumed
-    end
-
-    if block then
-      table.insert(blocks, block)
-    end
-
-    i = i + 1
-  end
-
-  return blocks
-end
-
-function M._collect_properties(lines, start_idx)
-  local props = {}
-  local consumed = 0
-  local final_id = nil
-
-  local i = start_idx
-  while i <= #lines do
-    local line = lines[i]
-
-    if not line:match('^%s+') then
-      break
-    end
-
-    local key, value = line:match('^%s+([%w_]+)::%s*(.*)$')
-    if key and value then
-      props[key] = value
-      consumed = consumed + 1
-      i = i + 1
-    else
-      local id_match = line:match('^%s*%^([%w%-_:]+)%s*$')
-      if id_match then
-        final_id = id_match
-        consumed = consumed + 1
-      end
-      break
-    end
-  end
-
-  return props, final_id, consumed
+  return M._parse_node(lines)
 end
 
 function M.parse_file(path)
@@ -73,119 +15,102 @@ function M.parse_file(path)
   end
 
   local lines = vim.fn.readfile(path)
-  return M._parse_lines(lines)
+  return M._parse_node(lines)
 end
 
-function M._parse_line(line, line_idx)
-  local heading_match = line:match('^(#+)%s+(.*)$')
-  if heading_match then
-    return M._parse_heading(line, line_idx)
+function M._parse_node(lines)
+  local props, content_start = M._extract_properties(lines)
+
+  local node_type = props.type or 'note'
+  local node_id = props.id
+  local created = props.created
+
+  local content_lines = {}
+  for i = content_start, #lines do
+    table.insert(content_lines, lines[i])
   end
+  local content = table.concat(content_lines, '\n')
 
-  local task_match = line:match('^%s*%-%s+%[([%sxX])%]%s+(.*)$')
-  if task_match then
-    return M._parse_task(line, line_idx)
-  end
-
-  local source_match = line:match('^%s*%-%s+type::%s*source')
-  if source_match then
-    return M._parse_source(line, line_idx)
-  end
-
-  local citation_match = line:match('^%s*%-%s+type::%s*citation')
-  if citation_match then
-    return M._parse_citation(line, line_idx)
-  end
-
-  local list_match = line:match('^%s*%-%s+(.*)$')
-  if list_match then
-    return M._parse_list_item(line, line_idx)
-  end
-
-  return nil
-end
-
-local function parse_typed_list_item(line, line_idx, item_type)
-  local text, id = M._extract_id(line:match('^%s*%-%s+(.*)$') or '')
-  return {
-    type = item_type,
-    line = line_idx,
-    text = text,
-    id = id,
-    refs = M._extract_all_refs(line),
-    props = {},
+  local node = {
+    type = node_type,
+    id = node_id,
+    created = created,
+    props = props,
+    content = content,
+    refs = M._extract_all_refs(content),
   }
-end
 
-function M._parse_source(line, line_idx)
-  return parse_typed_list_item(line, line_idx, 'source')
-end
-
-function M._parse_citation(line, line_idx)
-  return parse_typed_list_item(line, line_idx, 'citation')
-end
-
-function M._parse_heading(line, line_idx)
-  local hashes, rest = line:match('^(#+)%s+(.*)$')
-  local level = #hashes
-  local text, id = M._extract_id(rest)
-  local refs = M._extract_all_refs(line)
-
-  return {
-    type = 'heading',
-    line = line_idx,
-    level = level,
-    text = text,
-    id = id,
-    refs = refs,
-  }
-end
-
-function M._parse_task(line, line_idx)
-  local state_char, rest = line:match('^%s*%-%s+%[([%sxX])%]%s+(.*)$')
-  local state = (state_char == 'x' or state_char == 'X') and 'done' or 'todo'
-  local text, id = M._extract_id(rest)
-
-  local priority = M._extract_priority(text)
-  local due = M._extract_due(text)
-  local tags = M._extract_tags(text)
-  local refs = M._extract_all_refs(text)
-
-  text = M._strip_metadata(text)
-
-  return {
-    type = 'task',
-    line = line_idx,
-    state = state,
-    text = text,
-    id = id,
-    priority = priority,
-    due = due,
-    tags = tags,
-    refs = refs,
-  }
-end
-
-function M._parse_list_item(line, line_idx)
-  local rest = line:match('^%s*%-%s+(.*)$')
-  local text, id = M._extract_id(rest)
-  local refs = M._extract_all_refs(rest)
-
-  return {
-    type = 'list_item',
-    line = line_idx,
-    text = text,
-    id = id,
-    refs = refs,
-  }
-end
-
-function M._extract_id(text)
-  local before_id, id = text:match('^(.-)%s*%^([%w%-_:]+)%s*$')
-  if before_id and id then
-    return vim.trim(before_id), id
+  if node_type == 'task' then
+    M._enrich_task_node(node, content)
+  elseif node_type == 'project' then
+    node.references = M._extract_project_refs(content)
   end
-  return vim.trim(text), nil
+
+  return node
+end
+
+function M._extract_properties(lines)
+  local props = {}
+  local content_start = 1
+
+  for i, line in ipairs(lines) do
+    local key, value = line:match('^([%w_]+)::%s*(.*)$')
+    if key and value then
+      props[key] = value
+      content_start = i + 1
+    elseif line:match('^%s*$') and next(props) then
+      content_start = i + 1
+      break
+    elseif next(props) then
+      break
+    else
+      break
+    end
+  end
+
+  return props, content_start
+end
+
+function M._enrich_task_node(node, content)
+  local task_line = content:match('^%s*%-%s+%[([%sxX])%]%s+(.*)$')
+  if not task_line then
+    for line in content:gmatch('[^\n]+') do
+      local state_char, rest = line:match('^%s*%-%s+%[([%sxX])%]%s+(.*)$')
+      if state_char then
+        node.state = (state_char == 'x' or state_char == 'X') and 'done' or 'todo'
+        node.text = M._strip_metadata(rest)
+        node.priority = M._extract_priority(rest)
+        node.due = M._extract_due(rest)
+        node.tags = M._extract_tags(rest)
+        return
+      end
+    end
+    node.state = 'todo'
+    node.text = ''
+    return
+  end
+
+  local state_char, rest = content:match('^%s*%-%s+%[([%sxX])%]%s+(.*)$')
+  if state_char then
+    node.state = (state_char == 'x' or state_char == 'X') and 'done' or 'todo'
+    node.text = M._strip_metadata(rest:match('^([^\n]*)'))
+    node.priority = M._extract_priority(rest)
+    node.due = M._extract_due(rest)
+    node.tags = M._extract_tags(rest)
+  end
+end
+
+function M._extract_project_refs(content)
+  local refs = {}
+
+  for line in content:gmatch('[^\n]+') do
+    local target = line:match('^%[%[([^%]]+)%]%]%s*$')
+    if target then
+      table.insert(refs, target)
+    end
+  end
+
+  return refs
 end
 
 function M._extract_priority(text)
@@ -240,6 +165,7 @@ function M._extract_tags(text)
 end
 
 function M._strip_metadata(text)
+  if not text then return '' end
   text = text:gsub('!%d+%s*', '')
   text = text:gsub('@due%([^)]+%)%s*', '')
   text = text:gsub('%s*#[%w_/%-]+', '')
@@ -315,6 +241,11 @@ function M._extract_all_refs(text)
     return refs
   end
   return nil
+end
+
+function M._parse_lines(lines)
+  local node = M._parse_node(lines)
+  return { node }
 end
 
 return M

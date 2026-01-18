@@ -29,11 +29,11 @@ local function get_all_todo_tasks(idx)
   end
 
   local tasks = {}
-  for _, task_entry in ipairs(idx.tasks_by_state.todo) do
+  for _, node in ipairs(idx.tasks_by_state.todo) do
     table.insert(tasks, {
-      node = task_entry,
-      file = task_entry._file,
-      id = task_entry.id,
+      node = node,
+      file = node._file,
+      id = node.id,
     })
   end
 
@@ -167,7 +167,9 @@ local function apply_filter(tasks_list, filter)
     return tasks_list
   end
 
-  local query = require('lifemode.query')
+  local ok, query = pcall(require, 'lifemode.query')
+  if not ok then return tasks_list end
+
   local nodes = vim.tbl_map(function(t) return t.node end, tasks_list)
   local matching_nodes = query.execute(filter, nodes)
 
