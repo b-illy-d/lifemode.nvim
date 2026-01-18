@@ -4,8 +4,10 @@ A Markdown-native productivity and wiki system for Neovim, inspired by Orgmode, 
 
 ## What is LifeMode?
 
+- **1 file = 1 node**: Each markdown file is exactly one node (task, note, quote, project, etc.) with explicit `type::`, `id::`, and `created::` properties.
 - **View-first**: You don't edit vault files directly. You invoke `:LifeMode` to open interactive views that compile relevant nodes into navigable buffers.
-- **Markdown is truth**: Your notes are plain `.md` files. No proprietary database. `grep` always works.
+- **Markdown is truth**: Your notes are plain `.md` files organized in type folders. No proprietary database. `grep` always works.
+- **Projects**: Meta-nodes that reference other nodes in a specific order - perfect for sermons, research papers, or any composed work.
 - **Bible-aware**: Scripture references are first-class citizens with full backlink support.
 - **LSP-like UX**: `gd` for go-to-definition, `gr` for references/backlinks, code actions for task management.
 
@@ -13,10 +15,11 @@ A Markdown-native productivity and wiki system for Neovim, inspired by Orgmode, 
 
 - **Daily View**: Browse your vault chronologically (Year > Month > Day tree)
 - **Tasks View**: Aggregate all tasks with grouping by due date, priority, or tag
+- **Project View**: Render projects with their referenced nodes in order
 - **Task management**: Toggle state, adjust priority (!1-!5), set due dates, add tags
-- **Wikilinks**: `[[Page]]`, `[[Page#Heading]]`, `[[Page^block-id]]` with navigation
+- **Wikilinks**: `[[node-id]]` syntax to link between nodes with navigation
 - **Bible references**: `John 3:16`, `Rom 8:28-30` with backlinks for each verse
-- **Lens system**: Cycle between rendering styles per node (`task/brief`, `task/detail`, etc.)
+- **Lens system**: Cycle between rendering styles per node (`task/brief`, `node/full`, etc.)
 - **Auto-indexing**: Lazy build on first use, incremental updates on file save
 
 ## Installation
@@ -113,22 +116,39 @@ These keymaps are active in LifeMode view buffers:
 | `:LifeModeParse` | Parse current buffer (debug) |
 | `:LifeModeDebugSpan` | Show metadata at cursor (debug) |
 
-## Task Syntax
+## Node Format
 
-Tasks use CommonMark checkbox syntax with inline metadata:
+Each node is a single file with LogSeq-style properties:
 
 ```markdown
-- [ ] Review PR !1 @due(2026-01-20) #work ^abc123
-- [x] Morning standup #daily ^def456
+type:: task
+id:: abc123
+created:: 2026-01-15
+
+- [ ] Review PR !1 @due(2026-01-20) #work
 ```
+
+### Task Metadata
+
+Tasks use CommonMark checkbox syntax with inline metadata:
 
 - **Priority**: `!1` (highest) through `!5` (lowest)
 - **Due date**: `@due(YYYY-MM-DD)`
 - **Tags**: `#tag` or `#tag/subtag`
-- **Block ID**: `^id` (auto-assigned when needed)
+
+### Node Types
+
+| Type | Storage | Purpose |
+|------|---------|---------|
+| `note` | `notes/` | General notes, thoughts |
+| `task` | `tasks/` | Actionable items |
+| `quote` | `quotes/` | Quotations |
+| `source` | `sources/` | Books, articles |
+| `project` | `projects/` | Ordered node references |
 
 ## Documentation
 
+- [PHILOSOPHY.md](PHILOSOPHY.md) - Core mental model (nodes, views, lenses, projects)
 - [QUICKSTART.md](QUICKSTART.md) - Hands-on tutorial
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Architecture and development guide
 - [SPEC.md](SPEC.md) - Design specification

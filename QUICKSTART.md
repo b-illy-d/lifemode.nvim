@@ -57,10 +57,11 @@ require('lifemode').setup({
 ```
 
 The example vault contains:
-- `tasks.md` - Sample tasks with priorities, due dates, and tags
-- `notes.md` - Project notes with wikilinks
-- `bible-study.md` - Bible references demonstrating verse backlinks
-- `sources.md` - Academic source/citation examples
+- `tasks/` - Individual task files with priorities, due dates, and tags
+- `notes/` - Note files with wikilinks and Bible references
+- `quotes/` - Quote files with author attribution
+- `sources/` - Academic source files
+- `projects/` - Project files that reference other nodes
 
 ## Tutorial 1: Opening Your First View
 
@@ -122,17 +123,23 @@ To see what references a node:
 
 - `gr` - Opens quickfix with all backlinks
 
-For example, with your cursor on a task that has `^pr-review`, pressing `gr` shows everywhere that ID is referenced.
+For example, with your cursor on a task, pressing `gr` shows everywhere that node is referenced via wikilinks.
 
 ## Tutorial 3: Task Management
 
-### Task Syntax
+### Task File Structure
 
-LifeMode tasks use CommonMark checkboxes with inline metadata:
+Each task is its own file with LogSeq-style properties:
 
 ```markdown
-- [ ] Task description !1 @due(2026-01-20) #tag ^id
+type:: task
+id:: abc123
+created:: 2026-01-15
+
+- [ ] Task description !1 @due(2026-01-20) #tag
 ```
+
+The task line uses CommonMark checkbox syntax with inline metadata:
 
 | Element | Meaning |
 |---------|---------|
@@ -141,7 +148,8 @@ LifeMode tasks use CommonMark checkboxes with inline metadata:
 | `!1` | Priority (1=highest, 5=lowest) |
 | `@due(YYYY-MM-DD)` | Due date |
 | `#tag` | Tag (supports `/` for hierarchy) |
-| `^id` | Block ID (auto-assigned if missing) |
+
+Task files are stored in `vault/tasks/task-{id}.md`.
 
 ### Managing Tasks from Views
 
@@ -222,19 +230,21 @@ Within each group, tasks are sorted by priority.
 
 ### Creating Wikilinks
 
-LifeMode supports standard wikilink syntax:
+LifeMode supports wikilink syntax to reference other nodes:
 
 | Syntax | Target |
 |--------|--------|
-| `[[Page]]` | Links to Page.md |
-| `[[Page#Heading]]` | Links to a heading in Page.md |
-| `[[Page^block-id]]` | Links to a specific block by ID |
+| `[[node-id]]` | Links to a node by its ID |
+| `[[task-abc123]]` | Links to a specific task |
+| `[[note-xyz789]]` | Links to a specific note |
+
+Since each node has a unique `id::` property, wikilinks use that ID directly.
 
 ### Navigation
 
 With your cursor on a wikilink:
 
-- `gd` - Jump to the link target
+- `gd` - Jump to the linked node's file
 
 ### Finding Backlinks
 
@@ -242,7 +252,7 @@ With your cursor on any node:
 
 - `gr` - Show all references to this node in quickfix
 
-This is powerful for exploring connections. If you're on a heading and press `gr`, you'll see everywhere that heading is linked.
+This is powerful for exploring connections. If you're on a note and press `gr`, you'll see all other nodes that reference it via wikilinks.
 
 ## Tutorial 6: Bible References
 
@@ -312,58 +322,102 @@ Try it: position on a task and press `<Space>l` to see different rendering style
 |------|------------|-------------|
 | `task/brief` | task | Compact task display |
 | `task/detail` | task | Full metadata |
-| `heading/brief` | heading | Heading text |
+| `node/brief` | note | Title + first line |
+| `node/full` | note | Complete content |
 | `node/raw` | any | Raw markdown |
+| `quote/brief` | quote | Quote text (truncated) |
+| `quote/full` | quote | Quote + full attribution |
+| `project/brief` | project | Title + node count |
+| `project/expanded` | project | Title + rendered nodes |
 | `date/year` | date | Year display |
 | `date/month` | date | Month display |
 | `date/day` | date | Day display |
-| `source/biblio` | source | Bibliography format |
-| `citation/brief` | citation | Citation display |
 
-## Tutorial 8: Source & Citation Nodes
+## Tutorial 8: Source & Quote Nodes
 
-For academic work or curated references, LifeMode supports source and citation nodes.
+For academic work or curated references, LifeMode supports source and quote nodes.
 
 ### Creating a Source
 
-```markdown
-- [[source:Smith2019]] ^s:smith2019
-  type:: source
-  title:: Theological Arguments in Romans
-  author:: John Smith
-  year:: 2019
-  kind:: book
-```
+Each source is its own file (e.g., `sources/source-smith2019.md`):
 
-Properties use `key:: value` syntax on indented lines.
+```markdown
+type:: source
+id:: smith2019
+title:: Theological Arguments in Romans
+author:: John Smith
+year:: 2019
+kind:: book
+```
 
 ### Source Properties
 
 | Property | Description |
 |----------|-------------|
 | `type` | Always `source` |
+| `id` | Unique identifier |
 | `title` | Work title |
 | `author` | Author name(s) |
 | `year` | Publication year |
 | `kind` | book, article, blog, etc. |
 | `url` | URL for online sources |
 
-### Creating Citations
+### Creating Quotes
 
-Reference sources with additional context:
+Quotes are stored as individual files (e.g., `quotes/quote-dorothy-day-01.md`):
 
 ```markdown
-- Smith argues X ^c:001
-  type:: citation
-  source:: [[source:Smith2019]]
-  locator:: ch. 3
-  pages:: 57-63
+type:: quote
+id:: dorothy-day-01
+created:: 2026-01-05
+author:: Dorothy Day
+
+"The greatest challenge of the day is: how to bring about a revolution of the heart."
 ```
 
-### Lenses for Sources
+### Lenses for Quotes
 
-- `source/biblio` - Formatted bibliography entry
-- `citation/brief` - Compact citation display
+- `quote/brief` - Quote text (truncated) with attribution
+- `quote/full` - Full quote text with all metadata
+
+## Tutorial 9: Projects
+
+Projects are meta-nodes that reference other nodes in a specific order.
+
+### Creating a Project
+
+A project file (e.g., `projects/project-easter-sermon.md`):
+
+```markdown
+type:: project
+id:: easter-sermon
+created:: 2026-01-10
+title:: Easter Sermon 2026
+
+[[note-intro-thoughts]]
+[[quote-dorothy-day-01]]
+[[note-main-argument]]
+[[task-def456]]
+[[note-conclusion]]
+```
+
+### Project Principles
+
+- **References only** - All content lives in its own node file
+- **Ordered** - The reference list defines presentation order
+- **Shared nodes** - A node can appear in multiple projects
+- **Nestable** - Projects can reference other projects
+
+### Project Use Cases
+
+- Sermons as ordered collections of notes, quotes, and tasks
+- Research papers referencing source materials
+- Weekly reviews aggregating relevant tasks and notes
+
+### Project Lenses
+
+- `project/brief` - Title + node count
+- `project/expanded` - Title + all referenced nodes rendered
 
 ## Configuration Reference
 
@@ -434,7 +488,7 @@ require('lifemode').setup({
 | Command | Purpose |
 |---------|---------|
 | `:LifeModeHello` | Show current configuration |
-| `:LifeModeParse` | Parse current buffer, show block counts |
+| `:LifeModeParse` | Parse current buffer as a node file |
 | `:LifeModeDebugSpan` | Show metadata for span under cursor |
 
 ### View not updating after file edit
@@ -443,6 +497,7 @@ The index updates automatically on `BufWritePost`. If you edit a file outside Ne
 
 ## Next Steps
 
+- Read [PHILOSOPHY.md](PHILOSOPHY.md) for the core mental model (nodes, views, lenses, projects)
 - Explore [CONTRIBUTING.md](CONTRIBUTING.md) if you want to understand the architecture
 - Read [SPEC.md](SPEC.md) for the full design specification
 - Check the [README.md](README.md) for a quick reference

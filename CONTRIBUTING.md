@@ -13,10 +13,11 @@ Technical guide for developers who want to understand or extend LifeMode.
 
 | Concept | Description |
 |---------|-------------|
-| **Node** | Canonical object with stable ID (task, heading, source, citation) |
+| **Node** | 1 file = 1 node. Each `.md` file with `type::`, `id::`, `created::` properties |
 | **Instance** | Placement of a node in a view tree (carries lens, depth, collapsed state) |
-| **View** | Compiled buffer of instances |
+| **View** | Compiled buffer of instances (query + grouping + lens) |
 | **Lens** | Deterministic renderer for a node type |
+| **Project** | Meta-node that references other nodes in order |
 
 ## Architecture
 
@@ -24,20 +25,23 @@ Technical guide for developers who want to understand or extend LifeMode.
 User → :LifeMode
          │
          ▼
-   vault.lua ─────────► list .md files with mtimes
+   vault.lua ─────────► list .md files with mtimes (by type folders)
          │
          ▼
-   parser.lua ────────► extract nodes (headings, tasks, sources)
-         │                extract refs (wikilinks, Bible verses)
+   parser.lua ────────► parse single node from file
+         │                - extract type::, id::, created:: properties
+         │                - extract refs (wikilinks, Bible verses)
          ▼
    index.lua ─────────► in-memory index
-         │                - node_locations
-         │                - backlinks
-         │                - tasks_by_state
+         │                - nodes (id → node)
+         │                - nodes_by_type
          │                - nodes_by_date
+         │                - tasks_by_state
+         │                - backlinks
          ▼
    views/daily.lua ───► build date hierarchy tree
    views/tasks.lua ───► build grouped task tree
+   views/project.lua ──► build project with referenced nodes
          │
          ▼
    lens.lua ──────────► render instances to lines/highlights
@@ -59,8 +63,8 @@ lua/lifemode/
 ├── init.lua           # Entry point, setup(), commands
 ├── config.lua         # Config validation, defaults
 ├── controller.lua     # View state, keymaps, user actions
-├── vault.lua          # File discovery
-├── parser.lua         # Markdown → nodes
+├── vault.lua          # File discovery, node creation
+├── parser.lua         # Single node file → node object
 ├── index.lua          # In-memory index
 ├── view.lua           # Buffer creation
 ├── extmarks.lua       # Span metadata tracking
@@ -76,13 +80,12 @@ lua/lifemode/
 └── views/
     ├── base.lua       # Shared rendering utils
     ├── daily.lua      # Daily view
-    └── tasks.lua      # Tasks view
+    ├── tasks.lua      # Tasks view
+    └── project.lua    # Project view
 
 tests/
 ├── test_*.lua         # Test files (organized by phase)
-├── minimal_init.lua   # Test harness
-└── lifemode/
-    └── init_spec.lua  # Spec-style tests
+└── minimal_init.lua   # Test harness
 ```
 
 ## Module Reference
@@ -97,13 +100,13 @@ Configuration validation and defaults. All options validated with type checking.
 View state management and user interactions. Maintains current view, handles keymaps, coordinates the refresh cycle: action → patch → rebuild index → re-render.
 
 ### vault.lua
-File discovery. Lists all `.md` files in vault with modification times.
+File discovery and node creation. Lists all `.md` files in type-based folders with modification times. Also provides `create_node()`, `create_task()`, `create_note()`, `create_project()` for creating new nodes.
 
 ### parser.lua
-Markdown parsing. Extracts nodes (headings, tasks, list items, sources, citations) and refs (wikilinks, Bible verses) from files.
+Single-node file parsing. Extracts `type::`, `id::`, `created::` properties from file header, then parses content based on node type. Extracts refs (wikilinks, Bible verses) from content.
 
 ### index.lua
-In-memory indexing with lazy initialization. Builds on first `get_or_build()`, updates incrementally on file save.
+In-memory indexing with lazy initialization. Builds on first `get_or_build()`, updates incrementally on file save. Maps node IDs to nodes with `_file` and `_mtime` metadata.
 
 ### view.lua
 Buffer creation. Creates `nofile` scratch buffers and applies rendered content.
@@ -138,27 +141,37 @@ Daily view implementation. Builds Year > Month > Day tree from nodes_by_date.
 ### views/tasks.lua
 Tasks view implementation. Groups tasks by due date, priority, or tag.
 
+### views/project.lua
+Project view implementation. Renders a project node with its referenced nodes in order.
+
 ## Data Structures
 
 ### Node (from parser)
 
+Each file produces exactly one node:
+
 ```lua
 {
-  type = 'task',           -- 'task', 'heading', 'source', 'citation', 'list_item'
-  line = 5,                -- 0-indexed line number
-  text = 'Review PR',      -- Display text (metadata stripped)
-  id = 'abc123',           -- Block ID (from ^id suffix)
+  type = 'task',           -- 'task', 'note', 'quote', 'source', 'project'
+  id = 'abc123',           -- From id:: property
+  created = '2026-01-15',  -- From created:: property (YYYY-MM-DD)
+  content = '...',         -- Markdown body below properties
   refs = {                 -- Outbound references
-    { type = 'wikilink', target = 'tasks', ... },
+    { type = 'wikilink', target = 'note-xyz789' },
     { type = 'bible', book = 'john', chapter = 3, verse_start = 16 },
   },
-  props = {},              -- Properties for source/citation nodes
+  props = {},              -- All key:: value properties
 
   -- Task-specific:
   state = 'todo',          -- 'todo' or 'done'
+  text = 'Review PR',      -- Task text (metadata stripped)
   priority = 1,            -- 1-5 or nil
   due = '2026-01-20',      -- YYYY-MM-DD or nil
   tags = {'work', 'docs'}, -- Array of tags
+
+  -- Added by index:
+  _file = '/vault/tasks/task-abc123.md',
+  _mtime = 1234567890,
 }
 ```
 
@@ -180,19 +193,23 @@ Tasks view implementation. Groups tasks by due date, priority, or tag.
 
 ```lua
 {
-  node_locations = {
-    ['abc123'] = { file = '/path/to/file.md', line = 5, mtime = 1234567890 }
+  nodes = {
+    ['abc123'] = { ...node with _file and _mtime... }
   },
-  tasks_by_state = {
-    todo = { node1, node2 },
-    done = { node3 },
+  nodes_by_type = {
+    task = { node1, node2 },
+    note = { node3 },
   },
   nodes_by_date = {
-    ['2026-01-17'] = { node1, node2 },
+    ['2026-01-15'] = { node1, node2 },
+  },
+  tasks_by_state = {
+    todo = { task1, task2 },
+    done = { task3 },
   },
   backlinks = {
     ['target_id'] = {
-      { source_id = 'abc', file = '/path.md', line = 10 },
+      { source_id = 'abc', file = '/path.md' },
     },
   },
 }
@@ -270,17 +287,27 @@ end
 
 ### Adding a New Node Type
 
-1. Add detection in `parser.lua` `_parse_line()`:
+1. Define the type in `parser.lua` - add handling in `_parse_node()`:
 
 ```lua
-if line:match('^your_pattern') then
-  return _parse_your_type(line, line_num)
+if node_type == 'yourtype' then
+  node.your_field = props.your_field or extract_from_content(content)
 end
 ```
 
-2. Create `_parse_your_type()` function.
+2. Create a folder in the vault structure (e.g., `yourtypes/`).
 
-3. Add lens renderers in `lens.lua`.
+3. Add type to `vault.lua` `create_node()` if needed.
+
+4. Add lens renderers in `lens.lua`:
+
+```lua
+register('yourtype/brief', function(node)
+  return { lines = { format_yourtype(node) }, highlights = {} }
+end)
+```
+
+5. Update `get_available_lenses()` for the new type.
 
 ## Coding Conventions
 
@@ -379,10 +406,13 @@ index._reset_state()
 
 ## Key Design Decisions
 
-From [DECISIONS.md](DECISIONS.md):
+See [PHILOSOPHY.md](PHILOSOPHY.md) for the core mental model.
 
 | Decision | Rationale |
 |----------|-----------|
+| 1 file = 1 node | Simple mapping, each node is independently editable |
+| LogSeq-style `key:: value` properties | Human-readable, familiar to PKM users |
+| Type-based folders | App optimization, not user concern |
 | `bufhidden=hide` | View buffers persist for return navigation |
 | Priority: !1 highest, !5 lowest | Matches org-mode convention |
 | Bible ID: `bible:book:chapter:verse` | Deterministic, human-readable |
@@ -407,8 +437,8 @@ Optional future integrations:
   → init.open_view('daily')
     → index.get_or_build(vault_root)
       → vault.list_files() → [{path, mtime}]
-      → for each file: parser.parse_file(path)
-      → build node_locations, backlinks, tasks_by_state, nodes_by_date
+      → for each file: parser.parse_file(path) → single node
+      → index.add_node() adds to nodes, nodes_by_type, nodes_by_date, etc.
     → daily.build_tree(index, config)
     → daily.render(tree, {index})
     → view.create_buffer()
@@ -424,7 +454,8 @@ Optional future integrations:
   → controller.toggle_task(config)
     → extmarks.get_instance_at_cursor() → metadata
     → patch.toggle_task_state(node_id, index)
-      → read file → modify line → write file
+      → get node._file from index
+      → read file → modify task line → write file
     → refresh_after_patch(config)
       → index._reset_state()
       → index.get_or_build()
@@ -444,32 +475,12 @@ gr
     → vim.cmd('copen')
 ```
 
-### Creating a Node Inline
+### Creating a Node
 
 ```
-o
-  → controller.create_node_inline(config)
-    → extmarks.get_instance_at_cursor() → metadata.file
-    → view.set_modifiable(bufnr, true)
-    → insert blank line, enter insert mode
-    → on InsertLeave:
-      → patch.create_node(content, dest_file)
-      → refresh_after_patch()
-```
-
-### Editing a Node Inline
-
-```
-i
-  → controller.edit_node_inline(config)
-    → extmarks.get_instance_at_cursor() → {node, target_id}
-    → view.set_modifiable(bufnr, true)
-    → startinsert
-    → on InsertLeave:
-      → strip view decorations from edited line
-      → patch.update_node_text(node_id, new_text, index)
-        → extract prefix, priority, due, tags, id from original
-        → reconstruct: prefix + new_text + metadata
-        → write file
-      → refresh_after_patch()
+:LifeModeNewTask
+  → vault.create_task(vault_root, text, props)
+    → vault.generate_uuid() for id
+    → write to tasks/task-{id}.md
+    → refresh index
 ```
