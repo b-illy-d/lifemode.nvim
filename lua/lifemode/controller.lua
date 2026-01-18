@@ -129,12 +129,8 @@ function M.create_node_inline(config)
   if not cv then return end
 
   local metadata = extmarks.get_instance_at_cursor()
-  local dest_file
-  if metadata and metadata.file then
-    dest_file = metadata.file
-  else
-    dest_file = config.vault_root .. '/inbox.md'
-  end
+  local dest_file = metadata and metadata.file
+  local target_date = metadata and metadata.date
 
   local view = require('lifemode.view')
   local bufnr = cv.bufnr
@@ -147,22 +143,35 @@ function M.create_node_inline(config)
   vim.api.nvim_win_set_cursor(0, {row + 1, 0})
   vim.cmd('startinsert')
 
-  local autocmd_id
-  autocmd_id = vim.api.nvim_create_autocmd('InsertLeave', {
+  vim.api.nvim_create_autocmd('InsertLeave', {
     buffer = bufnr,
     once = true,
     callback = function()
       local new_cursor = vim.api.nvim_win_get_cursor(0)
       local new_row = new_cursor[1]
       local lines = vim.api.nvim_buf_get_lines(bufnr, new_row - 1, new_row, false)
-      local content = lines[1] or ''
-
-      content = vim.trim(content)
+      local content = vim.trim(lines[1] or '')
 
       if content ~= '' then
-        local patch = require('lifemode.patch')
-        patch.create_node(content, dest_file)
-        vim.notify('Node created in ' .. vim.fn.fnamemodify(dest_file, ':t'), vim.log.levels.INFO)
+        if dest_file then
+          local patch = require('lifemode.patch')
+          patch.create_node(content, dest_file)
+          vim.notify('Node created in ' .. vim.fn.fnamemodify(dest_file, ':t'), vim.log.levels.INFO)
+        else
+          local vault = require('lifemode.vault')
+          local props = {}
+          if target_date and target_date:match('^%d%d%d%d%-%d%d%-%d%d$') then
+            props.created = target_date
+          end
+          local result = vault.create_task(config.vault_root, content, props)
+          local index = require('lifemode.index')
+          local parser = require('lifemode.parser')
+          local node = parser.parse_file(result.path)
+          if node and cv.index then
+            index.add_node(cv.index, node, result.path, os.time())
+          end
+          vim.notify('Task created: ' .. result.id, vim.log.levels.INFO)
+        end
       end
 
       refresh_after_patch(config)
