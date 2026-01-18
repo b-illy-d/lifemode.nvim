@@ -15,23 +15,12 @@ local function require_setup()
   return true
 end
 
-local function register_commands()
-  vim.api.nvim_create_user_command('LifeModeHello', function() M.hello() end, {})
-  vim.api.nvim_create_user_command('LifeMode', function(opts)
-    local view_type = opts.args and opts.args ~= '' and opts.args or 'daily'
-    M.open_view(view_type)
-  end, { nargs = '?' })
-  vim.api.nvim_create_user_command('LifeModeDebugSpan', function() M.debug_span() end, {})
-  vim.api.nvim_create_user_command('LifeModeParse', function() M.parse_current_buffer() end, {})
-end
-
 function M.setup(opts)
   if state.initialized then
     error('setup() already called - duplicate setup not allowed')
   end
 
   state.config = config.validate(opts or {})
-  register_commands()
   state.initialized = true
 end
 

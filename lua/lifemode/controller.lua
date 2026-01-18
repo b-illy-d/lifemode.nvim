@@ -408,14 +408,14 @@ function M.setup_keymaps(bufnr, config)
   local cv = function() return state.current_view end
   local refresh = function() M.refresh_view(config) end
 
-  vim.keymap.set('n', '<Space>e', function() navigation.expand_at_cursor(cv(), refresh) end, opts)
-  vim.keymap.set('n', '<Space>E', function() navigation.collapse_at_cursor(cv(), refresh) end, opts)
+  vim.keymap.set('n', '<CR>', function() navigation.toggle_at_cursor(cv(), refresh) end, opts)
+  vim.keymap.set('n', 'zo', function() navigation.expand_at_cursor(cv(), refresh) end, opts)
+  vim.keymap.set('n', 'zc', function() navigation.collapse_at_cursor(cv(), refresh) end, opts)
   vim.keymap.set('n', ']d', function() navigation.jump(cv(), 'date/day', 1, refresh) end, opts)
   vim.keymap.set('n', '[d', function() navigation.jump(cv(), 'date/day', -1, refresh) end, opts)
   vim.keymap.set('n', ']m', function() navigation.jump(cv(), 'date/month', 1, refresh) end, opts)
   vim.keymap.set('n', '[m', function() navigation.jump(cv(), 'date/month', -1, refresh) end, opts)
   vim.keymap.set('n', 'gd', M.jump_to_source, opts)
-  vim.keymap.set('n', '<CR>', M.jump_to_source, opts)
   vim.keymap.set('n', '<Space><Space>', function() M.toggle_task(config) end, opts)
   vim.keymap.set('n', '<Space>tp', function() M.inc_priority(config) end, opts)
   vim.keymap.set('n', '<Space>tP', function() M.dec_priority(config) end, opts)

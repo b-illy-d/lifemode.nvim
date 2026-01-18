@@ -89,4 +89,17 @@ function M.collapse_at_cursor(view_state, refresh_fn)
   refresh_fn()
 end
 
+function M.toggle_at_cursor(view_state, refresh_fn)
+  if not view_state then return end
+
+  local extmarks = require('lifemode.extmarks')
+  local metadata = extmarks.get_instance_at_cursor()
+
+  if not metadata or not metadata.instance then return end
+  if metadata.instance.collapsed == nil then return end
+
+  metadata.instance.collapsed = not metadata.instance.collapsed
+  refresh_fn()
+end
+
 return M
