@@ -80,11 +80,21 @@ function M.refresh_view(config)
   cv.spans = rendered.spans
 end
 
-local function refresh_after_patch(config)
+local function rebuild_tree_only(cv, config)
+  local daily = require('lifemode.views.daily')
+  cv.tree = daily.build_tree(cv.index, config)
+end
+
+local function refresh_after_patch(config, opts)
+  opts = opts or {}
   local cv = state.current_view
   if not cv then return end
 
-  refresh_index_and_tree(cv, config)
+  if opts.skip_index_rebuild then
+    rebuild_tree_only(cv, config)
+  else
+    refresh_index_and_tree(cv, config)
+  end
   M.refresh_view(config)
 end
 
@@ -152,6 +162,7 @@ function M.create_node_inline(config)
       local lines = vim.api.nvim_buf_get_lines(bufnr, new_row - 1, new_row, false)
       local content = vim.trim(lines[1] or '')
 
+      local injected = false
       if content ~= '' then
         if dest_file then
           local patch = require('lifemode.patch')
@@ -169,12 +180,13 @@ function M.create_node_inline(config)
           local node = parser.parse_file(result.path)
           if node and cv.index then
             index.add_node(cv.index, node, result.path, os.time())
+            injected = true
           end
           vim.notify('Task created: ' .. result.id, vim.log.levels.INFO)
         end
       end
 
-      refresh_after_patch(config)
+      refresh_after_patch(config, { skip_index_rebuild = injected })
     end,
   })
 end
