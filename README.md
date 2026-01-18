@@ -97,6 +97,9 @@ These keymaps are active in LifeMode view buffers:
 | `<Space>tP` | Decrease task priority |
 | `<Space>g` | Cycle task grouping (Tasks view) |
 | `<Space>l` / `<Space>L` | Cycle lens forward/backward |
+| `o` | Create new node below cursor |
+| `i` | Edit node inline |
+| `a` | Edit node inline (append) |
 | `q` | Close view buffer |
 
 ## Commands

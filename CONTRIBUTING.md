@@ -443,3 +443,33 @@ gr
     → vim.fn.setqflist(items)
     → vim.cmd('copen')
 ```
+
+### Creating a Node Inline
+
+```
+o
+  → controller.create_node_inline(config)
+    → extmarks.get_instance_at_cursor() → metadata.file
+    → view.set_modifiable(bufnr, true)
+    → insert blank line, enter insert mode
+    → on InsertLeave:
+      → patch.create_node(content, dest_file)
+      → refresh_after_patch()
+```
+
+### Editing a Node Inline
+
+```
+i
+  → controller.edit_node_inline(config)
+    → extmarks.get_instance_at_cursor() → {node, target_id}
+    → view.set_modifiable(bufnr, true)
+    → startinsert
+    → on InsertLeave:
+      → strip view decorations from edited line
+      → patch.update_node_text(node_id, new_text, index)
+        → extract prefix, priority, due, tags, id from original
+        → reconstruct: prefix + new_text + metadata
+        → write file
+      → refresh_after_patch()
+```

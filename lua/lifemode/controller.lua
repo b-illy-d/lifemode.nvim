@@ -124,6 +124,98 @@ function M.dec_priority(config)
   end)
 end
 
+function M.create_node_inline(config)
+  local cv = state.current_view
+  if not cv then return end
+
+  local metadata = extmarks.get_instance_at_cursor()
+  local dest_file
+  if metadata and metadata.file then
+    dest_file = metadata.file
+  else
+    dest_file = config.vault_root .. '/inbox.md'
+  end
+
+  local view = require('lifemode.view')
+  local bufnr = cv.bufnr
+
+  view.set_modifiable(bufnr, true)
+
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local row = cursor[1]
+  vim.api.nvim_buf_set_lines(bufnr, row, row, false, {''})
+  vim.api.nvim_win_set_cursor(0, {row + 1, 0})
+  vim.cmd('startinsert')
+
+  local autocmd_id
+  autocmd_id = vim.api.nvim_create_autocmd('InsertLeave', {
+    buffer = bufnr,
+    once = true,
+    callback = function()
+      local new_cursor = vim.api.nvim_win_get_cursor(0)
+      local new_row = new_cursor[1]
+      local lines = vim.api.nvim_buf_get_lines(bufnr, new_row - 1, new_row, false)
+      local content = lines[1] or ''
+
+      content = vim.trim(content)
+
+      if content ~= '' then
+        local patch = require('lifemode.patch')
+        patch.create_node(content, dest_file)
+        vim.notify('Node created in ' .. vim.fn.fnamemodify(dest_file, ':t'), vim.log.levels.INFO)
+      end
+
+      refresh_after_patch(config)
+    end,
+  })
+end
+
+function M.edit_node_inline(config)
+  local metadata = extmarks.get_instance_at_cursor()
+  if not metadata or not metadata.node then
+    vim.notify('No editable node under cursor', vim.log.levels.WARN)
+    return
+  end
+
+  local cv = state.current_view
+  if not cv then return end
+
+  local node_id = metadata.target_id or metadata.node.id
+  if not node_id then
+    vim.notify('Node has no ID', vim.log.levels.WARN)
+    return
+  end
+
+  local view = require('lifemode.view')
+  view.set_modifiable(cv.bufnr, true)
+
+  vim.cmd('startinsert')
+
+  vim.api.nvim_create_autocmd('InsertLeave', {
+    buffer = cv.bufnr,
+    once = true,
+    callback = function()
+      local cursor = vim.api.nvim_win_get_cursor(0)
+      local lines = vim.api.nvim_buf_get_lines(cv.bufnr, cursor[1] - 1, cursor[1], false)
+      local edited_line = lines[1] or ''
+
+      local new_text = edited_line
+      new_text = new_text:gsub('^%[.%]%s*', '')
+      new_text = new_text:gsub('%s*!%d', '')
+      new_text = new_text:gsub('%s*@due%([^)]+%)', '')
+      new_text = new_text:gsub('%s*#[%w_/%-]+', '')
+      new_text = vim.trim(new_text)
+
+      if new_text ~= '' then
+        local patch = require('lifemode.patch')
+        patch.update_node_text(node_id, new_text, cv.index)
+      end
+
+      refresh_after_patch(config)
+    end,
+  })
+end
+
 local function resolve_jump_target(metadata, idx)
   if metadata.file then
     return metadata.file, metadata.node and metadata.node.line
@@ -332,6 +424,12 @@ function M.setup_keymaps(bufnr, config)
   vim.keymap.set('n', '<Space>l', function() M.cycle_lens_at_cursor(1, config) end, opts)
   vim.keymap.set('n', '<Space>L', function() M.cycle_lens_at_cursor(-1, config) end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
+  vim.keymap.set('n', 'o', function() M.create_node_inline(config) end, opts)
+  vim.keymap.set('n', 'i', function() M.edit_node_inline(config) end, opts)
+  vim.keymap.set('n', 'a', function()
+    M.edit_node_inline(config)
+    vim.schedule(function() vim.cmd('normal! l') end)
+  end, opts)
 end
 
 function M.expand_at_cursor(config)

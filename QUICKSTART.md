@@ -203,6 +203,28 @@ Changes are written directly to your vault files. The view refreshes automatical
 - Decreasing priority at `!5` removes the priority entirely
 - Adding priority to a task without one starts at `!3`
 
+### Creating & Editing Tasks Inline
+
+You can create and edit tasks directly from the view:
+
+| Keymap | Action |
+|--------|--------|
+| `o` | Create new node below cursor |
+| `i` | Edit node inline |
+| `a` | Edit node inline (cursor after first char) |
+
+When you press `o`:
+1. A blank line appears below cursor
+2. Type your content (e.g., `- [ ] New task @due(tomorrow)`)
+3. Press `<Esc>` to save
+
+When you press `i` or `a`:
+1. Enter insert mode on current line
+2. Edit the text
+3. Press `<Esc>` to save
+
+Metadata (priority, due date, tags, ID) is preserved when editing. Only the task text changes.
+
 ## Tutorial 4: Tasks View
 
 Open the All Tasks view:

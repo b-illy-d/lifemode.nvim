@@ -40,4 +40,9 @@ function M.create_buffer()
   return bufnr
 end
 
+function M.set_modifiable(bufnr, modifiable)
+  vim.bo[bufnr].modifiable = modifiable
+  vim.bo[bufnr].readonly = not modifiable
+end
+
 return M

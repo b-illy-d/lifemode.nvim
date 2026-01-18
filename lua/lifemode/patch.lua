@@ -216,4 +216,43 @@ function M.remove_tag(node_id, tag, idx)
   return true
 end
 
+function M.create_node(content, file)
+  local lines = files.read_lines(file)
+  if not lines then
+    lines = {}
+  end
+  table.insert(lines, content)
+  files.write_lines(file, lines)
+  return true
+end
+
+function M.update_node_text(node_id, new_text, idx)
+  local loc = get_node_location(node_id, idx)
+  if not loc then return false end
+
+  local lines, line_num = get_line_at(loc)
+  if not lines then return false end
+
+  local line = lines[line_num]
+
+  local prefix = line:match('^(%s*%- %[.%]%s*)') or ''
+  local priority = line:match('(!%d)')
+  local due = line:match('(@due%([^)]+%))')
+  local tags = {}
+  for tag in line:gmatch('#([%w_/%-]+)') do
+    table.insert(tags, '#' .. tag)
+  end
+  local id = line:match('%^([%w%-_:]+)%s*$')
+
+  local parts = {prefix, new_text}
+  if priority then table.insert(parts, priority) end
+  if due then table.insert(parts, due) end
+  for _, tag in ipairs(tags) do table.insert(parts, tag) end
+  if id then table.insert(parts, '^' .. id) end
+
+  lines[line_num] = table.concat(parts, ' ')
+  files.write_lines(loc.file, lines)
+  return true
+end
+
 return M
