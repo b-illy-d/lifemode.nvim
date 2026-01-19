@@ -166,7 +166,6 @@ function M.create_node_inline(config, direction)
   if not node_type then return end
 
   local metadata = extmarks.get_instance_at_cursor()
-  local dest_file = metadata and metadata.file
   local target_date = metadata and metadata.date
 
   local view = require('lifemode.view')
@@ -201,25 +200,19 @@ function M.create_node_inline(config, direction)
 
       local injected = false
       if content ~= '' then
-        if dest_file then
-          local patch = require('lifemode.patch')
-          patch.create_node(content, dest_file)
-          vim.notify('Node created in ' .. vim.fn.fnamemodify(dest_file, ':t'), vim.log.levels.INFO)
-        else
-          local props = {}
-          if target_date and target_date:match('^%d%d%d%d%-%d%d%-%d%d$') then
-            props.created = target_date
-          end
-          local result = create_node_by_type(node_type, content, props, config)
-          local index = require('lifemode.index')
-          local parser = require('lifemode.parser')
-          local node = parser.parse_file(result.path)
-          if node and cv.index then
-            index.add_node(cv.index, node, result.path, os.time())
-            injected = true
-          end
-          vim.notify(node_type:gsub('^%l', string.upper) .. ' created: ' .. result.id, vim.log.levels.INFO)
+        local props = {}
+        if target_date and target_date:match('^%d%d%d%d%-%d%d%-%d%d$') then
+          props.created = target_date
         end
+        local result = create_node_by_type(node_type, content, props, config)
+        local index = require('lifemode.index')
+        local parser = require('lifemode.parser')
+        local node = parser.parse_file(result.path)
+        if node and cv.index then
+          index.add_node(cv.index, node, result.path, os.time())
+          injected = true
+        end
+        vim.notify(node_type:gsub('^%l', string.upper) .. ' created: ' .. result.id, vim.log.levels.INFO)
       end
 
       refresh_after_patch(config, { skip_index_rebuild = injected })
