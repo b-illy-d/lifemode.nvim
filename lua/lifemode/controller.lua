@@ -11,6 +11,30 @@ local state = {
 
 local GROUPING_CYCLE = {'by_due_date', 'by_priority', 'by_tag'}
 
+local NODE_TYPE_KEYS = {
+  t = 'task',
+  n = 'note',
+  p = 'project',
+}
+
+local function prompt_node_type()
+  vim.api.nvim_echo({{'New: [t]ask [n]ote [p]roject ', 'Question'}}, false, {})
+  local char = vim.fn.getcharstr()
+  vim.cmd('redraw')
+  return NODE_TYPE_KEYS[char]
+end
+
+local function create_node_by_type(node_type, content, props, config)
+  local vault = require('lifemode.vault')
+  if node_type == 'task' then
+    return vault.create_task(config.vault_root, content, props)
+  elseif node_type == 'note' then
+    return vault.create_note(config.vault_root, content, nil, props)
+  elseif node_type == 'project' then
+    return vault.create_project(config.vault_root, content, nil, props)
+  end
+end
+
 function M.get_current_view()
   return state.current_view
 end
@@ -134,9 +158,12 @@ function M.dec_priority(config)
   end)
 end
 
-function M.create_node_inline(config)
+function M.create_node_inline(config, direction)
   local cv = state.current_view
   if not cv then return end
+
+  local node_type = prompt_node_type()
+  if not node_type then return end
 
   local metadata = extmarks.get_instance_at_cursor()
   local dest_file = metadata and metadata.file
@@ -149,8 +176,18 @@ function M.create_node_inline(config)
 
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row = cursor[1]
-  vim.api.nvim_buf_set_lines(bufnr, row, row, false, {''})
-  vim.api.nvim_win_set_cursor(0, {row + 1, 0})
+
+  local insert_row, cursor_row
+  if direction == 'above' then
+    insert_row = row - 1
+    cursor_row = row
+  else
+    insert_row = row
+    cursor_row = row + 1
+  end
+
+  vim.api.nvim_buf_set_lines(bufnr, insert_row, insert_row, false, {''})
+  vim.api.nvim_win_set_cursor(0, {cursor_row, 0})
   vim.cmd('startinsert')
 
   vim.api.nvim_create_autocmd('InsertLeave', {
@@ -169,12 +206,11 @@ function M.create_node_inline(config)
           patch.create_node(content, dest_file)
           vim.notify('Node created in ' .. vim.fn.fnamemodify(dest_file, ':t'), vim.log.levels.INFO)
         else
-          local vault = require('lifemode.vault')
           local props = {}
           if target_date and target_date:match('^%d%d%d%d%-%d%d%-%d%d$') then
             props.created = target_date
           end
-          local result = vault.create_task(config.vault_root, content, props)
+          local result = create_node_by_type(node_type, content, props, config)
           local index = require('lifemode.index')
           local parser = require('lifemode.parser')
           local node = parser.parse_file(result.path)
@@ -182,7 +218,7 @@ function M.create_node_inline(config)
             index.add_node(cv.index, node, result.path, os.time())
             injected = true
           end
-          vim.notify('Task created: ' .. result.id, vim.log.levels.INFO)
+          vim.notify(node_type:gsub('^%l', string.upper) .. ' created: ' .. result.id, vim.log.levels.INFO)
         end
       end
 
@@ -445,7 +481,8 @@ function M.setup_keymaps(bufnr, config)
   vim.keymap.set('n', '<Space>l', function() M.cycle_lens_at_cursor(1, config) end, opts)
   vim.keymap.set('n', '<Space>L', function() M.cycle_lens_at_cursor(-1, config) end, opts)
   vim.keymap.set('n', 'q', function() vim.cmd('bdelete') end, opts)
-  vim.keymap.set('n', 'o', function() M.create_node_inline(config) end, opts)
+  vim.keymap.set('n', 'o', function() M.create_node_inline(config, 'below') end, opts)
+  vim.keymap.set('n', 'O', function() M.create_node_inline(config, 'above') end, opts)
   vim.keymap.set('n', 'i', function() M.edit_node_inline(config) end, opts)
   vim.keymap.set('n', 'a', function()
     M.edit_node_inline(config)
