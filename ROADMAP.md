@@ -70,7 +70,7 @@ require('lifemode').setup({ vault_path = "~/notes" })
 
 ## Domain Layer (Pure Logic)
 
-### Phase 4: Node Value Object **[MVP]** TODO
+### Phase 4: Node Value Object **[MVP]** REVIEW (01/21/2026)
 **~100 lines | `lua/lifemode/domain/types.lua`**
 
 Define immutable Node structure.
