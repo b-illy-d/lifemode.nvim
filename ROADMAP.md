@@ -26,7 +26,7 @@ Err(error) → {ok = false, error = error}
 
 ---
 
-### Phase 2: Configuration Schema **[MVP]** TODO
+### Phase 2: Configuration Schema **[MVP]** REVIEW (01/21/2026)
 **~80 lines | `lua/lifemode/config.lua`**
 
 Define user-facing config with validation.
