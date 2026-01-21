@@ -94,7 +94,7 @@ Node = {
 
 ---
 
-### Phase 5: Node Operations (Create) **[MVP]** TODO
+### Phase 5: Node Operations (Create) **[MVP]** BLOCKED
 **~120 lines | `lua/lifemode/domain/node.lua`**
 
 Core node creation logic (pure, no I/O).
@@ -111,7 +111,7 @@ Core node creation logic (pure, no I/O).
 
 ---
 
-### Phase 6: Node Parsing **[MVP]** TODO
+### Phase 6: Node Parsing **[MVP]** BLOCKED
 **~150 lines | `lua/lifemode/domain/node.lua`**
 
 Parse markdown files back into Node objects.
@@ -130,7 +130,7 @@ Parse markdown files back into Node objects.
 
 ## Infrastructure Layer (I/O Adapters)
 
-### Phase 7: Filesystem Write **[MVP]** TODO
+### Phase 7: Filesystem Write **[MVP]** BLOCKED
 **~90 lines | `lua/lifemode/infra/fs/write.lua`**
 
 Safe file writing with error handling.
@@ -147,7 +147,7 @@ Safe file writing with error handling.
 
 ---
 
-### Phase 8: Filesystem Read **[MVP]** TODO
+### Phase 8: Filesystem Read **[MVP]** BLOCKED
 **~70 lines | `lua/lifemode/infra/fs/read.lua`**
 
 **Tasks:**
@@ -159,7 +159,7 @@ Safe file writing with error handling.
 
 ---
 
-### Phase 9: Date Path Computation **[MVP]** TODO
+### Phase 9: Date Path Computation **[MVP]** BLOCKED
 **~60 lines | `lua/lifemode/infra/fs/path.lua`**
 
 Compute date-based directory paths.
@@ -176,7 +176,7 @@ Compute date-based directory paths.
 
 ## Application Layer (Orchestration)
 
-### Phase 10: Capture Node Use Case **[MVP]** TODO
+### Phase 10: Capture Node Use Case **[MVP]** BLOCKED
 **~130 lines | `lua/lifemode/app/capture.lua`**
 
 First complete workflow: create and save a new node.
