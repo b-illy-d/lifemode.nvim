@@ -6,7 +6,7 @@ Each phase represents **approximately one git commit** (10-500 lines). Phases ma
 
 ## Foundation Layer
 
-### Phase 1: Result Type & Utilities **[MVP]**
+### Phase 1: Result Type & Utilities **[MVP]** TODO
 **~50 lines | `lua/lifemode/util.lua`**
 
 Build error-handling primitives.
@@ -26,7 +26,7 @@ Err(error) → {ok = false, error = error}
 
 ---
 
-### Phase 2: Configuration Schema **[MVP]**
+### Phase 2: Configuration Schema **[MVP]** TODO
 **~80 lines | `lua/lifemode/config.lua`**
 
 Define user-facing config with validation.
@@ -49,7 +49,7 @@ Define user-facing config with validation.
 
 ---
 
-### Phase 3: Plugin Entry Point **[MVP]**
+### Phase 3: Plugin Entry Point **[MVP]** TODO
 **~40 lines | `lua/lifemode/init.lua`**
 
 Bootstrap the plugin.
@@ -70,7 +70,7 @@ require('lifemode').setup({ vault_path = "~/notes" })
 
 ## Domain Layer (Pure Logic)
 
-### Phase 4: Node Value Object **[MVP]**
+### Phase 4: Node Value Object **[MVP]** TODO
 **~100 lines | `lua/lifemode/domain/types.lua`**
 
 Define immutable Node structure.
@@ -94,7 +94,7 @@ Node = {
 
 ---
 
-### Phase 5: Node Operations (Create) **[MVP]**
+### Phase 5: Node Operations (Create) **[MVP]** TODO
 **~120 lines | `lua/lifemode/domain/node.lua`**
 
 Core node creation logic (pure, no I/O).
@@ -111,7 +111,7 @@ Core node creation logic (pure, no I/O).
 
 ---
 
-### Phase 6: Node Parsing **[MVP]**
+### Phase 6: Node Parsing **[MVP]** TODO
 **~150 lines | `lua/lifemode/domain/node.lua`**
 
 Parse markdown files back into Node objects.
@@ -130,7 +130,7 @@ Parse markdown files back into Node objects.
 
 ## Infrastructure Layer (I/O Adapters)
 
-### Phase 7: Filesystem Write **[MVP]**
+### Phase 7: Filesystem Write **[MVP]** TODO
 **~90 lines | `lua/lifemode/infra/fs/write.lua`**
 
 Safe file writing with error handling.
@@ -147,7 +147,7 @@ Safe file writing with error handling.
 
 ---
 
-### Phase 8: Filesystem Read **[MVP]**
+### Phase 8: Filesystem Read **[MVP]** TODO
 **~70 lines | `lua/lifemode/infra/fs/read.lua`**
 
 **Tasks:**
@@ -159,7 +159,7 @@ Safe file writing with error handling.
 
 ---
 
-### Phase 9: Date Path Computation **[MVP]**
+### Phase 9: Date Path Computation **[MVP]** TODO
 **~60 lines | `lua/lifemode/infra/fs/path.lua`**
 
 Compute date-based directory paths.
@@ -176,7 +176,7 @@ Compute date-based directory paths.
 
 ## Application Layer (Orchestration)
 
-### Phase 10: Capture Node Use Case **[MVP]**
+### Phase 10: Capture Node Use Case **[MVP]** TODO
 **~130 lines | `lua/lifemode/app/capture.lua`**
 
 First complete workflow: create and save a new node.
@@ -194,7 +194,7 @@ First complete workflow: create and save a new node.
 
 ---
 
-### Phase 11: Open Node in Buffer **[MVP]**
+### Phase 11: Open Node in Buffer **[MVP]** BLOCKED
 **~80 lines | `lua/lifemode/infra/nvim/buf.lua`**
 
 Neovim buffer operations.
@@ -212,7 +212,7 @@ Neovim buffer operations.
 
 ## UI Layer (Commands)
 
-### Phase 12: NewNode Command **[MVP]**
+### Phase 12: NewNode Command **[MVP]** BLOCKED
 **~50 lines | `lua/lifemode/ui/commands.lua`**
 
 Expose capture workflow as command.
@@ -228,7 +228,7 @@ Expose capture workflow as command.
 
 ---
 
-### Phase 13: Keymaps Setup **[MVP]**
+### Phase 13: Keymaps Setup **[MVP]** BLOCKED
 **~40 lines | `lua/lifemode/ui/keymaps.lua`**
 
 **Tasks:**
@@ -242,7 +242,7 @@ Expose capture workflow as command.
 
 ## Extmarks & Narrowing
 
-### Phase 14: Extmark Tracking **[MVP]**
+### Phase 14: Extmark Tracking **[MVP]** BLOCKED
 **~110 lines | `lua/lifemode/infra/nvim/extmark.lua`**
 
 Track node boundaries in buffers.
@@ -259,7 +259,7 @@ Track node boundaries in buffers.
 
 ---
 
-### Phase 15: Parse Buffer for Nodes **[MVP]**
+### Phase 15: Parse Buffer for Nodes **[MVP]** BLOCKED
 **~100 lines | `lua/lifemode/app/parse_buffer.lua`**
 
 Identify node boundaries in open buffers.
@@ -276,7 +276,7 @@ Identify node boundaries in open buffers.
 
 ---
 
-### Phase 16: Narrow to Node **[MVP]**
+### Phase 16: Narrow to Node **[MVP]** BLOCKED
 **~140 lines | `lua/lifemode/app/narrow.lua`**
 
 True narrowing: focus on single node subtree.
@@ -297,7 +297,7 @@ True narrowing: focus on single node subtree.
 
 ---
 
-### Phase 17: Widen from Narrow **[MVP]**
+### Phase 17: Widen from Narrow **[MVP]** BLOCKED
 **~120 lines | `lua/lifemode/app/narrow.lua`**
 
 **Tasks:**
@@ -317,7 +317,7 @@ True narrowing: focus on single node subtree.
 
 ---
 
-### Phase 18: Jump Between Narrow and Context **[MVP]**
+### Phase 18: Jump Between Narrow and Context **[MVP]** BLOCKED
 **~90 lines | `lua/lifemode/app/narrow.lua`**
 
 **Tasks:**
@@ -334,7 +334,7 @@ True narrowing: focus on single node subtree.
 
 ## SQLite Index
 
-### Phase 19: SQLite Schema **[MVP]**
+### Phase 19: SQLite Schema **[MVP]** BLOCKED
 **~100 lines | `lua/lifemode/infra/index/schema.lua`**
 
 Define database structure.
@@ -368,7 +368,7 @@ CREATE INDEX idx_edges_to ON edges(to_uuid);
 
 ---
 
-### Phase 20: SQLite Adapter **[MVP]**
+### Phase 20: SQLite Adapter **[MVP]** BLOCKED
 **~130 lines | `lua/lifemode/infra/index/sqlite.lua`**
 
 Raw SQL execution interface.
@@ -384,7 +384,7 @@ Raw SQL execution interface.
 
 ---
 
-### Phase 21: Index Facade (Insert/Update) **[MVP]**
+### Phase 21: Index Facade (Insert/Update) **[MVP]** BLOCKED
 **~150 lines | `lua/lifemode/infra/index/init.lua`**
 
 High-level index operations.
@@ -402,7 +402,7 @@ High-level index operations.
 
 ---
 
-### Phase 22: Index Builder (Full Scan) **[MVP]**
+### Phase 22: Index Builder (Full Scan) **[MVP]** BLOCKED
 **~180 lines | `lua/lifemode/infra/index/builder.lua`**
 
 Build index from vault files.
@@ -420,7 +420,7 @@ Build index from vault files.
 
 ---
 
-### Phase 23: Incremental Index Updates **[MVP]**
+### Phase 23: Incremental Index Updates **[MVP]** BLOCKED
 **~100 lines | `lua/lifemode/app/index.lua`**
 
 Update index on file save.
@@ -439,7 +439,7 @@ Update index on file save.
 
 ## Search & Navigation
 
-### Phase 24: Full-Text Search (FTS5) **[MVP]**
+### Phase 24: Full-Text Search (FTS5) **[MVP]** BLOCKED
 **~120 lines | `lua/lifemode/infra/index/search.lua`**
 
 Add full-text search capability.
@@ -455,7 +455,7 @@ Add full-text search capability.
 
 ---
 
-### Phase 25: Node Finder (Telescope) **[MVP]**
+### Phase 25: Node Finder (Telescope) **[MVP]** BLOCKED
 **~140 lines | `lua/lifemode/ui/pickers.lua`**
 
 Fuzzy find nodes.
@@ -475,7 +475,7 @@ Fuzzy find nodes.
 
 ## Linking & Backlinks
 
-### Phase 26: Edge Value Object
+### Phase 26: Edge Value Object BLOCKED
 **~80 lines | `lua/lifemode/domain/types.lua`**
 
 Define Edge structure.
@@ -497,7 +497,7 @@ Edge = {
 
 ---
 
-### Phase 27: Parse Wikilinks **[MVP]**
+### Phase 27: Parse Wikilinks **[MVP]** BLOCKED
 **~110 lines | `lua/lifemode/domain/link.lua`**
 
 Extract wikilinks from content.
@@ -513,7 +513,7 @@ Extract wikilinks from content.
 
 ---
 
-### Phase 28: Store Edges in Index **[MVP]**
+### Phase 28: Store Edges in Index **[MVP]** BLOCKED
 **~100 lines | `lua/lifemode/infra/index/init.lua`**
 
 Persist relationships.
@@ -529,7 +529,7 @@ Persist relationships.
 
 ---
 
-### Phase 29: Backlinks in Sidebar **[MVP]**
+### Phase 29: Backlinks in Sidebar **[MVP]** BLOCKED
 **~180 lines | `lua/lifemode/ui/sidebar.lua`**
 
 Display contextual info in side window.
@@ -547,7 +547,7 @@ Display contextual info in side window.
 
 ---
 
-### Phase 30: Update Sidebar on Cursor Move **[MVP]**
+### Phase 30: Update Sidebar on Cursor Move **[MVP]** BLOCKED
 **~90 lines | `lua/lifemode/app/sidebar.lua`**
 
 Refresh sidebar when cursor enters new node.
@@ -565,7 +565,7 @@ Refresh sidebar when cursor enters new node.
 
 ## Transclusion
 
-### Phase 31: Parse Transclusion Tokens
+### Phase 31: Parse Transclusion Tokens BLOCKED
 **~100 lines | `lua/lifemode/domain/transclude.lua`**
 
 Extract `{{uuid}}` tokens from content.
@@ -580,7 +580,7 @@ Extract `{{uuid}}` tokens from content.
 
 ---
 
-### Phase 32: Transclusion Expansion **[MVP]**
+### Phase 32: Transclusion Expansion **[MVP]** BLOCKED
 **~160 lines | `lua/lifemode/domain/transclude.lua`**
 
 Recursively expand transclusions.
@@ -601,7 +601,7 @@ Recursively expand transclusions.
 
 ---
 
-### Phase 33: Render Transclusions in Buffer
+### Phase 33: Render Transclusions in Buffer BLOCKED
 **~140 lines | `lua/lifemode/app/transclude.lua`**
 
 Display transcluded content inline.
@@ -623,7 +623,7 @@ Display transcluded content inline.
 
 ---
 
-### Phase 34: Transclusion Cache
+### Phase 34: Transclusion Cache BLOCKED
 **~90 lines | `lua/lifemode/app/transclude.lua`**
 
 Cache expanded transclusions for performance.
@@ -641,7 +641,7 @@ Cache expanded transclusions for performance.
 
 ## Citations (Basic)
 
-### Phase 35: Citation Value Object
+### Phase 35: Citation Value Object BLOCKED
 **~70 lines | `lua/lifemode/domain/types.lua`**
 
 ```lua
@@ -661,7 +661,7 @@ Citation = {
 
 ---
 
-### Phase 36: Parse Basic Citations **[MVP]**
+### Phase 36: Parse Basic Citations **[MVP]** BLOCKED
 **~110 lines | `lua/lifemode/domain/citation.lua`**
 
 Support one simple scheme (BibTeX-style).
@@ -677,7 +677,7 @@ Support one simple scheme (BibTeX-style).
 
 ---
 
-### Phase 37: Citation Edges in Index **[MVP]**
+### Phase 37: Citation Edges in Index **[MVP]** BLOCKED
 **~80 lines | `lua/lifemode/infra/index/init.lua`**
 
 Store citation relationships.
@@ -691,7 +691,7 @@ Store citation relationships.
 
 ---
 
-### Phase 38: Jump to Source (`gd`) **[MVP]**
+### Phase 38: Jump to Source (`gd`) **[MVP]** BLOCKED
 **~90 lines | `lua/lifemode/ui/keymaps.lua`**
 
 **Tasks:**
@@ -705,7 +705,7 @@ Store citation relationships.
 
 ## Post-MVP Features
 
-### Phase 39: Citation Scheme Loading
+### Phase 39: Citation Scheme Loading BLOCKED
 **~150 lines | `lua/lifemode/infra/citation_schemes.lua`**
 
 Load user-defined citation schemes from YAML.
@@ -720,7 +720,7 @@ Load user-defined citation schemes from YAML.
 
 ---
 
-### Phase 40: Source YAML to BibTeX
+### Phase 40: Source YAML to BibTeX BLOCKED
 **~120 lines | `lua/lifemode/infra/bib.lua`**
 
 Auto-generate `.bib` files from YAML sources.
@@ -735,7 +735,7 @@ Auto-generate `.bib` files from YAML sources.
 
 ---
 
-### Phase 41: Advanced Query DSL
+### Phase 41: Advanced Query DSL BLOCKED
 **~180 lines | `lua/lifemode/domain/query.lua`**
 
 Parse complex queries.
@@ -750,7 +750,7 @@ Parse complex queries.
 
 ---
 
-### Phase 42: Embedded Views
+### Phase 42: Embedded Views BLOCKED
 **~110 lines | `lua/lifemode/app/views.lua`**
 
 Inline query results in markdown.
@@ -765,7 +765,7 @@ Inline query results in markdown.
 
 ---
 
-### Phase 43: Slash Command Palette
+### Phase 43: Slash Command Palette BLOCKED
 **~160 lines | `lua/lifemode/ui/slash.lua`**
 
 Unified command interface.
@@ -781,7 +781,7 @@ Unified command interface.
 
 ---
 
-### Phase 44: Node Type System
+### Phase 44: Node Type System BLOCKED
 **~200 lines | `lua/lifemode/app/types.lua`**
 
 User-defined types with inference.
@@ -796,7 +796,7 @@ User-defined types with inference.
 
 ---
 
-### Phase 45: LaTeX Export
+### Phase 45: LaTeX Export BLOCKED
 **~250 lines | `lua/lifemode/app/export.lua`**
 
 Export project to LaTeX.
