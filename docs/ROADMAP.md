@@ -458,7 +458,7 @@ High-level index operations.
 
 ---
 
-### Phase 22: Index Builder (Full Scan) **[MVP]** TODO
+### Phase 22: Index Builder (Full Scan) **[MVP]** REVIEW
 **~180 lines | `lua/lifemode/infra/index/builder.lua`**
 
 Build index from vault files.

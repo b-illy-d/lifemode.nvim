@@ -295,3 +295,32 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 22: Index Builder (Full Scan)
+
+### Decision: Clear index before rebuild (not incremental)
+**Rationale:** Rebuild is full refresh - delete everything, scan everything. Ensures index matches vault state exactly. Incremental updates are separate feature (Phase 23). Full rebuild is simpler, more reliable for initial implementation.
+
+### Decision: Continue on errors, collect in array
+**Rationale:** One bad file shouldn't block entire rebuild. Collect errors for user review but process all other files. Resilient operation is critical for large vaults with mixed quality markdown.
+
+### Decision: Progress reporting every 10 files
+**Rationale:** Provides feedback for long-running operation without spamming notifications. 10 files is reasonable granularity - not too frequent, not too sparse. User knows it's working.
+
+### Decision: Use vim.fn.glob() not vim.loop.fs_scandir()
+**Rationale:** vim.fn.glob() handles recursive patterns natively ("**/*.md"). Simpler than manually walking directory tree. Returns all matches at once. Acceptable for MVP - can optimize later if performance issue.
+
+### Decision: Parse frontmatter inline (not separate YAML library)
+**Rationale:** Our frontmatter is simple (id: value, created: value). Full YAML parser is overkill. Simple line-by-line parsing is sufficient. Avoids external dependency. Can upgrade later if needed.
+
+### Decision: Skip nodes with invalid frontmatter
+**Rationale:** Parsing errors shouldn't crash rebuild. Skip problematic nodes, log error, continue. User can fix and re-run rebuild. Graceful degradation.
+
+### Decision: builder.lua in infra/index/
+**Rationale:** Builder operates on infrastructure (filesystem, database). Not pure domain logic, not application orchestration. Fits infrastructure layer - adapts external systems (filesystem) to index operations.
+
+### Decision: Command shows summary + first 3 errors
+**Rationale:** User needs to know rebuild succeeded and statistics. If errors, show first few for context but don't spam with hundreds of lines. User can check logs for full details.
+
+---
+
