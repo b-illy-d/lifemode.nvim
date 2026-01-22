@@ -1141,3 +1141,72 @@ content]]
 - Expected: Three files created in same date directory
 - Expected: Each with unique UUID filename
 
+
+
+## Phase 12: NewNode Command
+
+### Basic Command Execution
+
+**Test: Create new node via command**
+```vim
+" Setup test vault
+:lua vim.fn.mkdir("/tmp/qa_vault", "p")
+:lua require("lifemode").setup({ vault_path = "/tmp/qa_vault" })
+
+" Execute command
+:LifeModeNewNode
+```
+
+**Expected:**
+- New buffer opens
+- Frontmatter visible on lines 1-3:
+  ```
+  ---
+  id: <uuid>
+  created: <timestamp>
+  ---
+  ```
+- Cursor positioned on line 4, column 0
+- Success notification: "[LifeMode] Created new node"
+- File created at `/tmp/qa_vault/YYYY/MM-Mmm/DD/<uuid>.md`
+
+**Verify file on disk:**
+```vim
+" Check current buffer file path
+:echo expand("%:p")
+
+" Should match pattern: /tmp/qa_vault/2026/01-Jan/22/<uuid>.md
+```
+
+**Test: Type content and save**
+```vim
+" With cursor on line 4, type some content
+iThis is my first captured thought.
+<Esc>
+:w
+```
+
+**Expected:**
+- Content saves to file
+- File contains frontmatter + content
+- No errors
+
+**Cleanup:**
+```vim
+:lua vim.fn.delete("/tmp/qa_vault", "rf")
+```
+
+### Error Handling
+
+**Test: Command with invalid vault**
+```vim
+:lua require("lifemode.config")._config = nil
+:LifeModeNewNode
+```
+
+**Expected:**
+- Error notification shown
+- Message mentions vault_path or configuration
+- No file created
+- Original buffer unchanged
+

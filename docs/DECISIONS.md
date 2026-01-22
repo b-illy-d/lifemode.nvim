@@ -46,3 +46,22 @@ Default to empty string for simplicity.
 
 ---
 
+## Phase 12: NewNode Command
+
+### Decision: No auto-narrowing in this phase
+**Rationale:** Auto-narrowing is Phase 16. This phase focuses on basic command → capture → open workflow. Narrowing requires extmark infrastructure (Phase 14) and buffer parsing (Phase 15). Keep phases atomic.
+
+### Decision: Position cursor after frontmatter (line 4)
+**Rationale:** User expects to immediately start typing content. Frontmatter is metadata, user shouldn't edit it manually. Line 4 is first content line (after ---, id, created, ---).
+
+### Decision: Use vim.notify for all user feedback
+**Rationale:** Respects user's notification configuration (nvim-notify, noice, etc.). Standard Neovim pattern. ERROR level for failures, INFO level for success.
+
+### Decision: setup_commands() separate from new_node()
+**Rationale:** Separation of registration (called once on plugin load) from handler (called each time command runs). Makes testing easier (can call new_node() directly without command system).
+
+### Decision: Capture with empty content
+**Rationale:** User wants to create node then type into it. Passing empty string to capture_node() creates minimal valid node. Future: could pass visual selection or current line as initial content.
+
+---
+

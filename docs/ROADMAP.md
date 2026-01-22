@@ -268,7 +268,7 @@ Neovim buffer operations.
 
 ## UI Layer (Commands)
 
-### Phase 12: NewNode Command **[MVP]** TODO
+### Phase 12: NewNode Command **[MVP]** REVIEW (01/22/2026)
 **~50 lines | `lua/lifemode/ui/commands.lua`**
 
 Expose capture workflow as command.
