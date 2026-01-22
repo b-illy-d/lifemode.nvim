@@ -272,4 +272,150 @@ function M.find_by_id(uuid)
 	return util.Ok(node_result.value)
 end
 
+function M.insert_edge(edge)
+	if not edge then
+		return util.Err("insert_edge: edge is required")
+	end
+
+	if not edge.from or not validate_uuid(edge.from) then
+		return util.Err("insert_edge: invalid from UUID")
+	end
+
+	if not edge.to or not validate_uuid(edge.to) then
+		return util.Err("insert_edge: invalid to UUID")
+	end
+
+	local valid_kinds = { wikilink = true, transclusion = true, citation = true }
+	if not edge.kind or not valid_kinds[edge.kind] then
+		return util.Err("insert_edge: kind must be wikilink, transclusion, or citation")
+	end
+
+	local db_result = get_db()
+	if not db_result.ok then
+		return util.Err("insert_edge: " .. db_result.error)
+	end
+
+	local db = db_result.value
+
+	local insert_sql = [[
+		INSERT OR IGNORE INTO edges (from_uuid, to_uuid, edge_type)
+		VALUES (?, ?, ?)
+	]]
+
+	local exec_result = adapter.exec(db, insert_sql, { edge.from, edge.to, edge.kind })
+
+	adapter.close(db)
+
+	if not exec_result.ok then
+		return util.Err("insert_edge: " .. exec_result.error)
+	end
+
+	return util.Ok(nil)
+end
+
+function M.delete_edges_from(uuid)
+	if not uuid or uuid == "" then
+		return util.Err("delete_edges_from: uuid is required")
+	end
+
+	if not validate_uuid(uuid) then
+		return util.Err("delete_edges_from: invalid UUID: " .. uuid)
+	end
+
+	local db_result = get_db()
+	if not db_result.ok then
+		return util.Err("delete_edges_from: " .. db_result.error)
+	end
+
+	local db = db_result.value
+
+	local delete_sql = "DELETE FROM edges WHERE from_uuid = ?"
+	local exec_result = adapter.exec(db, delete_sql, { uuid })
+
+	adapter.close(db)
+
+	if not exec_result.ok then
+		return util.Err("delete_edges_from: " .. exec_result.error)
+	end
+
+	return util.Ok(nil)
+end
+
+function M.find_edges(uuid, direction, kind)
+	if not uuid or uuid == "" then
+		return util.Err("find_edges: uuid is required")
+	end
+
+	if not validate_uuid(uuid) then
+		return util.Err("find_edges: invalid UUID: " .. uuid)
+	end
+
+	local valid_directions = { ["in"] = true, out = true, both = true }
+	if not direction or not valid_directions[direction] then
+		return util.Err("find_edges: direction must be 'in', 'out', or 'both'")
+	end
+
+	if kind ~= nil then
+		local valid_kinds = { wikilink = true, transclusion = true, citation = true }
+		if not valid_kinds[kind] then
+			return util.Err("find_edges: kind must be wikilink, transclusion, citation, or nil")
+		end
+	end
+
+	local db_result = get_db()
+	if not db_result.ok then
+		return util.Err("find_edges: " .. db_result.error)
+	end
+
+	local db = db_result.value
+
+	local where_clause
+	local params
+
+	if direction == "in" then
+		where_clause = "WHERE to_uuid = ?"
+		params = { uuid }
+	elseif direction == "out" then
+		where_clause = "WHERE from_uuid = ?"
+		params = { uuid }
+	else
+		where_clause = "WHERE from_uuid = ? OR to_uuid = ?"
+		params = { uuid, uuid }
+	end
+
+	if kind then
+		where_clause = where_clause .. " AND edge_type = ?"
+		table.insert(params, kind)
+	end
+
+	local query_sql = string.format([[
+		SELECT from_uuid, to_uuid, edge_type
+		FROM edges
+		%s
+	]], where_clause)
+
+	local query_result = adapter.query(db, query_sql, params)
+
+	adapter.close(db)
+
+	if not query_result.ok then
+		return util.Err("find_edges: " .. query_result.error)
+	end
+
+	local rows = query_result.value
+	local edges = {}
+
+	for _, row in ipairs(rows) do
+		local edge_result = types.Edge_new(row.from_uuid, row.to_uuid, row.edge_type, nil)
+
+		if not edge_result.ok then
+			return util.Err("find_edges: corrupted edge data: " .. edge_result.error)
+		end
+
+		table.insert(edges, edge_result.value)
+	end
+
+	return util.Ok(edges)
+end
+
 return M

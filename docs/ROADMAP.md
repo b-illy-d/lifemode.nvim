@@ -569,7 +569,7 @@ Extract wikilinks from content.
 
 ---
 
-### Phase 28: Store Edges in Index **[MVP]** TODO
+### Phase 28: Store Edges in Index **[MVP]** REVIEW
 **~100 lines | `lua/lifemode/infra/index/init.lua`**
 
 Persist relationships.

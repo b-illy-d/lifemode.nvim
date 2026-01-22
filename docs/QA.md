@@ -221,3 +221,76 @@ iThis is my first captured thought.
 - FTS index updates automatically on file save
 - No errors in `:messages`
 
+
+## Phase 28: Store Edges in Index
+
+### Manual Test Procedure
+
+**Prerequisites:**
+- Neovim with lifemode.nvim installed
+- sqlite.lua plugin installed (kkharji/sqlite.lua)
+- Valid vault configured
+
+**Test Script:**
+```lua
+local types = require('lifemode.domain.types')
+local index = require('lifemode.infra.index')
+
+-- Use real node UUIDs from your vault, or create test nodes first
+local node1_uuid = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
+local node2_uuid = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
+local node3_uuid = "cccccccc-cccc-4ccc-cccc-cccccccccccc"
+
+-- Test 1: Insert wikilink edge
+local edge1 = types.Edge_new(node1_uuid, node2_uuid, "wikilink", nil)
+assert(edge1.ok)
+local insert1 = index.insert_edge(edge1.value)
+assert(insert1.ok)
+print("✓ Inserted wikilink edge")
+
+-- Test 2: Query outgoing edges
+local out = index.find_edges(node1_uuid, "out", nil)
+assert(out.ok)
+assert(#out.value >= 1)
+print("✓ Found " .. #out.value .. " outgoing edges")
+
+-- Test 3: Query backlinks
+local backlinks = index.find_edges(node2_uuid, "in", nil)
+assert(backlinks.ok)
+assert(#backlinks.value >= 1)
+print("✓ Found " .. #backlinks.value .. " backlinks")
+
+-- Test 4: Insert transclusion edge
+local edge2 = types.Edge_new(node1_uuid, node3_uuid, "transclusion", nil)
+assert(edge2.ok)
+index.insert_edge(edge2.value)
+print("✓ Inserted transclusion edge")
+
+-- Test 5: Filter by kind
+local wikilinks = index.find_edges(node1_uuid, "out", "wikilink")
+assert(wikilinks.ok)
+print("✓ Found " .. #wikilinks.value .. " wikilinks")
+
+local transclusions = index.find_edges(node1_uuid, "out", "transclusion")
+assert(transclusions.ok)
+print("✓ Found " .. #transclusions.value .. " transclusions")
+
+-- Test 6: Delete edges from node
+local delete_res = index.delete_edges_from(node1_uuid)
+assert(delete_res.ok)
+local after = index.find_edges(node1_uuid, "out", nil)
+assert(after.ok)
+assert(#after.value == 0)
+print("✓ Deleted edges, none remain")
+
+print("✓ All manual tests passed")
+```
+
+**Expected Results:**
+- All assertions pass
+- No errors printed
+- Edges queryable after insert
+- Backlinks work correctly
+- Kind filtering works
+- Delete removes only outgoing edges
+

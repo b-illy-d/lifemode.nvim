@@ -433,3 +433,23 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 **Rationale:** Full markdown parsing is complex. For MVP, simple regex sufficient. Can improve later.
 
 ---
+
+## Phase 28: Store Edges in Index
+
+### Decision: Context field not stored in database
+**Rationale:** The edges table schema doesn't include a context column. For MVP, we skip storing edge.context. This can be added in a future schema migration if needed. The domain Edge type still has the context field for API compatibility.
+
+### Decision: INSERT OR IGNORE for idempotent inserts
+**Rationale:** Using INSERT OR IGNORE makes insert_edge() idempotent. If the same edge (same from/to/kind triple) is inserted twice, the second insert succeeds silently. This prevents errors when re-parsing unchanged wikilinks and makes the API easier to use. Primary key constraint on (from_uuid, to_uuid, edge_type) naturally enforces uniqueness.
+
+### Decision: delete_edges_from only deletes outgoing edges
+**Rationale:** When re-parsing a node's content, we need to clear its outgoing edges before inserting new ones. However, edges TO that node (backlinks) are owned by other nodes and should not be deleted. This matches the ownership model: each node owns its outgoing edges. The function name makes this clear.
+
+### Decision: find_edges with "both" direction uses simple OR query
+**Rationale:** For MVP, a simple OR query (WHERE from_uuid = ? OR to_uuid = ?) is sufficient and easy to understand. For large graphs with millions of edges, this might be slower than UNION, but premature optimization is evil. Can optimize later if profiling shows it's a bottleneck.
+
+### Decision: Validate kind parameter even when optional
+**Rationale:** In find_edges, kind is optional (can be nil to get all edge types). However, if kind IS provided, we validate it strictly. This catches typos early ("wikilnk" → error) rather than silently returning empty results. Fail fast principle.
+
+### Decision: Convert database rows to domain Edge objects
+**Rationale:** find_edges returns Edge objects from types.Edge_new, not raw database rows. This maintains the layer boundary - callers work with domain objects. Also catches data corruption - if database has invalid edge_type, Edge_new validation fails and we return error rather than garbage data.
