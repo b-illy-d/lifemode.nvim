@@ -1,6 +1,7 @@
 local capture = require("lifemode.app.capture")
 local buf = require("lifemode.infra.nvim.buf")
 local narrow = require("lifemode.app.narrow")
+local sidebar = require("lifemode.ui.sidebar")
 
 local M = {}
 
@@ -56,6 +57,15 @@ function M.jump_context()
 	vim.notify("[LifeMode] Jumped to context", vim.log.levels.INFO)
 end
 
+function M.sidebar()
+	local result = sidebar.toggle_sidebar()
+
+	if not result.ok then
+		vim.notify("[LifeMode] ERROR: " .. result.error, vim.log.levels.ERROR)
+		return
+	end
+end
+
 function M.setup_commands()
 	vim.api.nvim_create_user_command("LifeModeNewNode", function()
 		M.new_node()
@@ -71,6 +81,10 @@ function M.setup_commands()
 
 	vim.api.nvim_create_user_command("LifeModeJumpContext", function()
 		M.jump_context()
+	end, { nargs = 0 })
+
+	vim.api.nvim_create_user_command("LifeModeSidebar", function()
+		M.sidebar()
 	end, { nargs = 0 })
 end
 

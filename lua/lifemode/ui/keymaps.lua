@@ -36,6 +36,14 @@ function M.setup_keymaps()
 			desc = "LifeMode: Jump between narrow and context",
 		})
 	end
+
+	if keymaps.sidebar and keymaps.sidebar ~= "" then
+		vim.keymap.set("n", keymaps.sidebar, ":LifeModeSidebar<CR>", {
+			noremap = true,
+			silent = true,
+			desc = "LifeMode: Toggle sidebar",
+		})
+	end
 end
 
 return M

@@ -585,7 +585,7 @@ Persist relationships.
 
 ---
 
-### Phase 29: Backlinks in Sidebar **[MVP]** TODO
+### Phase 29: Backlinks in Sidebar **[MVP]** REVIEW
 **~180 lines | `lua/lifemode/ui/sidebar.lua`**
 
 Display contextual info in side window.

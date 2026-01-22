@@ -294,3 +294,69 @@ print("✓ All manual tests passed")
 - Kind filtering works
 - Delete removes only outgoing edges
 
+
+## Phase 29: Backlinks in Sidebar
+
+### Manual Test Procedure
+
+**Prerequisites:**
+- Neovim with lifemode.nvim installed
+- Vault with multiple nodes
+- At least one node with wikilinks to other nodes
+- Edges stored in index (Phase 28 working)
+
+**Test Steps:**
+
+1. **Open sidebar**
+   - Open a markdown file with nodes
+   - Position cursor on a node
+   - Run `:LifeModeSidebar` or press `<leader>ns`
+   - **Expected:** Floating window appears on right side (30% width)
+   - **Expected:** Shows "# Relations" header
+
+2. **View backlinks**
+   - Sidebar should show "## Backlinks (N)" section
+   - If node has incoming edges, should list file paths
+   - If no backlinks, should show "(none)"
+   - **Expected:** Count matches number of nodes linking to current node
+
+3. **View outgoing links**
+   - Sidebar should show "## Outgoing (N)" section
+   - Should list file paths of linked nodes
+   - If no outgoing links, should show "(none)"
+   - **Expected:** Count matches number of wikilinks in current node
+
+4. **Jump to linked node**
+   - Move cursor to a line with a file path (- /path/to/file.md)
+   - Press `<CR>`
+   - **Expected:** Opens that file in main window
+   - **Expected:** Cursor moves to main window
+   - **Expected:** Sidebar remains open
+
+5. **Toggle close sidebar**
+   - Run `:LifeModeSidebar` again or press `<leader>ns`
+   - **Expected:** Sidebar closes
+   - **Expected:** No errors
+
+6. **Reopen sidebar**
+   - Press `<leader>ns` again
+   - **Expected:** Sidebar reopens with info for node at cursor
+   - **Expected:** Content reflects current node
+
+7. **Close with 'q'**
+   - With sidebar open, press `q` in sidebar buffer
+   - **Expected:** Sidebar closes
+
+8. **No node at cursor**
+   - Move cursor to empty area (no node)
+   - Try to open sidebar with `<leader>ns`
+   - **Expected:** Error message "cursor not within any node"
+
+**Edge Cases:**
+
+- Node with no backlinks: should show "(none)"
+- Node with no outgoing links: should show "(none)"
+- Node with both: should show both lists correctly
+- Multiple backlinks: all should be listed
+- Press `<CR>` on header line: should show "no link on current line" error
+

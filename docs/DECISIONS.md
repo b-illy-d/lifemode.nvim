@@ -453,3 +453,29 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Convert database rows to domain Edge objects
 **Rationale:** find_edges returns Edge objects from types.Edge_new, not raw database rows. This maintains the layer boundary - callers work with domain objects. Also catches data corruption - if database has invalid edge_type, Edge_new validation fails and we return error rather than garbage data.
+
+## Phase 29: Backlinks in Sidebar
+
+### Decision: Query file paths directly from database
+**Rationale:** The index find_by_id function returns Node objects but doesn't include file_path in node.meta. Rather than modifying find_by_id (which would affect other phases), created a helper query_file_paths() that batches UUID→file_path lookups. This is more efficient (single query for all UUIDs) and keeps the change localized to sidebar.lua.
+
+### Decision: Show file paths not node titles
+**Rationale:** For MVP, displaying relative file paths is simplest and unambiguous. Extracting node titles would require parsing frontmatter or content, adding complexity. File paths are sufficient for navigation. Can enhance to show titles in future.
+
+### Decision: No Context section for MVP
+**Rationale:** ROADMAP mentions Context section with metadata (type, created, tags), but nodes don't have types or tags yet. Skipped this section for Phase 29, focusing on Relations (backlinks/outgoing). Can add Context section when those features exist.
+
+### Decision: No accordion folds for MVP
+**Rationale:** ROADMAP mentions accordion-style folds, but that's complex UI state management. For MVP, show both sections (Backlinks, Outgoing) always expanded. If sidebar gets crowded later, can add folding.
+
+### Decision: Module-level state for window handles
+**Rationale:** Store sidebar winnr/bufnr in module-level variable, not global. Prevents multiple sidebars, makes toggle work correctly (close if open, open if closed). If multi-tabpage support needed later, can refactor to per-tabpage state.
+
+### Decision: Store uuid_to_path mapping in buffer variable
+**Rationale:** When rendering sidebar, store uuid→file_path mapping in buffer variable b:lifemode_sidebar_uuid_to_path. This makes jump_to_node simple - just look up UUID without querying database again. Trades small memory (<1KB for typical sidebar) for performance.
+
+### Decision: Find main window by buftype check
+**Rationale:** When jumping from sidebar to node, need to find a "main" window (not sidebar, not special buffer). Iterate windows, pick first with buftype=="". Simple heuristic that works for MVP. If complex window layouts needed later, can use more sophisticated logic.
+
+### Decision: Markdown syntax highlighting for sidebar
+**Rationale:** Set sidebar buffer filetype="markdown" to get free syntax highlighting (headers, lists). Looks better than plain text, no custom highlighting needed.
