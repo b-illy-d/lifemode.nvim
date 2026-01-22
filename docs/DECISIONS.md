@@ -502,3 +502,26 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: No-op when UUID unchanged
 **Rationale:** Performance optimization. refresh_if_needed() checks current UUID before rendering. If same node, return immediately. Prevents unnecessary re-renders, database queries, and buffer updates. Makes auto-update invisible when user stays on same node.
+
+## Phase 31: Parse Transclusion Tokens
+
+### Decision: Allow non-UUID identifiers
+**Rationale:** Pattern `[a-zA-Z0-9-]+` is more permissive than strict UUID v4 format. This gives users flexibility - can use simple IDs like "intro" or "chapter1" instead of full UUIDs. Strict UUID validation happens at expansion time (Phase 32) when looking up nodes in index. Parser just extracts identifier text without judging validity.
+
+### Decision: No escape mechanism for literal braces
+**Rationale:** MVP doesn't define how to write literal `{{` in content. Assume all `{{...}}` are transclusion tokens. If user needs literal braces, they're out of luck for now. Can add escape mechanism later (e.g., `\{{`). Simpler parsing covers 99% of use cases.
+
+### Decision: Depth is optional, defaults to nil
+**Rationale:** `{{uuid}}` with no depth expands fully (unlimited recursion up to cycle detection). `{{uuid:2}}` limits to 2 levels deep. nil depth = unlimited. This gives control when needed without forcing users to specify depth every time.
+
+### Decision: 1-indexed positions
+**Rationale:** Lua uses 1-indexed strings. string.find returns 1-based positions. Keep positions consistent with Lua conventions. When interfacing with Neovim (0-indexed), caller converts. No reason to deviate from Lua standard.
+
+### Decision: Return empty array for invalid input
+**Rationale:** If content is nil, not string, or empty, return `{}` not error. Makes parser forgiving - caller doesn't need type checking first. Simpler API. Only errors if Lua pattern fails (shouldn't happen with our pattern).
+
+### Decision: Skip invalid tokens silently
+**Rationale:** If token malformed (e.g., `{{uuid:abc}}`), skip it. Don't include in results, don't error. User sees their token didn't work when it doesn't expand. Strict validation would complicate parsing and error handling without much benefit. Fail silently for robustness.
+
+### Decision: Pattern uses optional depth with `:?(%d*)`
+**Rationale:** Lua pattern `{{([a-zA-Z0-9%-]+):?(%d*)}}` captures UUID and optional depth. `:?` makes colon optional. `(%d*)` captures zero or more digits. If no colon, depth_str is empty string. If colon but no digits (e.g., `{{uuid:}}`), depth_str is empty, depth = nil. This handles all variants gracefully.

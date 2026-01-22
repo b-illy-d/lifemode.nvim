@@ -621,7 +621,7 @@ Refresh sidebar when cursor enters new node.
 
 ## Transclusion
 
-### Phase 31: Parse Transclusion Tokens **[MVP]** TODO
+### Phase 31: Parse Transclusion Tokens **[MVP]** REVIEW
 **~100 lines | `lua/lifemode/domain/transclude.lua`**
 
 Extract `{{uuid}}` tokens from content.
