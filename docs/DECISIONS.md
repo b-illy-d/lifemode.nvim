@@ -366,3 +366,24 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+
+## Phase 26: Edge Value Object
+
+### Decision: Edge is pure value object
+**Rationale:** No behavior, just data validation. Fits domain layer - no I/O, no side effects. Relationships managed by index layer.
+
+### Decision: Three edge kinds (wikilink, transclusion, citation)
+**Rationale:** Covers core linking patterns. Wikilinks for connections, transclusions for embeds, citations for references. Extensible for future kinds.
+
+### Decision: Context is optional
+**Rationale:** Useful for backlink preview but not always meaningful. Keeps API flexible.
+
+### Decision: Validate both UUIDs
+**Rationale:** Edges reference nodes. Invalid UUIDs would cause foreign key violations. Fail early with clear errors.
+
+### Decision: Immutable value object
+**Rationale:** Edges are facts about relationships. To change, delete old and create new. Prevents mutation bugs.
+
+---
+

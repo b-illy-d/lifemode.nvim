@@ -511,7 +511,7 @@ Add full-text search capability.
 
 ---
 
-### Phase 25: Node Finder (Telescope) **[MVP]** TODO
+### Phase 25: Node Finder (Telescope) **[MVP]** BLOCKED (requires index.find_all())
 **~140 lines | `lua/lifemode/ui/pickers.lua`**
 
 Fuzzy find nodes.
@@ -531,7 +531,7 @@ Fuzzy find nodes.
 
 ## Linking & Backlinks
 
-### Phase 26: Edge Value Object **[MVP]** TODO
+### Phase 26: Edge Value Object **[MVP]** REVIEW
 **~80 lines | `lua/lifemode/domain/types.lua`**
 
 Define Edge structure.

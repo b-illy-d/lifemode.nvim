@@ -68,4 +68,49 @@ function M.Node_new(content, meta, bounds)
 	return util.Ok(node)
 end
 
+local VALID_EDGE_KINDS = {
+	wikilink = true,
+	transclusion = true,
+	citation = true,
+}
+
+function M.Edge_new(from, to, kind, context)
+	if type(from) ~= "string" then
+		return util.Err("Edge from must be a string")
+	end
+
+	if not is_valid_uuid(from) then
+		return util.Err("Edge from must be a valid UUID v4")
+	end
+
+	if type(to) ~= "string" then
+		return util.Err("Edge to must be a string")
+	end
+
+	if not is_valid_uuid(to) then
+		return util.Err("Edge to must be a valid UUID v4")
+	end
+
+	if type(kind) ~= "string" then
+		return util.Err("Edge kind must be a string")
+	end
+
+	if not VALID_EDGE_KINDS[kind] then
+		return util.Err("Edge kind must be wikilink, transclusion, or citation")
+	end
+
+	if context ~= nil and type(context) ~= "string" then
+		return util.Err("Edge context must be a string or nil")
+	end
+
+	local edge = {
+		from = from,
+		to = to,
+		kind = kind,
+		context = context,
+	}
+
+	return util.Ok(edge)
+end
+
 return M
