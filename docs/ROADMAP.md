@@ -424,7 +424,7 @@ CREATE INDEX idx_edges_to ON edges(to_uuid);
 
 ---
 
-### Phase 20: SQLite Adapter **[MVP]** TODO
+### Phase 20: SQLite Adapter **[MVP]** REVIEW
 **~130 lines | `lua/lifemode/infra/index/sqlite.lua`**
 
 Raw SQL execution interface.

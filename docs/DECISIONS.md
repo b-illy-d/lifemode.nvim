@@ -240,3 +240,29 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 20: SQLite Adapter
+
+### Decision: Use kkharji/sqlite.lua (not sqlite3 CLI)
+**Rationale:** ROADMAP mentions both options. sqlite.lua is superior: (1) No shell process overhead, (2) Native Lua integration, (3) Better error handling, (4) Already used in schema.lua. CLI would require parsing text output - fragile and slow.
+
+### Decision: Thin wrapper, minimal abstraction
+**Rationale:** This is infrastructure layer - just adapt sqlite.lua API to Result<T> pattern. No query builders, no ORM, no magic. Higher layers (Index Facade, Phase 21) will provide domain-specific APIs. Keep this simple and predictable.
+
+### Decision: Caller manages connections (no pooling yet)
+**Rationale:** Connection pooling adds complexity for uncertain benefit. SQLite is designed for embedded use - opening connection is fast. Future phase can add pooling if profiling shows it's needed. YAGNI principle.
+
+### Decision: Explicit transaction function
+**Rationale:** Transactions are critical for data integrity but not every operation needs them. Explicit `transaction(db, fn)` makes intent clear. Alternative (implicit transactions) would hide important behavior. Functional approach - pass function to execute in transaction context.
+
+### Decision: pcall wraps all sqlite.lua calls
+**Rationale:** sqlite.lua throws Lua errors on failure. We use Result<T> pattern throughout codebase. pcall converts exceptions to Result<T>. Preserves error messages for debugging.
+
+### Decision: Empty query result returns Ok([])
+**Rationale:** No rows is not an error - it's valid result. Returning Ok(empty_table) is consistent with SQL semantics. Caller can check `#rows == 0` without error handling.
+
+### Decision: Close is idempotent
+**Rationale:** Multiple close() calls should not error. Makes cleanup code simpler - no need to track "already closed" state. sqlite.lua close is idempotent, we preserve that.
+
+---
+
