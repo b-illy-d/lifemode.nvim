@@ -215,7 +215,7 @@ Safe file writing with error handling.
 
 ---
 
-### Phase 9: Date Path Computation **[MVP]** TODO
+### Phase 9: Date Path Computation **[MVP]** REVIEW (01/22/2026)
 **~60 lines | `lua/lifemode/infra/fs/path.lua`**
 
 Compute date-based directory paths.
