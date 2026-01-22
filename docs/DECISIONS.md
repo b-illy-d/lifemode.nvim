@@ -387,3 +387,49 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+
+## Phase 27: Parse Wikilinks
+
+### Decision: Pure parsing, no resolution
+**Rationale:** Keep domain layer pure - no index lookups. Parser just extracts raw link text. Resolution happens in application layer.
+
+### Decision: Return Link array, not Edge array
+**Rationale:** Links ≠ Edges. A link is unresolved text. An edge is a validated UUID relationship. Application layer converts Links → Edges.
+
+### Decision: Position tracking
+**Rationale:** Essential for UI (hover, jump, refactoring). Small overhead for significant functionality.
+
+### Decision: Whitespace trimming
+**Rationale:**  should match . Trim for consistency. Leading/trailing whitespace never intentional.
+
+### Decision: Skip empty links
+**Rationale:**  is invalid. Silently skip rather than error (user may be typing).
+
+### Decision: Simple regex, not full markdown parser
+**Rationale:** Full markdown parsing is complex. For MVP, simple regex sufficient. Known limitation: won't handle code blocks/escapes. Can improve later.
+
+---
+
+
+## Phase 27: Parse Wikilinks
+
+### Decision: Pure parsing, no resolution
+**Rationale:** Keep domain layer pure - no index lookups. Parser just extracts raw link text. Resolution happens in application layer.
+
+### Decision: Return Link array, not Edge array
+**Rationale:** Links ≠ Edges. A link is unresolved text. An edge is a validated UUID relationship. Application layer converts Links → Edges.
+
+### Decision: Position tracking
+**Rationale:** Essential for UI (hover, jump, refactoring). Small overhead for significant functionality.
+
+### Decision: Whitespace trimming
+**Rationale:** User might write wikilinks with spaces. Trim for consistency.
+
+### Decision: Skip empty links
+**Rationale:** Empty brackets are invalid. Silently skip rather than error (user may be typing).
+
+### Decision: Simple regex, not full markdown parser
+**Rationale:** Full markdown parsing is complex. For MVP, simple regex sufficient. Can improve later.
+
+---

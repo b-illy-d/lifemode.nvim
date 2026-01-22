@@ -553,7 +553,7 @@ Edge = {
 
 ---
 
-### Phase 27: Parse Wikilinks **[MVP]** TODO
+### Phase 27: Parse Wikilinks **[MVP]** REVIEW
 **~110 lines | `lua/lifemode/domain/link.lua`**
 
 Extract wikilinks from content.
