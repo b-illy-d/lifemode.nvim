@@ -298,7 +298,7 @@ Expose capture workflow as command.
 
 ## Extmarks & Narrowing
 
-### Phase 14: Extmark Tracking **[MVP]** TODO
+### Phase 14: Extmark Tracking **[MVP]** REVIEW (01/22/2026)
 **~110 lines | `lua/lifemode/infra/nvim/extmark.lua`**
 
 Track node boundaries in buffers.

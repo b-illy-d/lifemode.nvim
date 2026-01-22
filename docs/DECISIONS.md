@@ -84,3 +84,28 @@ Default to empty string for simplicity.
 
 ---
 
+## Phase 14: Extmark Tracking
+
+### Decision: Use single global namespace "lifemode_nodes"
+**Rationale:** All node tracking happens in one namespace for simplicity. Alternative (per-buffer namespaces) adds complexity without benefit. Single namespace makes queries fast and consistent.
+
+### Decision: Store metadata on extmark, not in separate table
+**Rationale:** Neovim extmarks support arbitrary metadata via opts. Storing metadata directly on extmark keeps data colocated with position tracking. No synchronization issues. Simpler than maintaining separate lookup table.
+
+### Decision: Attach extmark to frontmatter line (node start)
+**Rationale:** Frontmatter is stable (users don't edit it). Content lines may change frequently. Attaching to start line ensures extmark survives content edits. Node boundaries stored in metadata can be updated without moving extmark.
+
+### Decision: query() returns Err when no extmark found
+**Rationale:** Absence of extmark is not exceptional (cursor may be in blank area, between nodes). Returning Err makes it explicit. Caller can check result.ok and handle accordingly. Consistent with Result pattern.
+
+### Decision: get_node_at_cursor() uses current buffer/cursor
+**Rationale:** Common pattern: user triggers action, we need node at cursor. Taking no parameters makes it ergonomic for UI commands. Alternative (passing bufnr/line) is verbose and error-prone.
+
+### Decision: Return extmark_id from query()
+**Rationale:** Caller may need to delete or update extmark after querying. Returning ID along with metadata avoids second query. Small performance win, better API.
+
+### Decision: No automatic cleanup on buffer unload
+**Rationale:** Neovim automatically clears extmarks when buffer is unloaded. We don't need manual cleanup. Trust the platform. Keep it simple.
+
+---
+
