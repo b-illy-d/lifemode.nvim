@@ -136,3 +136,29 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 16: Narrow to Node
+
+### Decision: Use scratch buffer not floating window
+**Rationale:** Scratch buffer (`buftype=nofile`) is simpler than floating window. User can resize, split, move freely. Floating windows require manual layout management. Scratch buffer integrates naturally with Neovim workflow. Window borders can be added later if desired.
+
+### Decision: Store narrow context in buffer-local variable
+**Rationale:** `vim.b[bufnr].lifemode_narrow` ties context to specific buffer. When buffer is deleted, context is automatically cleaned up. No separate tracking needed. Standard Neovim pattern.
+
+### Decision: Extract title from first heading or content line
+**Rationale:** Gives user-friendly buffer names like `*Narrow: Research Notes*` instead of `*Narrow: node-uuid*`. Improves UX when switching buffers (`:buffers` list is readable). Falls back to "Untitled" if no content yet.
+
+### Decision: Virtual text hint vs window border
+**Rationale:** Virtual text at top of buffer is more visible and informative than border color change. User immediately sees "Press <leader>nw to widen" hint. Border color (cyan) mentioned in SPEC but may be overkill - defer to future phase if user feedback indicates it's needed.
+
+### Decision: Don't auto-narrow in this phase
+**Rationale:** Phase 16 is manual narrowing only (user triggers via command/keymap). Auto-narrowing on capture (SPEC §4.1) requires integration with capture workflow - that's a future enhancement. Keep phase atomic.
+
+### Decision: Narrow creates new buffer, doesn't modify source
+**Rationale:** Source buffer remains untouched. User can switch back to source buffer anytime (`:b <source>`). Narrow buffer is ephemeral workspace. When user wants changes synced back, they'll use Widen (Phase 17). Clear separation of concerns.
+
+### Decision: Use get_node_at_cursor not manual line detection
+**Rationale:** Extmarks are source of truth for node boundaries. Don't re-parse or guess. Trust Phase 14's extmark system. If extmark doesn't exist, node isn't tracked - that's an error condition.
+
+---
+

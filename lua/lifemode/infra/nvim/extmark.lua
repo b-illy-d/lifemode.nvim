@@ -136,21 +136,34 @@ function M.get_node_at_cursor()
 	end
 
 	local cursor = vim.api.nvim_win_get_cursor(0)
-	local line = cursor[1] - 1
+	local cursor_line = cursor[1] - 1
 
-	local query_result = M.query(bufnr, line)
+	local success, marks = pcall(function()
+		return vim.api.nvim_buf_get_extmarks(bufnr, get_namespace(), 0, -1, {
+			details = true,
+		})
+	end)
 
-	if not query_result.ok then
-		return util.Err("get_node_at_cursor: " .. query_result.error)
+	if not success then
+		return util.Err("get_node_at_cursor: failed to get extmarks: " .. tostring(marks))
 	end
 
-	local data = query_result.value
+	for _, mark in ipairs(marks) do
+		local extmark_id = mark[1]
+		local metadata = vim.b[bufnr]["lifemode_extmark_" .. extmark_id]
 
-	return util.Ok({
-		uuid = data.node_id,
-		start = data.node_start,
-		["end"] = data.node_end,
-	})
+		if metadata then
+			if cursor_line >= metadata.node_start and cursor_line <= metadata.node_end then
+				return util.Ok({
+					uuid = metadata.node_id,
+					start = metadata.node_start,
+					["end"] = metadata.node_end,
+				})
+			end
+		end
+	end
+
+	return util.Err("get_node_at_cursor: cursor not within any node")
 end
 
 return M

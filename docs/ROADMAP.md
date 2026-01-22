@@ -332,7 +332,7 @@ Identify node boundaries in open buffers.
 
 ---
 
-### Phase 16: Narrow to Node **[MVP]** TODO
+### Phase 16: Narrow to Node **[MVP]** REVIEW (01/22/2026)
 **~140 lines | `lua/lifemode/app/narrow.lua`**
 
 True narrowing: focus on single node subtree.

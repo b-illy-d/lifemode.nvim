@@ -1,5 +1,6 @@
 local capture = require("lifemode.app.capture")
 local buf = require("lifemode.infra.nvim.buf")
+local narrow = require("lifemode.app.narrow")
 
 local M = {}
 
@@ -24,9 +25,24 @@ function M.new_node()
 	vim.notify("[LifeMode] Created new node", vim.log.levels.INFO)
 end
 
+function M.narrow()
+	local result = narrow.narrow_to_current()
+
+	if not result.ok then
+		vim.notify("[LifeMode] ERROR: " .. result.error, vim.log.levels.ERROR)
+		return
+	end
+
+	vim.notify("[LifeMode] Narrowed to node", vim.log.levels.INFO)
+end
+
 function M.setup_commands()
 	vim.api.nvim_create_user_command("LifeModeNewNode", function()
 		M.new_node()
+	end, { nargs = 0 })
+
+	vim.api.nvim_create_user_command("LifeModeNarrow", function()
+		M.narrow()
 	end, { nargs = 0 })
 end
 

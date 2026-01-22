@@ -12,6 +12,14 @@ function M.setup_keymaps()
 			desc = "LifeMode: Create new node",
 		})
 	end
+
+	if keymaps.narrow and keymaps.narrow ~= "" then
+		vim.keymap.set("n", keymaps.narrow, ":LifeModeNarrow<CR>", {
+			noremap = true,
+			silent = true,
+			desc = "LifeMode: Narrow to node at cursor",
+		})
+	end
 end
 
 return M
