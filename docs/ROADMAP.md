@@ -476,7 +476,7 @@ Build index from vault files.
 
 ---
 
-### Phase 23: Incremental Index Updates **[MVP]** TODO
+### Phase 23: Incremental Index Updates **[MVP]** REVIEW
 **~100 lines | `lua/lifemode/app/index.lua`**
 
 Update index on file save.

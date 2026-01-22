@@ -324,3 +324,24 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+
+## Phase 23: Incremental Index Updates
+
+### Decision: Upsert pattern (try insert, fall back to update)
+**Rationale:** Simpler than checking existence first. Insert is optimistic path (most common for incremental updates). If node exists, database returns UNIQUE constraint error, handle by calling update. One less query in common case.
+
+### Decision: vim.schedule() not vim.loop
+**Rationale:** Index operations are fast (<10ms per node). vim.schedule() is simpler and sufficient. Don't need true async coroutines for this. Reserve vim.loop for future expensive operations like FTS5 indexing.
+
+### Decision: 500ms debounce
+**Rationale:** Balance between responsiveness and avoiding redundant work. User might have auto-save plugins or save multiple times rapidly. 500ms is imperceptible but prevents thrashing.
+
+### Decision: Silent on success, notify on errors
+**Rationale:** Avoid notification spam. User doesn't need confirmation every save. Only notify if something goes wrong. Collect errors and show summary, not one notification per error.
+
+### Decision: Parse buffer inline, don't call parse_and_mark_buffer
+**Rationale:** parse_and_mark_buffer creates extmarks which we don't need here. Reuse the parsing logic but not the full function. Avoids unnecessary extmark operations on every save.
+
+---
+
