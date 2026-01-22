@@ -150,7 +150,7 @@ Node = {
 
 ---
 
-### Phase 5: Node Operations (Create) **[MVP]** TODO
+### Phase 5: Node Operations (Create) **[MVP]** REVIEW (01/21/2026)
 **~120 lines | `lua/lifemode/domain/node.lua`**
 
 Core node creation logic (pure, no I/O).
