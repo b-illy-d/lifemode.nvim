@@ -181,4 +181,64 @@ function M.widen()
 	return util.Ok(nil)
 end
 
+function M.jump_context()
+	local current_bufnr = vim.api.nvim_get_current_buf()
+
+	if not vim.api.nvim_buf_is_valid(current_bufnr) then
+		return util.Err("jump_context: current buffer is not valid")
+	end
+
+	local narrow_context = vim.b[current_bufnr].lifemode_narrow
+
+	if narrow_context then
+		local source_bufnr = narrow_context.source_bufnr
+		local node_start = narrow_context.source_range.start
+		local node_end = narrow_context.source_range["end"]
+
+		if not vim.api.nvim_buf_is_valid(source_bufnr) then
+			return util.Err("jump_context: source buffer no longer valid")
+		end
+
+		vim.api.nvim_set_current_buf(source_bufnr)
+
+		vim.api.nvim_win_set_cursor(0, { node_start + 1, 0 })
+
+		local ns = vim.api.nvim_create_namespace("lifemode_jump_highlight")
+
+		vim.api.nvim_buf_set_extmark(source_bufnr, ns, node_start, 0, {
+			end_row = node_end + 1,
+			hl_group = "LifeModeNarrowContext",
+			hl_eol = true,
+		})
+
+		vim.defer_fn(function()
+			if vim.api.nvim_buf_is_valid(source_bufnr) then
+				vim.api.nvim_buf_clear_namespace(source_bufnr, ns, 0, -1)
+			end
+		end, 2000)
+
+		vim.b[source_bufnr].lifemode_jump_from = current_bufnr
+
+		return util.Ok(nil)
+	end
+
+	local jump_from = vim.b[current_bufnr].lifemode_jump_from
+
+	if jump_from then
+		if not vim.api.nvim_buf_is_valid(jump_from) then
+			return util.Err("jump_context: narrow buffer no longer valid")
+		end
+
+		vim.api.nvim_set_current_buf(jump_from)
+
+		vim.b[current_bufnr].lifemode_jump_from = nil
+
+		vim.api.nvim_win_set_cursor(0, { 1, 0 })
+
+		return util.Ok(nil)
+	end
+
+	return util.Err("jump_context: not in narrow view or source with narrow history")
+end
+
 return M

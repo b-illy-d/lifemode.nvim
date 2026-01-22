@@ -373,7 +373,7 @@ True narrowing: focus on single node subtree.
 
 ---
 
-### Phase 18: Jump Between Narrow and Context **[MVP]** TODO
+### Phase 18: Jump Between Narrow and Context **[MVP]** REVIEW
 **~90 lines | `lua/lifemode/app/narrow.lua`**
 
 **Tasks:**

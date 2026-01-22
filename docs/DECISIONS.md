@@ -188,3 +188,26 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 18: Jump Between Narrow and Context
+
+### Decision: Use buffer-local variable for jump history
+**Rationale:** `vim.b[bufnr].lifemode_jump_from` ties history to specific buffer. When buffer deleted, history automatically cleared. Simple, no global state, no cleanup needed.
+
+### Decision: Highlight via extmark with end_row
+**Rationale:** Extmarks support range highlighting with `end_row` parameter. Creates highlight from node_start to node_end. Clean, built-in solution. Alternative (virtual text everywhere) would be complex and ugly.
+
+### Decision: Clear highlight after 2s with vim.defer_fn
+**Rationale:** User needs visual feedback of node boundaries, but persistent highlight would be distracting. 2 seconds (per SPEC) is enough to register location, then fade. Use `vim.defer_fn()` for async timeout.
+
+### Decision: Toggle behavior not stack-based
+**Rationale:** Simple toggle (narrow ↔ source) is intuitive. Stack-based (track multiple jumps) would be complex and likely unused. Keep it simple - one level of "jump back" is enough.
+
+### Decision: Cursor to node_start when jumping to context
+**Rationale:** User wants to see the node they were editing. Put cursor at first line of node (frontmatter). Predictable, consistent with narrow behavior.
+
+### Decision: Error when narrow buffer no longer valid
+**Rationale:** If user deleted narrow buffer while in source, jump back impossible. Return Err with clear message. Don't try to recreate narrow buffer - user probably closed it intentionally.
+
+---
+

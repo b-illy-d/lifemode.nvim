@@ -20,6 +20,11 @@ function M.setup(opts)
 
 	vim.api.nvim_create_augroup("LifeMode", { clear = true })
 
+	vim.api.nvim_set_hl(0, "LifeModeNarrowContext", {
+		bg = "#2d3748",
+		default = true,
+	})
+
 	commands.setup_commands()
 	keymaps.setup_keymaps()
 

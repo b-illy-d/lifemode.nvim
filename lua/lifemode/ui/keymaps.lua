@@ -28,6 +28,14 @@ function M.setup_keymaps()
 			desc = "LifeMode: Widen from narrow view",
 		})
 	end
+
+	if keymaps.jump_context and keymaps.jump_context ~= "" then
+		vim.keymap.set("n", keymaps.jump_context, ":LifeModeJumpContext<CR>", {
+			noremap = true,
+			silent = true,
+			desc = "LifeMode: Jump between narrow and context",
+		})
+	end
 end
 
 return M

@@ -45,6 +45,17 @@ function M.widen()
 	end
 end
 
+function M.jump_context()
+	local result = narrow.jump_context()
+
+	if not result.ok then
+		vim.notify("[LifeMode] ERROR: " .. result.error, vim.log.levels.ERROR)
+		return
+	end
+
+	vim.notify("[LifeMode] Jumped to context", vim.log.levels.INFO)
+end
+
 function M.setup_commands()
 	vim.api.nvim_create_user_command("LifeModeNewNode", function()
 		M.new_node()
@@ -56,6 +67,10 @@ function M.setup_commands()
 
 	vim.api.nvim_create_user_command("LifeModeWiden", function()
 		M.widen()
+	end, { nargs = 0 })
+
+	vim.api.nvim_create_user_command("LifeModeJumpContext", function()
+		M.jump_context()
 	end, { nargs = 0 })
 end
 
