@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS edges (
 );
 		]],
 		[[
+CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
+  content,
+  uuid UNINDEXED
+);
+		]],
+		[[
 CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_uuid);
 		]],
 		[[
@@ -35,7 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_uuid);
 		]],
 		[[
 INSERT INTO schema_version (version, applied_at)
-VALUES (1, strftime('%s', 'now'))
+VALUES (2, strftime('%s', 'now'))
 ON CONFLICT DO NOTHING;
 		]],
 	}

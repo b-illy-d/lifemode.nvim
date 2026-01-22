@@ -495,7 +495,7 @@ Update index on file save.
 
 ## Search & Navigation
 
-### Phase 24: Full-Text Search (FTS5) **[MVP]** TODO
+### Phase 24: Full-Text Search (FTS5) **[MVP]** REVIEW
 **~120 lines | `lua/lifemode/infra/index/search.lua`**
 
 Add full-text search capability.

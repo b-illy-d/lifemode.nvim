@@ -87,13 +87,24 @@ function M.insert_node(node, file_path)
 		node.content,
 	})
 
-	adapter.close(db)
-
 	if not exec_result.ok then
+		adapter.close(db)
 		if exec_result.error:match("UNIQUE") or exec_result.error:match("already exists") then
 			return util.Err("insert_node: node already exists: " .. node.id)
 		end
 		return util.Err("insert_node: " .. exec_result.error)
+	end
+
+	local fts_sql = "INSERT INTO nodes_fts (uuid, content) VALUES (?, ?)"
+	local fts_result = adapter.exec(db, fts_sql, { node.id, node.content })
+
+	adapter.close(db)
+
+	if not fts_result.ok then
+		vim.notify(
+			"[LifeMode] WARN: Failed to update FTS index for node " .. node.id .. ": " .. fts_result.error,
+			vim.log.levels.WARN
+		)
 	end
 
 	return util.Ok(nil)
@@ -142,10 +153,21 @@ function M.update_node(node, file_path)
 	local exec_result =
 		adapter.exec(db, update_sql, { file_path, node.meta.created, node.meta.modified, node.content, node.id })
 
+	if not exec_result.ok then
+		adapter.close(db)
+		return util.Err("update_node: " .. exec_result.error)
+	end
+
+	local fts_sql = "INSERT OR REPLACE INTO nodes_fts (uuid, content) VALUES (?, ?)"
+	local fts_result = adapter.exec(db, fts_sql, { node.id, node.content })
+
 	adapter.close(db)
 
-	if not exec_result.ok then
-		return util.Err("update_node: " .. exec_result.error)
+	if not fts_result.ok then
+		vim.notify(
+			"[LifeMode] WARN: Failed to update FTS index for node " .. node.id .. ": " .. fts_result.error,
+			vim.log.levels.WARN
+		)
 	end
 
 	return util.Ok(nil)
@@ -178,10 +200,21 @@ function M.delete_node(uuid)
 	local delete_node_sql = "DELETE FROM nodes WHERE uuid = ?"
 	local node_result = adapter.exec(db, delete_node_sql, { uuid })
 
+	if not node_result.ok then
+		adapter.close(db)
+		return util.Err("delete_node: " .. node_result.error)
+	end
+
+	local delete_fts_sql = "DELETE FROM nodes_fts WHERE uuid = ?"
+	local fts_result = adapter.exec(db, delete_fts_sql, { uuid })
+
 	adapter.close(db)
 
-	if not node_result.ok then
-		return util.Err("delete_node: " .. node_result.error)
+	if not fts_result.ok then
+		vim.notify(
+			"[LifeMode] WARN: Failed to delete from FTS index: " .. uuid .. ": " .. fts_result.error,
+			vim.log.levels.WARN
+		)
 	end
 
 	return util.Ok(nil)

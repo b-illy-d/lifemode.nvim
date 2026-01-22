@@ -345,3 +345,24 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+
+## Phase 24: Full-Text Search (FTS5)
+
+### Decision: FTS5 over FTS4/FTS3
+**Rationale:** FTS5 is latest with better performance, BM25 ranking, more features. All recent SQLite builds include it.
+
+### Decision: Index only content, not metadata
+**Rationale:** Users search for node content, not UUIDs or timestamps. Indexing metadata wastes space. Can add later if needed.
+
+### Decision: Don't fail index operations if FTS fails
+**Rationale:** FTS is auxiliary - if FTS update fails, node operation should still succeed. Log warning, continue. User can rebuild FTS index later.
+
+### Decision: Default limit 50 results
+**Rationale:** Balance between usefulness and performance. 50 fits most UIs. User can increase via opts.limit.
+
+### Decision: No query DSL, use FTS5 MATCH directly
+**Rationale:** FTS5 syntax is powerful and well-documented. Building DSL adds complexity and limits flexibility. Users can learn FTS5 syntax.
+
+---
+
