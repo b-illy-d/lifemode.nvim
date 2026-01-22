@@ -266,3 +266,32 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 21: Index Facade (Insert/Update)
+
+### Decision: Store file_path in nodes table
+**Rationale:** Need to map nodes back to source files for editing operations. Also useful for displaying file locations in UI. Path stored as absolute path for consistency.
+
+### Decision: Store content as TEXT not hash
+**Rationale:** ROADMAP mentions "hash content for change detection" but we need full content for full-text search (Phase 24). Store full content, compute hash only if needed for change detection. Content column enables FTS5 later.
+
+### Decision: delete_node() is idempotent
+**Rationale:** Deleting non-existent node is not an error - end state is the same (node doesn't exist). Simplifies caller logic - no need to check existence before delete.
+
+### Decision: find_by_id() returns Ok(nil) not Err()
+**Rationale:** Not finding a node is valid result, not error. Returning Ok(nil) makes it explicit - caller checks `result.value == nil`. Alternative (Err) would force error handling for non-error case.
+
+### Decision: Facade manages database lifecycle
+**Rationale:** Open connection → execute operation → close connection. Each function is self-contained. Caller doesn't manage connections. Alternative (caller passes connection) would leak infrastructure concerns to application layer.
+
+### Decision: Node reconstruction via domain.types.Node_new()
+**Rationale:** Ensures returned nodes are valid domain objects. Use same constructor that domain layer uses. Maintains type safety and validation.
+
+### Decision: Delete edges with node
+**Rationale:** When node is deleted, its edges become invalid (dangling references). Delete them atomically. Prevents index corruption. Both outgoing and incoming edges removed.
+
+### Decision: Update requires existing node
+**Rationale:** Clear semantics - insert creates, update modifies. If node doesn't exist, that's caller error. Alternative (upsert) would hide whether operation was create or update. Explicit is better.
+
+---
+

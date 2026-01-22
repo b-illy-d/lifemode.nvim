@@ -440,7 +440,7 @@ Raw SQL execution interface.
 
 ---
 
-### Phase 21: Index Facade (Insert/Update) **[MVP]** TODO
+### Phase 21: Index Facade (Insert/Update) **[MVP]** REVIEW
 **~150 lines | `lua/lifemode/infra/index/init.lua`**
 
 High-level index operations.
