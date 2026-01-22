@@ -982,3 +982,162 @@ content]]
 ```
 - Expected: `{ ok = false, error = "read: path must be a non-empty string" }`
 
+
+## Phase 9: Date Path Computation
+
+### Date Path Generation
+
+**Test 78: Generate path for specific date**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 22, hour = 12})
+:lua local result = path.date_path('/vault', timestamp)
+:lua print(result)
+```
+- Expected: `/vault/2026/01-Jan/22/`
+
+**Test 79: Generate path for current date**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local result = path.date_path('/vault', nil)
+:lua print(result)
+```
+- Expected: Path with current year/month/day
+- Expected: Format `/vault/YYYY/MM-Mmm/DD/`
+
+**Test 80: All month abbreviations**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local months = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'}
+:lua for m = 1, 12 do
+:lua   local timestamp = os.time({year = 2026, month = m, day = 15})
+:lua   local result = path.date_path('/vault', timestamp)
+:lua   print(months[m] .. ':', result)
+:lua end
+```
+- Expected: Correct 3-letter abbreviation for each month
+- Expected: Zero-padded month numbers (01-12)
+
+**Test 81: Zero padding for single-digit days**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 5})
+:lua local result = path.date_path('/vault', timestamp)
+:lua print(result)
+```
+- Expected: `/vault/2026/01-Jan/05/`
+- Expected: Day padded with leading zero
+
+**Test 82: Tilde expansion in vault root**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 22})
+:lua local result = path.date_path('~/vault', timestamp)
+:lua print(result)
+```
+- Expected: Tilde expanded to home directory
+- Expected: Path starts with absolute path, not `~/`
+
+**Test 83: Trailing slash handling**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 22})
+:lua local with_slash = path.date_path('/vault/', timestamp)
+:lua local without_slash = path.date_path('/vault', timestamp)
+:lua print('With slash:', with_slash)
+:lua print('Without slash:', without_slash)
+:lua print('Match:', with_slash == without_slash)
+```
+- Expected: `Match: true`
+- Expected: Both produce `/vault/2026/01-Jan/22/`
+
+### Path Resolution
+
+**Test 84: Resolve relative path**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local result = path.resolve('/vault', 'notes/file.md')
+:lua print(result)
+```
+- Expected: `/vault/notes/file.md`
+
+**Test 85: Handle leading slash in relative path**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local result = path.resolve('/vault', '/notes/file.md')
+:lua print(result)
+```
+- Expected: `/vault/notes/file.md`
+- Expected: Leading slash removed from relative path
+
+**Test 86: Resolve with tilde expansion**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local result = path.resolve('~/vault', 'notes/file.md')
+:lua print(result)
+```
+- Expected: Tilde expanded
+- Expected: Path like `/Users/username/vault/notes/file.md`
+
+**Test 87: Deep relative paths**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local result = path.resolve('/vault', '2026/01-Jan/22/node.md')
+:lua print(result)
+```
+- Expected: `/vault/2026/01-Jan/22/node.md`
+
+### Integration with File Operations
+
+**Test 88: Create and write to date path**
+```vim
+:lua local path = require('lifemode.infra.fs.path')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 22})
+:lua local date_dir = path.date_path('/tmp/test_vault', timestamp)
+:lua local file_path = date_dir .. 'note.md'
+:lua local result = write.write(file_path, 'Test note')
+:lua print('Write OK:', result.ok)
+:lua print('Path:', file_path)
+:lua vim.fn.system('rm -rf /tmp/test_vault')
+```
+- Expected: `Write OK: true`
+- Expected: File created in date-based directory
+
+**Test 89: Store node in date path**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local path = require('lifemode.infra.fs.path')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local n = node.create('Daily thought')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 22})
+:lua local date_dir = path.date_path('/tmp/vault', timestamp)
+:lua local file_path = date_dir .. n.value.id .. '.md'
+:lua local markdown = node.to_markdown(n.value)
+:lua local result = write.write(file_path, markdown)
+:lua print('OK:', result.ok)
+:lua print('Exists:', write.exists(file_path))
+:lua vim.fn.system('rm -rf /tmp/vault')
+```
+- Expected: `OK: true`
+- Expected: `Exists: true`
+- Expected: Node stored in `/tmp/vault/2026/01-Jan/22/<uuid>.md`
+
+**Test 90: Multiple nodes per day**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local path = require('lifemode.infra.fs.path')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local timestamp = os.time({year = 2026, month = 1, day = 22})
+:lua local date_dir = path.date_path('/tmp/vault', timestamp)
+:lua for i = 1, 3 do
+:lua   local n = node.create('Thought ' .. i)
+:lua   local file = date_dir .. n.value.id .. '.md'
+:lua   write.write(file, node.to_markdown(n.value))
+:lua end
+:lua print('Created 3 nodes in:', date_dir)
+:lua vim.fn.system('rm -rf /tmp/vault')
+```
+- Expected: Three files created in same date directory
+- Expected: Each with unique UUID filename
+
