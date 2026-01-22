@@ -232,7 +232,7 @@ Compute date-based directory paths.
 
 ## Application Layer (Orchestration)
 
-### Phase 10: Capture Node Use Case **[MVP]** TODO
+### Phase 10: Capture Node Use Case **[MVP]** REVIEW (01/22/2026)
 **~130 lines | `lua/lifemode/app/capture.lua`**
 
 First complete workflow: create and save a new node.
