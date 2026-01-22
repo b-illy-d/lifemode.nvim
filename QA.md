@@ -460,3 +460,202 @@ All phases pass manual QA when:
 - ✓ Error messages are clear and helpful
 - ✓ No state leaks between test runs
 - ✓ Edge cases behave as documented
+
+## Phase 6: Node Parsing
+
+### Basic Parsing
+
+**Test 39: Parse markdown with frontmatter**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+modified: 1234567890
+type: note
+---
+Test content]]
+:lua local result = node.parse(markdown)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = true, value = { id = "...", content = "Test content", meta = {...} } }`
+- Expected: All meta fields correctly parsed
+
+**Test 40: Parse with additional metadata**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+type: task
+status: in_progress
+priority: 5
+archived: false
+---
+Task description here]]
+:lua local result = node.parse(markdown)
+:lua print('Type:', result.value.meta.type)
+:lua print('Status:', result.value.meta.status)
+:lua print('Priority:', result.value.meta.priority)
+:lua print('Archived:', result.value.meta.archived)
+```
+- Expected: `Type: task`
+- Expected: `Status: in_progress`
+- Expected: `Priority: 5` (number)
+- Expected: `Archived: false` (boolean)
+
+**Test 41: Parse multiline content**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+---
+# Heading
+
+Paragraph 1
+
+Paragraph 2]]
+:lua local result = node.parse(markdown)
+:lua print(result.value.content)
+```
+- Expected: Multiline content preserved with newlines
+
+**Test 42: Parse empty content**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+---
+]]
+:lua local result = node.parse(markdown)
+:lua print('Content length:', #result.value.content)
+```
+- Expected: `Content length: 0`
+
+### Round-Trip Testing
+
+**Test 43: Create, serialize, parse cycle**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local original = node.create('Original content', {type = 'note', tags = {'a', 'b'}})
+:lua local markdown = node.to_markdown(original.value)
+:lua local parsed = node.parse(markdown)
+:lua print('Original ID:', original.value.id)
+:lua print('Parsed ID:', parsed.value.id)
+:lua print('Content match:', original.value.content == parsed.value.content)
+```
+- Expected: IDs match
+- Expected: `Content match: true`
+- Expected: Metadata preserved
+
+**Test 44: Multiple round-trips**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local r1 = node.create('Test')
+:lua local md1 = node.to_markdown(r1.value)
+:lua local r2 = node.parse(md1)
+:lua local md2 = node.to_markdown(r2.value)
+:lua local r3 = node.parse(md2)
+:lua print('Pass 1 ID:', r1.value.id)
+:lua print('Pass 3 ID:', r3.value.id)
+:lua print('IDs match:', r1.value.id == r3.value.id)
+```
+- Expected: `IDs match: true`
+- Expected: Content stable across multiple round-trips
+
+### Error Handling
+
+**Test 45: Missing frontmatter**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.parse('Just plain text without frontmatter')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "Missing frontmatter: expected '---' at start" }`
+
+**Test 46: Missing closing delimiter**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+This has no closing delimiter]]
+:lua local result = node.parse(markdown)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "Missing frontmatter closing delimiter: expected '---'" }`
+
+**Test 47: Missing required field (id)**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+created: 1234567890
+type: note
+---
+content]]
+:lua local result = node.parse(markdown)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "Missing required field: id" }`
+
+**Test 48: Missing required field (created)**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+type: note
+---
+content]]
+:lua local result = node.parse(markdown)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "Missing required field: created" }`
+
+**Test 49: Invalid UUID format**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: not-a-valid-uuid-format
+created: 1234567890
+---
+content]]
+:lua local result = node.parse(markdown)
+:lua print(vim.inspect(result))
+```
+- Expected: Error mentioning "valid UUID v4"
+
+**Test 50: Non-string input**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.parse(12345)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "text must be a string" }`
+
+### Data Type Handling
+
+**Test 51: Parse different value types**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+string_val: hello world
+int_val: 42
+float_val: 3.14
+bool_true: true
+bool_false: false
+---
+content]]
+:lua local result = node.parse(markdown)
+:lua print('String:', result.value.meta.string_val, type(result.value.meta.string_val))
+:lua print('Int:', result.value.meta.int_val, type(result.value.meta.int_val))
+:lua print('Float:', result.value.meta.float_val, type(result.value.meta.float_val))
+:lua print('Bool true:', result.value.meta.bool_true, type(result.value.meta.bool_true))
+:lua print('Bool false:', result.value.meta.bool_false, type(result.value.meta.bool_false))
+```
+- Expected: Correct types for each value
+- Expected: Numbers as numbers, booleans as booleans, strings as strings
+
