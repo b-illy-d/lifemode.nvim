@@ -27,3 +27,22 @@ Default to empty string for simplicity.
 
 ---
 
+## Phase 11: Open Node in Buffer
+
+### Decision: get_lines doesn't return Result<T>
+**Rationale:** Following Neovim API conventions. `nvim_buf_get_lines` throws Lua errors on invalid input, which is the expected Neovim pattern. Wrapping in Result<T> would add ceremony without value. Callers can use pcall if they need error handling.
+
+### Decision: open() returns Result<bufnr> not Result<()>
+**Rationale:** Caller needs the buffer number to perform subsequent operations. Returning it directly avoids forcing caller to query current buffer separately.
+
+### Decision: Use vim.cmd.edit not vim.api.nvim_open_buf
+**Rationale:** `vim.cmd.edit` provides expected editor behavior (respects 'hidden', triggers autocmds, updates jumplist). `nvim_open_buf` is lower-level and would require manually handling those concerns.
+
+### Decision: Check file existence before opening
+**Rationale:** Provides better error message than letting vim.cmd.edit fail. We can distinguish "file doesn't exist" from other errors (permissions, etc).
+
+### Decision: Thin wrapper, minimal logic
+**Rationale:** Infrastructure layer should be transparent adapter to external system (Neovim). Business logic belongs in app/domain layers.
+
+---
+

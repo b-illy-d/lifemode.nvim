@@ -250,7 +250,7 @@ First complete workflow: create and save a new node.
 
 ---
 
-### Phase 11: Open Node in Buffer **[MVP]** TODO
+### Phase 11: Open Node in Buffer **[MVP]** REVIEW (01/22/2026)
 **~80 lines | `lua/lifemode/infra/nvim/buf.lua`**
 
 Neovim buffer operations.
