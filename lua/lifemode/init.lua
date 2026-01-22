@@ -1,4 +1,7 @@
 local config = require("lifemode.config")
+local commands = require("lifemode.ui.commands")
+local keymaps = require("lifemode.ui.keymaps")
+
 local M = {}
 
 local _initialized = false
@@ -16,6 +19,9 @@ function M.setup(opts)
 	end
 
 	vim.api.nvim_create_augroup("LifeMode", { clear = true })
+
+	commands.setup_commands()
+	keymaps.setup_keymaps()
 
 	_initialized = true
 end

@@ -284,7 +284,7 @@ Expose capture workflow as command.
 
 ---
 
-### Phase 13: Keymaps Setup **[MVP]** TODO
+### Phase 13: Keymaps Setup **[MVP]** REVIEW (01/22/2026)
 **~40 lines | `lua/lifemode/ui/keymaps.lua`**
 
 **Tasks:**

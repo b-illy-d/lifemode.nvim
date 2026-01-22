@@ -65,3 +65,22 @@ Default to empty string for simplicity.
 
 ---
 
+## Phase 13: Keymaps Setup
+
+### Decision: Only register new_node keymap in this phase
+**Rationale:** Other keymaps (narrow, widen, jump_context, sidebar) require features from future phases. Keep phase atomic. Add keymaps as features are implemented.
+
+### Decision: Allow disabling keymaps with empty string
+**Rationale:** User may want to define their own keymaps or use different bindings. Empty string or nil means "don't register this keymap". Provides flexibility without complex opt-out mechanism.
+
+### Decision: Use desc parameter for which-key compatibility
+**Rationale:** Popular plugin which-key.nvim shows keymap descriptions. Setting desc="LifeMode: ..." provides good UX for users who have which-key installed.
+
+### Decision: Register keymaps in setup(), not lazily
+**Rationale:** Keymaps are global, should be set up once on plugin load. Lazy registration would complicate state tracking. Simple eager registration matches Neovim plugin conventions.
+
+### Decision: Call setup_keymaps() from init.lua
+**Rationale:** init.lua is the plugin entry point, setup() is the initialization function. Centralizing setup calls there makes the flow clear and ensures correct initialization order (commands first, then keymaps).
+
+---
+
