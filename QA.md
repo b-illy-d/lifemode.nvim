@@ -659,3 +659,151 @@ content]]
 - Expected: Correct types for each value
 - Expected: Numbers as numbers, booleans as booleans, strings as strings
 
+
+## Phase 7: Filesystem Write
+
+### File Existence Check
+
+**Test 52: Check non-existent file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua print(write.exists('/tmp/nonexistent_file.txt'))
+```
+- Expected: `false`
+
+**Test 53: Check existing file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua vim.fn.system('touch /tmp/test_exists.txt')
+:lua print(write.exists('/tmp/test_exists.txt'))
+:lua vim.fn.system('rm /tmp/test_exists.txt')
+```
+- Expected: `true`
+
+### Directory Creation
+
+**Test 54: Create single directory**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local result = write.mkdir('/tmp/lifemode_test_dir')
+:lua print(vim.inspect(result))
+:lua print('Exists:', write.exists('/tmp/lifemode_test_dir'))
+:lua vim.fn.system('rm -rf /tmp/lifemode_test_dir')
+```
+- Expected: `{ ok = true, value = <userdata> }`
+- Expected: `Exists: true`
+
+**Test 55: Create nested directories**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local result = write.mkdir('/tmp/lifemode_test/a/b/c')
+:lua print('OK:', result.ok)
+:lua print('Exists:', write.exists('/tmp/lifemode_test/a/b/c'))
+:lua vim.fn.system('rm -rf /tmp/lifemode_test')
+```
+- Expected: `OK: true`
+- Expected: `Exists: true`
+
+**Test 56: Idempotent directory creation**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local r1 = write.mkdir('/tmp/lifemode_idempotent')
+:lua local r2 = write.mkdir('/tmp/lifemode_idempotent')
+:lua print('First:', r1.ok, 'Second:', r2.ok)
+:lua vim.fn.system('rm -rf /tmp/lifemode_idempotent')
+```
+- Expected: `First: true Second: true`
+
+### File Writing
+
+**Test 57: Write to new file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local result = write.write('/tmp/lifemode_new.txt', 'Hello World')
+:lua print('OK:', result.ok)
+:lua vim.fn.system('cat /tmp/lifemode_new.txt')
+:lua vim.fn.system('rm /tmp/lifemode_new.txt')
+```
+- Expected: `OK: true`
+- Expected: File contains "Hello World"
+
+**Test 58: Write with parent directory creation**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local result = write.write('/tmp/lifemode_nested/deep/file.txt', 'content')
+:lua print('OK:', result.ok)
+:lua print('File exists:', write.exists('/tmp/lifemode_nested/deep/file.txt'))
+:lua vim.fn.system('rm -rf /tmp/lifemode_nested')
+```
+- Expected: `OK: true`
+- Expected: `File exists: true`
+
+**Test 59: Overwrite existing file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua write.write('/tmp/lifemode_overwrite.txt', 'original')
+:lua write.write('/tmp/lifemode_overwrite.txt', 'updated')
+:lua vim.fn.system('cat /tmp/lifemode_overwrite.txt')
+:lua vim.fn.system('rm /tmp/lifemode_overwrite.txt')
+```
+- Expected: File contains "updated" (not "original")
+
+**Test 60: Write multiline content**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local content = 'Line 1\nLine 2\nLine 3'
+:lua write.write('/tmp/lifemode_multiline.txt', content)
+:lua print(vim.fn.system('cat /tmp/lifemode_multiline.txt'))
+:lua vim.fn.system('rm /tmp/lifemode_multiline.txt')
+```
+- Expected: Three lines displayed
+
+### Integration with Node Module
+
+**Test 61: Write node to filesystem**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local n = node.create('My first persisted node', {type = 'note'})
+:lua local md = node.to_markdown(n.value)
+:lua local result = write.write('/tmp/lifemode_node.md', md)
+:lua print('Write OK:', result.ok)
+:lua print(vim.fn.system('cat /tmp/lifemode_node.md'))
+:lua vim.fn.system('rm /tmp/lifemode_node.md')
+```
+- Expected: `Write OK: true`
+- Expected: Markdown with frontmatter and content displayed
+
+**Test 62: Simulate vault structure**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local n = node.create('Daily note')
+:lua local md = node.to_markdown(n.value)
+:lua local path = '/tmp/vault/2026/01-Jan/21/' .. n.value.id .. '.md'
+:lua local result = write.write(path, md)
+:lua print('OK:', result.ok)
+:lua print('Exists:', write.exists(path))
+:lua vim.fn.system('rm -rf /tmp/vault')
+```
+- Expected: `OK: true`
+- Expected: `Exists: true`
+
+### Error Handling
+
+**Test 63: Invalid path (empty string)**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local result = write.write('', 'content')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "write: path must be a non-empty string" }`
+
+**Test 64: Invalid content type**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local result = write.write('/tmp/test.txt', 123)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "write: content must be a string" }`
+
