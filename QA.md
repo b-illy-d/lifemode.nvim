@@ -807,3 +807,178 @@ content]]
 ```
 - Expected: `{ ok = false, error = "write: content must be a string" }`
 
+
+## Phase 8: Filesystem Read
+
+### Basic File Reading
+
+**Test 65: Read existing file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua write.write('/tmp/test_read.txt', 'Hello from LifeMode')
+:lua local result = read.read('/tmp/test_read.txt')
+:lua print(vim.inspect(result))
+:lua vim.fn.system('rm /tmp/test_read.txt')
+```
+- Expected: `{ ok = true, value = "Hello from LifeMode" }`
+
+**Test 66: Read multiline file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua local content = 'Line 1\nLine 2\nLine 3'
+:lua write.write('/tmp/multiline.txt', content)
+:lua local result = read.read('/tmp/multiline.txt')
+:lua print('Content:', result.value)
+:lua vim.fn.system('rm /tmp/multiline.txt')
+```
+- Expected: Three lines displayed
+
+**Test 67: Read empty file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua write.write('/tmp/empty.txt', '')
+:lua local result = read.read('/tmp/empty.txt')
+:lua print('OK:', result.ok)
+:lua print('Length:', #result.value)
+:lua vim.fn.system('rm /tmp/empty.txt')
+```
+- Expected: `OK: true`
+- Expected: `Length: 0`
+
+**Test 68: Read non-existent file**
+```vim
+:lua local read = require('lifemode.infra.fs.read')
+:lua local result = read.read('/tmp/does_not_exist.txt')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "read: file not found: /tmp/does_not_exist.txt" }`
+
+### Modification Time
+
+**Test 69: Get mtime of file**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua write.write('/tmp/mtime_test.txt', 'content')
+:lua local result = read.mtime('/tmp/mtime_test.txt')
+:lua print('OK:', result.ok)
+:lua print('Timestamp:', result.value)
+:lua print('Type:', type(result.value))
+:lua vim.fn.system('rm /tmp/mtime_test.txt')
+```
+- Expected: `OK: true`
+- Expected: Timestamp is a number
+- Expected: `Type: number`
+
+**Test 70: Detect file modification**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua write.write('/tmp/modify.txt', 'v1')
+:lua local mtime1 = read.mtime('/tmp/modify.txt')
+:lua vim.fn.system('sleep 2')
+:lua write.write('/tmp/modify.txt', 'v2')
+:lua local mtime2 = read.mtime('/tmp/modify.txt')
+:lua print('First:', mtime1.value)
+:lua print('Second:', mtime2.value)
+:lua print('Modified:', mtime2.value > mtime1.value)
+:lua vim.fn.system('rm /tmp/modify.txt')
+```
+- Expected: `Modified: true`
+- Expected: Second timestamp greater than first
+
+**Test 71: Mtime for non-existent file**
+```vim
+:lua local read = require('lifemode.infra.fs.read')
+:lua local result = read.mtime('/tmp/missing.txt')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "mtime: file not found: /tmp/missing.txt" }`
+
+### Write/Read Round-Trip
+
+**Test 72: Write and read back**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua local original = 'Test content for round-trip'
+:lua write.write('/tmp/roundtrip.txt', original)
+:lua local result = read.read('/tmp/roundtrip.txt')
+:lua print('Match:', result.value == original)
+:lua vim.fn.system('rm /tmp/roundtrip.txt')
+```
+- Expected: `Match: true`
+
+**Test 73: Special characters preserved**
+```vim
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua local special = 'Characters: @#$%^&*()[]{}|\\:;"\'<>?,./`~'
+:lua write.write('/tmp/special.txt', special)
+:lua local result = read.read('/tmp/special.txt')
+:lua print('Match:', result.value == special)
+:lua vim.fn.system('rm /tmp/special.txt')
+```
+- Expected: `Match: true`
+
+### Node Persistence Integration
+
+**Test 74: Write node, read back, parse**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua local original = node.create('Integration test node', {type = 'test'})
+:lua local markdown = node.to_markdown(original.value)
+:lua write.write('/tmp/node_persist.md', markdown)
+:lua local read_result = read.read('/tmp/node_persist.md')
+:lua local parsed = node.parse(read_result.value)
+:lua print('Parse OK:', parsed.ok)
+:lua print('Content match:', original.value.content == parsed.value.content)
+:lua print('ID match:', original.value.id == parsed.value.id)
+:lua vim.fn.system('rm /tmp/node_persist.md')
+```
+- Expected: `Parse OK: true`
+- Expected: `Content match: true`
+- Expected: `ID match: true`
+
+**Test 75: Multiple nodes in vault structure**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local write = require('lifemode.infra.fs.write')
+:lua local read = require('lifemode.infra.fs.read')
+:lua local n1 = node.create('First note')
+:lua local n2 = node.create('Second note')
+:lua local dir = '/tmp/vault/2026/01-Jan/22/'
+:lua write.write(dir .. 'note1.md', node.to_markdown(n1.value))
+:lua write.write(dir .. 'note2.md', node.to_markdown(n2.value))
+:lua local r1 = read.read(dir .. 'note1.md')
+:lua local r2 = read.read(dir .. 'note2.md')
+:lua print('Read 1 OK:', r1.ok)
+:lua print('Read 2 OK:', r2.ok)
+:lua vim.fn.system('rm -rf /tmp/vault')
+```
+- Expected: `Read 1 OK: true`
+- Expected: `Read 2 OK: true`
+
+### Error Handling
+
+**Test 76: Invalid path (empty string)**
+```vim
+:lua local read = require('lifemode.infra.fs.read')
+:lua local result = read.read('')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "read: path must be a non-empty string" }`
+
+**Test 77: Non-string path**
+```vim
+:lua local read = require('lifemode.infra.fs.read')
+:lua local result = read.read(nil)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "read: path must be a non-empty string" }`
+
