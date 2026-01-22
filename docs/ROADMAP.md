@@ -390,7 +390,7 @@ True narrowing: focus on single node subtree.
 
 ## SQLite Index
 
-### Phase 19: SQLite Schema **[MVP]** TODO
+### Phase 19: SQLite Schema **[MVP]** REVIEW
 **~100 lines | `lua/lifemode/infra/index/schema.lua`**
 
 Define database structure.

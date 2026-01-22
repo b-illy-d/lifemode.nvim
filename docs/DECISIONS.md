@@ -211,3 +211,32 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 19: SQLite Schema
+
+### Decision: Use kkharji/sqlite.lua library
+**Rationale:** Most mature SQLite binding for Neovim. Pure Lua FFI, no C compilation needed. Well-maintained, used by telescope.nvim and other plugins. API is clean and Result-friendly.
+
+### Decision: schema_version table for migrations
+**Rationale:** Explicit versioning enables future schema changes without breaking existing installations. Single source of truth for current version. Industry standard pattern (e.g., Rails migrations, Alembic).
+
+### Decision: WAL journal mode
+**Rationale:** Write-Ahead Logging provides better concurrency - readers don't block writers. Critical for Neovim where index updates may happen while user is querying. Standard recommendation for applications with concurrent access.
+
+### Decision: Composite primary key on edges
+**Rationale:** `(from_uuid, to_uuid, edge_type)` as PK enforces uniqueness - can't have duplicate edges of same type between same nodes. Avoids need for synthetic ID. Efficient for common queries.
+
+### Decision: Separate indexes on from_uuid and to_uuid
+**Rationale:** Two most common queries: (1) outgoing edges from node, (2) backlinks to node. Composite PK already indexes from_uuid, but explicit index ensures optimal performance. to_uuid needs separate index for backlinks query.
+
+### Decision: content column stores full text
+**Rationale:** Enables full-text search (Phase 24) without re-reading files. Denormalization is acceptable - content is source of truth in markdown files, index is derived. Rebuild command (Phase 22) will resync if needed.
+
+### Decision: created/modified as INTEGER (Unix timestamp)
+**Rationale:** SQLite's INTEGER is efficient for date range queries. Unix timestamp is unambiguous (no timezone issues). Conversion to/from human-readable dates happens in application layer.
+
+### Decision: No foreign key constraints yet
+**Rationale:** For MVP, edges may reference nodes that don't exist in index yet (stale references during incremental updates). Soft referential integrity - query logic handles missing nodes gracefully. Could add FK constraints in later phase if needed.
+
+---
+
