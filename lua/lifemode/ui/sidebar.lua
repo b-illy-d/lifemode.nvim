@@ -320,4 +320,12 @@ function M.toggle_sidebar()
 	return util.Ok(nil)
 end
 
+function M.is_open()
+	return is_sidebar_open()
+end
+
+function M.get_current_uuid()
+	return sidebar_state.current_uuid
+end
+
 return M

@@ -479,3 +479,26 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Markdown syntax highlighting for sidebar
 **Rationale:** Set sidebar buffer filetype="markdown" to get free syntax highlighting (headers, lists). Looks better than plain text, no custom highlighting needed.
+
+## Phase 30: Update Sidebar on Cursor Move
+
+### Decision: Use CursorHold, not custom debouncing
+**Rationale:** CursorHold is triggered after updatetime milliseconds of inactivity. This provides natural debouncing. ROADMAP specifies 500ms, but CursorHold respects user's global updatetime setting (default 4000ms). This is better UX - respects user configuration rather than being opinionated. If user wants faster sidebar updates, they set updatetime globally. Alternative (custom vim.defer_fn debounce) adds complexity and doesn't respect user preferences.
+
+### Decision: Create app/sidebar.lua separate from ui/sidebar.lua
+**Rationale:** Follows layer separation. ui/sidebar.lua is pure UI (render, toggle, jump). app/sidebar.lua is application orchestration (when to refresh, based on cursor movement). Clean separation of concerns. ROADMAP specified app/sidebar.lua for this phase, confirming this layering decision.
+
+### Decision: Silently ignore errors in auto-update
+**Rationale:** Auto-update is background functionality. User didn't explicitly request it. If cursor moves to non-node area or render fails, don't spam with errors. Log warning and keep last valid state. Only explicit user actions (toggle, jump) should show errors. Background automation should be invisible when it fails.
+
+### Decision: Expose is_open() and get_current_uuid() getters
+**Rationale:** app/sidebar.lua needs to check sidebar state (is it open? what UUID shown?). Rather than duplicating state or making state public, expose minimal getters. Single source of truth in ui/sidebar.lua. Clean layer boundary - app layer queries ui layer via interface, not direct state access.
+
+### Decision: No custom updatetime setting
+**Rationale:** Don't override user's updatetime. This global setting affects LSP hover, diagnostics, CursorHold for all plugins. Respect user configuration. LifeMode shouldn't be opinionated about timing. If user wants faster updates, they control it globally.
+
+### Decision: Pattern *.md only
+**Rationale:** LifeMode is markdown-based. Only .md files have nodes with extmarks. No point running auto-update in other file types. Pattern filter makes autocommand efficient (doesn't fire in non-markdown files).
+
+### Decision: No-op when UUID unchanged
+**Rationale:** Performance optimization. refresh_if_needed() checks current UUID before rendering. If same node, return immediately. Prevents unnecessary re-renders, database queries, and buffer updates. Makes auto-update invisible when user stays on same node.

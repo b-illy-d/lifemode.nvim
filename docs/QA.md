@@ -360,3 +360,74 @@ print("✓ All manual tests passed")
 - Multiple backlinks: all should be listed
 - Press `<CR>` on header line: should show "no link on current line" error
 
+
+## Phase 30: Update Sidebar on Cursor Move
+
+### Manual Test Procedure
+
+**Prerequisites:**
+- Neovim with lifemode.nvim installed
+- Vault with multiple nodes in same file
+- At least 2 nodes with edges between them
+
+**Test Steps:**
+
+1. **Setup: Check updatetime**
+   - Run `:set updatetime?` in Neovim
+   - Note the value (default is 4000ms)
+   - This determines how long to wait for auto-update
+
+2. **Auto-update on cursor move**
+   - Open markdown file with multiple nodes
+   - Position cursor on Node A
+   - Open sidebar with `<leader>ns`
+   - **Expected:** Sidebar shows relations for Node A
+   - Move cursor to Node B
+   - Wait for updatetime milliseconds (or trigger with `:doautocmd CursorHold`)
+   - **Expected:** Sidebar automatically updates to show Node B relations
+   - **Expected:** No manual refresh needed
+
+3. **No-op when staying on same node**
+   - Sidebar open on Node A
+   - Move cursor within Node A (different lines, same node)
+   - Wait for CursorHold
+   - **Expected:** Sidebar doesn't flicker or re-render
+   - **Expected:** Content stays same
+
+4. **Works when sidebar initially closed**
+   - Close sidebar
+   - Move to Node A, open sidebar with `<leader>ns`
+   - Shows Node A
+   - Move to Node B, wait for CursorHold
+   - **Expected:** Sidebar updates to Node B
+
+5. **No errors when cursor not in node**
+   - Sidebar open on Node A
+   - Move cursor to empty area (no node boundaries)
+   - Wait for CursorHold
+   - **Expected:** No errors in `:messages`
+   - **Expected:** Sidebar still shows Node A (last valid state)
+
+6. **No auto-update in non-markdown files**
+   - Open sidebar in markdown file
+   - Switch to .lua or .txt file
+   - Move cursor around
+   - Wait for CursorHold
+   - **Expected:** Sidebar doesn't update (stays on last markdown node)
+   - **Expected:** No errors
+
+7. **Manual trigger works**
+   - Run `:doautocmd CursorHold` to manually trigger
+   - **Expected:** Same behavior as waiting for updatetime
+
+**Edge Cases:**
+
+- Rapidly moving between nodes: only updates after CursorHold (natural debouncing)
+- Opening sidebar when already open: still works, updates to current node
+- Multiple markdown buffers: auto-update tracks cursor in current buffer
+
+**Performance:**
+- Auto-update should be fast (<50ms)
+- No visible lag when moving cursor
+- Check `:messages` for any warnings
+

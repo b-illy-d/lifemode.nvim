@@ -603,7 +603,7 @@ Display contextual info in side window.
 
 ---
 
-### Phase 30: Update Sidebar on Cursor Move **[MVP]** TODO
+### Phase 30: Update Sidebar on Cursor Move **[MVP]** REVIEW
 **~90 lines | `lua/lifemode/app/sidebar.lua`**
 
 Refresh sidebar when cursor enters new node.
