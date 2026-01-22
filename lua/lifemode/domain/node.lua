@@ -131,4 +131,143 @@ function M.to_markdown(node)
 	return frontmatter .. "\n" .. node.content
 end
 
+local function parse_yaml_value(value_str)
+	value_str = value_str:match("^%s*(.-)%s*$")
+
+	if value_str == "true" then
+		return true
+	elseif value_str == "false" then
+		return false
+	elseif value_str:match("^%-?%d+%.%d+$") then
+		return tonumber(value_str)
+	elseif value_str:match("^%-?%d+$") then
+		return tonumber(value_str)
+	else
+		return value_str
+	end
+end
+
+local function parse_yaml_lines(lines, start_idx)
+	local result = {}
+	local i = start_idx
+	local base_indent = nil
+
+	while i <= #lines do
+		local line = lines[i]
+		local indent = line:match("^(%s*)")
+		local indent_level = #indent
+
+		if base_indent == nil then
+			base_indent = indent_level
+		end
+
+		if indent_level < base_indent then
+			break
+		end
+
+		if indent_level == base_indent then
+			local key, value = line:match("^%s*([^:]+):%s*(.*)$")
+			if key then
+				key = key:match("^%s*(.-)%s*$")
+
+				if value == "" then
+					i = i + 1
+					if i <= #lines then
+						local next_line = lines[i]
+						local next_indent = #(next_line:match("^(%s*)"))
+
+						if next_indent > indent_level then
+							if next_line:match("^%s*|%s*$") or lines[i-1]:match(":%s*|%s*$") then
+								local multiline_parts = {}
+								while i <= #lines do
+									local ml_line = lines[i]
+									local ml_indent = #(ml_line:match("^(%s*)"))
+									if ml_indent <= base_indent then
+										break
+									end
+									table.insert(multiline_parts, ml_line:match("^%s*(.*)$"))
+									i = i + 1
+								end
+								result[key] = table.concat(multiline_parts, "\n")
+								i = i - 1
+							else
+								local nested, next_i = parse_yaml_lines(lines, i)
+								result[key] = nested
+								i = next_i - 1
+							end
+						end
+					end
+				else
+					result[key] = parse_yaml_value(value)
+				end
+			end
+		end
+
+		i = i + 1
+	end
+
+	local all_numeric = true
+	local max_idx = 0
+	for k, _ in pairs(result) do
+		local num = tonumber(k)
+		if not num then
+			all_numeric = false
+			break
+		end
+		if num > max_idx then
+			max_idx = num
+		end
+	end
+
+	if all_numeric and max_idx > 0 then
+		local arr = {}
+		for j = 1, max_idx do
+			arr[j] = result[tostring(j)]
+		end
+		return arr, i
+	end
+
+	return result, i
+end
+
+function M.parse(text)
+	if type(text) ~= "string" then
+		return util.Err("text must be a string")
+	end
+
+	local first_delim = text:find("^%-%-%-%s*\n")
+	if not first_delim then
+		return util.Err("Missing frontmatter: expected '---' at start")
+	end
+
+	local frontmatter_start = first_delim + 4
+	local second_delim = text:find("\n%-%-%-%s*\n", frontmatter_start)
+
+	if not second_delim then
+		return util.Err("Missing frontmatter closing delimiter: expected '---'")
+	end
+
+	local frontmatter_text = text:sub(frontmatter_start, second_delim - 1)
+	local content = text:sub(second_delim + 5)
+
+	local lines = {}
+	for line in frontmatter_text:gmatch("([^\n]*)\n?") do
+		if line ~= "" or frontmatter_text:sub(#frontmatter_text, #frontmatter_text) == "\n" then
+			table.insert(lines, line)
+		end
+	end
+
+	local meta, _ = parse_yaml_lines(lines, 1)
+
+	if not meta.id then
+		return util.Err("Missing required field: id")
+	end
+
+	if not meta.created then
+		return util.Err("Missing required field: created")
+	end
+
+	return types.Node_new(content, meta)
+end
+
 return M

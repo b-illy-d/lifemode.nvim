@@ -159,4 +159,85 @@ describe("Node operations integration", function()
 			assert.is_not_nil(markdown)
 		end)
 	end)
+
+	describe("parsing workflow", function()
+		it("parses markdown back to node", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+modified: 1234567890
+type: note
+---
+This is test content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			assert.equals("12345678-1234-4abc-9def-123456789abc", result.value.id)
+			assert.equals(1234567890, result.value.meta.created)
+			assert.equals("note", result.value.meta.type)
+			assert.equals("This is test content", result.value.content)
+		end)
+
+		it("round-trips node through serialize and parse", function()
+			local original = node.create("Original content", { type = "task", status = "todo" })
+			assert.is_true(original.ok)
+
+			local markdown = node.to_markdown(original.value)
+			local parsed = node.parse(markdown)
+
+			assert.is_true(parsed.ok)
+			assert.equals(original.value.content, parsed.value.content)
+			assert.equals(original.value.id, parsed.value.id)
+			assert.equals(original.value.meta.type, parsed.value.meta.type)
+			assert.equals(original.value.meta.status, parsed.value.meta.status)
+		end)
+
+		it("handles multiple round-trips", function()
+			local r1 = node.create("Content v1")
+			local md1 = node.to_markdown(r1.value)
+			local r2 = node.parse(md1)
+			local md2 = node.to_markdown(r2.value)
+			local r3 = node.parse(md2)
+
+			assert.is_true(r1.ok)
+			assert.is_true(r2.ok)
+			assert.is_true(r3.ok)
+			assert.equals(r1.value.content, r3.value.content)
+			assert.equals(r1.value.id, r3.value.id)
+		end)
+	end)
+
+	describe("parsing error handling", function()
+		it("detects missing frontmatter", function()
+			local result = node.parse("Just plain text")
+
+			assert.is_false(result.ok)
+			assert.matches("Missing frontmatter", result.error)
+		end)
+
+		it("detects malformed frontmatter", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+no closing delimiter]]
+
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("Missing frontmatter closing delimiter", result.error)
+		end)
+
+		it("detects missing required fields", function()
+			local markdown = [[---
+type: note
+---
+content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("Missing required field", result.error)
+		end)
+	end)
 end)

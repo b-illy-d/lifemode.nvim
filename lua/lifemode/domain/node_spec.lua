@@ -360,3 +360,203 @@ describe("node.to_markdown", function()
 		assert.matches("Line 1\nLine 2\nLine 3$", markdown)
 	end)
 end)
+
+describe("node.parse", function()
+	describe("valid markdown", function()
+		it("parses basic frontmatter and content", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+modified: 1234567890
+---
+Test content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			local n = result.value
+			assert.equals("12345678-1234-4abc-9def-123456789abc", n.id)
+			assert.equals(1234567890, n.meta.created)
+			assert.equals(1234567890, n.meta.modified)
+			assert.equals("Test content", n.content)
+		end)
+
+		it("parses with additional meta fields", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+type: task
+status: todo
+---
+Do the thing]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			assert.equals("task", result.value.meta.type)
+			assert.equals("todo", result.value.meta.status)
+		end)
+
+		it("parses multiline content", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+---
+Line 1
+Line 2
+Line 3]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			assert.equals("Line 1\nLine 2\nLine 3", result.value.content)
+		end)
+
+		it("parses empty content", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+---
+]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			assert.equals("", result.value.content)
+		end)
+
+		it("parses boolean values", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+archived: true
+draft: false
+---
+content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			assert.is_true(result.value.meta.archived)
+			assert.is_false(result.value.meta.draft)
+		end)
+
+		it("parses numeric values", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+count: 42
+rating: 4.5
+---
+content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_true(result.ok)
+			assert.equals(42, result.value.meta.count)
+			assert.equals(4.5, result.value.meta.rating)
+		end)
+	end)
+
+	describe("round-trip", function()
+		it("preserves node through create -> serialize -> parse", function()
+			local original_content = "Test content"
+			local original_meta = {
+				id = "12345678-1234-4abc-9def-123456789abc",
+				created = 1234567890,
+				modified = 1234567890,
+				type = "note",
+			}
+
+			local create_result = node.create(original_content, original_meta)
+			assert.is_true(create_result.ok)
+
+			local markdown = node.to_markdown(create_result.value)
+			local parse_result = node.parse(markdown)
+
+			assert.is_true(parse_result.ok)
+			assert.equals(original_content, parse_result.value.content)
+			assert.equals(original_meta.id, parse_result.value.id)
+			assert.equals(original_meta.created, parse_result.value.meta.created)
+			assert.equals(original_meta.type, parse_result.value.meta.type)
+		end)
+
+		it("preserves multiline content", function()
+			local multiline = "Line 1\nLine 2\nLine 3"
+			local create_result = node.create(multiline)
+			assert.is_true(create_result.ok)
+
+			local markdown = node.to_markdown(create_result.value)
+			local parse_result = node.parse(markdown)
+
+			assert.is_true(parse_result.ok)
+			assert.equals(multiline, parse_result.value.content)
+		end)
+	end)
+
+	describe("error cases", function()
+		it("returns Err for non-string input", function()
+			local result = node.parse(123)
+
+			assert.is_false(result.ok)
+			assert.matches("text must be a string", result.error)
+		end)
+
+		it("returns Err for missing frontmatter", function()
+			local markdown = "Just content, no frontmatter"
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("Missing frontmatter", result.error)
+		end)
+
+		it("returns Err for missing closing delimiter", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+created: 1234567890
+content without closing delimiter]]
+
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("Missing frontmatter closing delimiter", result.error)
+		end)
+
+		it("returns Err for missing id field", function()
+			local markdown = [[---
+created: 1234567890
+---
+content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("Missing required field: id", result.error)
+		end)
+
+		it("returns Err for missing created field", function()
+			local markdown = [[---
+id: 12345678-1234-4abc-9def-123456789abc
+---
+content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("Missing required field: created", result.error)
+		end)
+
+		it("returns Err for invalid UUID format", function()
+			local markdown = [[---
+id: not-a-valid-uuid
+created: 1234567890
+---
+content]]
+
+			local result = node.parse(markdown)
+
+			assert.is_false(result.ok)
+			assert.matches("valid UUID v4", result.error)
+		end)
+	end)
+end)

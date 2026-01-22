@@ -167,7 +167,7 @@ Core node creation logic (pure, no I/O).
 
 ---
 
-### Phase 6: Node Parsing **[MVP]** TODO
+### Phase 6: Node Parsing **[MVP]** REVIEW (01/21/2026)
 **~150 lines | `lua/lifemode/domain/node.lua`**
 
 Parse markdown files back into Node objects.
