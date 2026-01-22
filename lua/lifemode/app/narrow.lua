@@ -95,4 +95,90 @@ function M.narrow_to_current()
 	return util.Ok(nil)
 end
 
+function M.widen()
+	local narrow_bufnr = vim.api.nvim_get_current_buf()
+
+	if not vim.api.nvim_buf_is_valid(narrow_bufnr) then
+		return util.Err("widen: current buffer is not valid")
+	end
+
+	local narrow_context = vim.b[narrow_bufnr].lifemode_narrow
+
+	if not narrow_context then
+		return util.Err("widen: not in narrow view")
+	end
+
+	local source_file = narrow_context.source_file
+	local source_bufnr = narrow_context.source_bufnr
+	local node_uuid = narrow_context.source_uuid
+	local original_start = narrow_context.source_range.start
+	local original_end = narrow_context.source_range["end"]
+
+	local narrow_lines = buf.get_lines(narrow_bufnr, 0, -1)
+
+	if not vim.api.nvim_buf_is_valid(source_bufnr) then
+		local open_result = buf.open(source_file)
+		if not open_result.ok then
+			return util.Err("widen: failed to open source file: " .. open_result.error)
+		end
+		source_bufnr = open_result.value
+	end
+
+	vim.bo[source_bufnr].buftype = ""
+
+	local set_result = buf.set_lines(source_bufnr, original_start, original_end + 1, narrow_lines)
+	if not set_result.ok then
+		return util.Err("widen: failed to update source buffer: " .. set_result.error)
+	end
+
+	local new_node_end = original_start + #narrow_lines - 1
+
+	local query_result = extmark.query(source_bufnr, original_start)
+
+	if query_result.ok then
+		local extmark_id = query_result.value.extmark_id
+
+		local delete_result = extmark.delete(source_bufnr, extmark_id)
+		if not delete_result.ok then
+			vim.notify(
+				"[LifeMode] WARN: Failed to delete old extmark: " .. delete_result.error,
+				vim.log.levels.WARN
+			)
+		end
+	end
+
+	local set_extmark_result = extmark.set(source_bufnr, original_start, {
+		node_id = node_uuid,
+		node_start = original_start,
+		node_end = new_node_end,
+	})
+
+	if not set_extmark_result.ok then
+		vim.notify(
+			"[LifeMode] WARN: Failed to create updated extmark: " .. set_extmark_result.error,
+			vim.log.levels.WARN
+		)
+	end
+
+	local write_success, write_err = pcall(function()
+		vim.api.nvim_buf_call(source_bufnr, function()
+			vim.cmd.write()
+		end)
+	end)
+
+	if not write_success then
+		return util.Err("widen: failed to write source file: " .. tostring(write_err))
+	end
+
+	vim.api.nvim_set_current_buf(source_bufnr)
+
+	vim.api.nvim_buf_delete(narrow_bufnr, { force = true })
+
+	vim.api.nvim_win_set_cursor(0, { original_start + 1, 0 })
+
+	vim.notify("[LifeMode] Saved", vim.log.levels.INFO)
+
+	return util.Ok(nil)
+end
+
 return M

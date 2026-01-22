@@ -20,6 +20,14 @@ function M.setup_keymaps()
 			desc = "LifeMode: Narrow to node at cursor",
 		})
 	end
+
+	if keymaps.widen and keymaps.widen ~= "" then
+		vim.keymap.set("n", keymaps.widen, ":LifeModeWiden<CR>", {
+			noremap = true,
+			silent = true,
+			desc = "LifeMode: Widen from narrow view",
+		})
+	end
 end
 
 return M

@@ -162,3 +162,29 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ---
 
+
+## Phase 17: Widen from Narrow
+
+### Decision: Narrow buffer is source of truth during widen
+**Rationale:** User made edits in narrow view - that's the canonical version. Widen overwrites source file even if externally modified. Alternative (3-way merge) adds massive complexity for rare edge case. Simple overwrite matches user intent.
+
+### Decision: Update extmarks after line changes
+**Rationale:** Adding/removing lines shifts node boundaries. Must update extmark's node_end to reflect new size. Query existing extmark, delete it, create new one with updated metadata. Keeps system consistent.
+
+### Decision: Reopen source file if buffer closed
+**Rationale:** User might close source buffer while editing in narrow view. Widen should still work - use `buf.open(source_file)` to reload. Graceful recovery, no data loss.
+
+### Decision: Write file immediately with :write
+**Rationale:** Explicit persistence. Don't rely on Neovim's write-on-buffer-leave or autosave. User expects widen to save - make it explicit. Use vim.cmd.write() on source buffer.
+
+### Decision: Delete narrow buffer after successful widen
+**Rationale:** Narrow buffer is scratch/temporary. After syncing back, no reason to keep it. Delete with `nvim_buf_delete(narrow_bufnr, {force=true})`. Avoids buffer list clutter.
+
+### Decision: Simplify statusline flash for MVP
+**Rationale:** Full "[Syncing...] → [Saved]" animation requires complex async coordination (vim.defer_fn chains, timing state). For Phase 17, just show "[Saved]" briefly with vim.notify(). Polish animation is future work if user feedback indicates it's valuable.
+
+### Decision: Calculate node size delta to update extmarks
+**Rationale:** If narrow buffer has more/fewer lines than original, node boundaries changed. Calculate delta = new_size - old_size. Add delta to node_end when creating new extmark. This keeps extmark metadata accurate.
+
+---
+

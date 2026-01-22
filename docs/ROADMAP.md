@@ -353,7 +353,7 @@ True narrowing: focus on single node subtree.
 
 ---
 
-### Phase 17: Widen from Narrow **[MVP]** TODO
+### Phase 17: Widen from Narrow **[MVP]** REVIEW (01/22/2026)
 **~120 lines | `lua/lifemode/app/narrow.lua`**
 
 **Tasks:**

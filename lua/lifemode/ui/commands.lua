@@ -36,6 +36,15 @@ function M.narrow()
 	vim.notify("[LifeMode] Narrowed to node", vim.log.levels.INFO)
 end
 
+function M.widen()
+	local result = narrow.widen()
+
+	if not result.ok then
+		vim.notify("[LifeMode] ERROR: " .. result.error, vim.log.levels.ERROR)
+		return
+	end
+end
+
 function M.setup_commands()
 	vim.api.nvim_create_user_command("LifeModeNewNode", function()
 		M.new_node()
@@ -43,6 +52,10 @@ function M.setup_commands()
 
 	vim.api.nvim_create_user_command("LifeModeNarrow", function()
 		M.narrow()
+	end, { nargs = 0 })
+
+	vim.api.nvim_create_user_command("LifeModeWiden", function()
+		M.widen()
 	end, { nargs = 0 })
 end
 
