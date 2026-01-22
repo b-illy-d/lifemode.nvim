@@ -226,6 +226,176 @@ Start fresh Neovim session:
 ```
 - Expected: `1` (original unchanged)
 
+## Phase 5: Node Operations (Create)
+
+### Node Creation
+
+**Test 24: Create node with minimal arguments**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.create('My first thought')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = true, value = { id = "...", content = "My first thought", meta = {...} } }`
+- Expected: UUID is auto-generated (valid v4)
+- Expected: `meta.created` and `meta.modified` are timestamps (numbers)
+- Expected: `meta.created` equals `meta.modified`
+
+**Test 25: Create node with custom metadata**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local meta = {type = 'task', status = 'todo', tags = {'work', 'urgent'}}
+:lua local result = node.create('Complete documentation', meta)
+:lua print(vim.inspect(result.value.meta))
+```
+- Expected: `meta.type = 'task'`
+- Expected: `meta.status = 'todo'`
+- Expected: `meta.tags` is preserved
+- Expected: `id`, `created`, `modified` are auto-generated
+
+**Test 26: Create node with provided UUID and timestamp**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local meta = {id = require('lifemode.util').uuid(), created = 1234567890}
+:lua local result = node.create('test', meta)
+:lua print(result.value.id, result.value.meta.created)
+```
+- Expected: Uses provided UUID and timestamp
+- Expected: `modified` defaults to `created` (1234567890)
+
+**Test 27: Error on invalid content**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.create(123)
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "content must be a string" }`
+
+**Test 28: Error on invalid meta type**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.create('test', 'not a table')
+:lua print(vim.inspect(result))
+```
+- Expected: `{ ok = false, error = "meta must be a table" }`
+
+### Node Validation
+
+**Test 29: Validate valid node**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local created = node.create('test content')
+:lua local validation = node.validate(created.value)
+:lua print(vim.inspect(validation))
+```
+- Expected: `{ ok = true, value = <node> }`
+
+**Test 30: Validate invalid node structure**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local invalid = {id = 'not-a-uuid', content = 'test', meta = {id = 'not-a-uuid', created = 'not-a-timestamp'}}
+:lua local validation = node.validate(invalid)
+:lua print(vim.inspect(validation))
+```
+- Expected: `{ ok = false, error = "node.id must be a valid UUID v4" }`
+
+**Test 31: Validate missing required fields**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local incomplete = {content = 'test', meta = {created = os.time()}}
+:lua local validation = node.validate(incomplete)
+:lua print(vim.inspect(validation))
+```
+- Expected: Error about missing `node.id`
+
+### Markdown Serialization
+
+**Test 32: Serialize basic node to markdown**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.create('This is my content')
+:lua local markdown = node.to_markdown(result.value)
+:lua print(markdown)
+```
+- Expected: Starts with `---`
+- Expected: Contains `id: <uuid>` in frontmatter
+- Expected: Contains `created: <timestamp>` in frontmatter
+- Expected: Contains `modified: <timestamp>` in frontmatter
+- Expected: Ends with `---` followed by newline and "This is my content"
+
+**Test 33: Serialize node with custom metadata**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local meta = {type = 'task', status = 'in_progress'}
+:lua local result = node.create('Complete Phase 5', meta)
+:lua local markdown = node.to_markdown(result.value)
+:lua print(markdown)
+```
+- Expected: Frontmatter includes `type: task`
+- Expected: Frontmatter includes `status: in_progress`
+- Expected: Content is "Complete Phase 5"
+
+**Test 34: Serialize multiline content**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local content = '# Heading\n\nParagraph with **bold** and *italic*.'
+:lua local result = node.create(content)
+:lua local markdown = node.to_markdown(result.value)
+:lua print(markdown)
+```
+- Expected: Multiline content preserved exactly
+- Expected: Markdown formatting not escaped
+
+**Test 35: Serialize empty content**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local result = node.create('')
+:lua local markdown = node.to_markdown(result.value)
+:lua print(markdown)
+```
+- Expected: Frontmatter present
+- Expected: Ends with `---\n` (no content after)
+
+**Test 36: Serialize nested metadata**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local meta = {tags = {'tag1', 'tag2'}, settings = {color = 'blue', priority = 5}}
+:lua local result = node.create('test', meta)
+:lua local markdown = node.to_markdown(result.value)
+:lua print(markdown)
+```
+- Expected: Nested tables rendered as YAML
+- Expected: Proper indentation for nested fields
+
+### Workflow Integration
+
+**Test 37: Create, serialize, and inspect**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local r1 = node.create('First node', {type = 'note'})
+:lua local r2 = node.create('Second node', {type = 'task'})
+:lua print(node.to_markdown(r1.value))
+:lua print('\n---\n')
+:lua print(node.to_markdown(r2.value))
+```
+- Expected: Two distinct markdown outputs
+- Expected: Different UUIDs for each node
+- Expected: Correct types in each frontmatter
+
+**Test 38: UUID uniqueness across multiple creations**
+```vim
+:lua local node = require('lifemode.domain.node')
+:lua local uuids = {}
+:lua for i=1,10 do
+:lua   local r = node.create('node ' .. i)
+:lua   table.insert(uuids, r.value.id)
+:lua end
+:lua local unique = {}
+:lua for _, u in ipairs(uuids) do unique[u] = true end
+:lua print('Created: ' .. #uuids .. ', Unique: ' .. vim.tbl_count(unique))
+```
+- Expected: Created: 10, Unique: 10
+
 ## Running Automated Tests
 
 ### Unit Tests
