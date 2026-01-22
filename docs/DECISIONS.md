@@ -109,3 +109,30 @@ Default to empty string for simplicity.
 
 ---
 
+## Phase 15: Parse Buffer for Nodes
+
+### Decision: Node boundaries detected by frontmatter delimiters
+**Rationale:** Each node starts with `---` frontmatter. Node extends from frontmatter line to either (1) line before next `---`, or (2) end of buffer. Simple heuristic, works for our use case. Alternative (explicit end markers) adds complexity without benefit.
+
+### Decision: Continue parsing on malformed nodes
+**Rationale:** Graceful degradation. If one node has bad frontmatter, don't fail entire buffer. Log warning, skip that node, continue. Users can fix errors incrementally. Better UX than blocking all operations.
+
+### Decision: Don't clear existing extmarks before parsing
+**Rationale:** For Phase 15, just create new extmarks. Clearing and recreating would require:
+1. Tracking which extmarks are "ours"
+2. Comparing old vs new to detect changes
+3. Updating only what changed
+
+That's future optimization (Phase 23: incremental updates). Phase 15: simple path, create extmarks on buffer load.
+
+### Decision: Autocommand uses BufReadPost not BufEnter
+**Rationale:** `BufReadPost` fires once when file is read from disk. `BufEnter` fires every time user switches to buffer (too frequent). We want to parse once on load, not on every buffer switch. Performance and correctness.
+
+### Decision: parse_and_mark_buffer returns Node[] not ()
+**Rationale:** Caller may need parsed nodes for display, indexing, or validation. Returning them avoids re-parsing. Small memory cost (nodes are lightweight), big flexibility win.
+
+### Decision: Async autocommand execution via vim.schedule
+**Rationale:** Parsing large buffers may take time. Don't block buffer load. Use `vim.schedule()` to defer parsing until after buffer is displayed. User sees content immediately, extmarks appear shortly after. Better perceived performance.
+
+---
+

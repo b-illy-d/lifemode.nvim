@@ -315,7 +315,7 @@ Track node boundaries in buffers.
 
 ---
 
-### Phase 15: Parse Buffer for Nodes **[MVP]** TODO
+### Phase 15: Parse Buffer for Nodes **[MVP]** REVIEW (01/22/2026)
 **~100 lines | `lua/lifemode/app/parse_buffer.lua`**
 
 Identify node boundaries in open buffers.
