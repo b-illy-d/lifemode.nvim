@@ -44,6 +44,18 @@ function M.setup_keymaps()
 			desc = "LifeMode: Toggle sidebar",
 		})
 	end
+
+	vim.api.nvim_create_autocmd("FileType", {
+		pattern = "markdown",
+		callback = function()
+			vim.keymap.set("n", "gd", ":LifeModeEditSource<CR>", {
+				buffer = true,
+				noremap = true,
+				silent = true,
+				desc = "LifeMode: Jump to citation source",
+			})
+		end,
+	})
 end
 
 return M

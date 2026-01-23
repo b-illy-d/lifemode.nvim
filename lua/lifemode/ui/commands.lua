@@ -3,6 +3,7 @@ local buf = require("lifemode.infra.nvim.buf")
 local narrow = require("lifemode.app.narrow")
 local sidebar = require("lifemode.ui.sidebar")
 local transclude = require("lifemode.app.transclude")
+local citation = require("lifemode.app.citation")
 
 local M = {}
 
@@ -81,6 +82,15 @@ function M.refresh_transclusions()
 	vim.notify("[LifeMode] Transclusions refreshed", vim.log.levels.INFO)
 end
 
+function M.edit_source()
+	local result = citation.jump_to_source()
+
+	if not result.ok then
+		vim.notify("[LifeMode] " .. result.error, vim.log.levels.ERROR)
+		return
+	end
+end
+
 function M.setup_commands()
 	vim.api.nvim_create_user_command("LifeModeNewNode", function()
 		M.new_node()
@@ -104,6 +114,10 @@ function M.setup_commands()
 
 	vim.api.nvim_create_user_command("LifeModeRefreshTransclusions", function()
 		M.refresh_transclusions()
+	end, { nargs = 0 })
+
+	vim.api.nvim_create_user_command("LifeModeEditSource", function()
+		M.edit_source()
 	end, { nargs = 0 })
 end
 

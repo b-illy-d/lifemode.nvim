@@ -747,7 +747,7 @@ Store citation relationships.
 
 ---
 
-### Phase 38: Jump to Source (`gd`) **[MVP]** TODO
+### Phase 38: Jump to Source (`gd`) **[MVP]** REVIEW
 **~90 lines | `lua/lifemode/ui/keymaps.lua`**
 
 **Tasks:**

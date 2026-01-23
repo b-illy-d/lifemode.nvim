@@ -431,3 +431,146 @@ print("✓ All manual tests passed")
 - No visible lag when moving cursor
 - Check `:messages` for any warnings
 
+
+## Phase 38: Jump to Source (`gd`)
+
+### Manual Test Procedure
+
+**Prerequisites:**
+- Neovim with lifemode.nvim installed
+- Valid vault configured
+- Markdown file in vault
+
+### Test 1: Jump to existing source file
+
+**Steps:**
+1. Create source file: `~/vault/.lifemode/sources/testkey.yaml`
+2. In a markdown file, write: `This cites @testkey for reference.`
+3. Save the file
+4. Move cursor to the `@testkey` citation (anywhere within `@testkey`)
+5. Press `gd` in normal mode
+
+**Expected:**
+- Source file `testkey.yaml` opens in current window
+- No error messages
+
+### Test 2: Create missing source file
+
+**Steps:**
+1. In markdown file, write: `This cites @newkey that doesn't exist.`
+2. Move cursor to `@newkey`
+3. Press `gd`
+
+**Expected:**
+- Confirmation dialog: "Source file not found: newkey.yaml\nCreate it?"
+- Two options: "Yes" and "No", default is "No"
+
+**If user chooses Yes:**
+- New file created at `~/vault/.lifemode/sources/newkey.yaml`
+- File opens with template:
+  ```yaml
+  ---
+  key: newkey
+  title: ""
+  author: ""
+  year: ""
+  type: article
+  url: ""
+  notes: ""
+  ```
+
+**If user chooses No:**
+- Error notification: "Source file not found: newkey.yaml"
+- No file created
+- Buffer unchanged
+
+### Test 3: Not on a citation
+
+**Steps:**
+1. Write: `This is plain text without citations.`
+2. Move cursor to "plain" (not a citation)
+3. Press `gd`
+
+**Expected:**
+- Error notification: "No citation under cursor"
+- No file operations
+
+### Test 4: Multiple citations on same line
+
+**Steps:**
+1. Write: `Sources include @first, @second, and @third citations.`
+2. Move cursor to `@second`
+3. Press `gd`
+
+**Expected:**
+- Confirmation dialog for `second.yaml` (not first or third)
+- Correct source key detected based on cursor position
+
+### Test 5: Command invocation
+
+**Steps:**
+1. Write: `@cmdtest citation`
+2. Move cursor to `@cmdtest`
+3. Run `:LifeModeEditSource`
+
+**Expected:**
+- Same behavior as `gd` keymap
+- Works identically
+
+### Test 6: Citation at line boundaries
+
+**Steps:**
+1. Write: `@startkey is at the beginning`
+2. Write: `Reference ends with @endkey`
+3. Test both citations with `gd`
+
+**Expected:**
+- Both work correctly (edge cases)
+
+### Test 7: `gd` in non-markdown files
+
+**Steps:**
+1. Open a `.lua` file
+2. Press `gd`
+
+**Expected:**
+- Vim's default `gd` behavior (go to local definition)
+- LifeMode does NOT override it
+- Buffer-local keymap only applies to markdown
+
+### Test 8: Directory creation
+
+**Steps:**
+1. Delete `.lifemode/sources/` directory if it exists
+2. Write: `@testcreate citation`
+3. Move cursor to `@testcreate`, press `gd`
+4. Choose "Yes"
+
+**Expected:**
+- Directory `.lifemode/sources/` created automatically
+- Source file created inside it
+- No permission errors
+
+### Test 9: Valid citation characters
+
+**Steps:**
+1. Write: `@test-key-123` (hyphens, numbers)
+2. Write: `@test_key_ABC` (underscores, uppercase)
+3. Test both with `gd`
+
+**Expected:**
+- Both work correctly
+- Source files `test-key-123.yaml` and `test_key_ABC.yaml` created/opened
+
+### Expected Results Summary
+
+- ✓ Jump to existing sources works
+- ✓ Create missing sources with confirmation
+- ✓ Error when not on citation
+- ✓ Correct citation detection on multi-citation lines
+- ✓ Command and keymap both work
+- ✓ Edge cases (line start/end) handled
+- ✓ Non-markdown files unaffected
+- ✓ Directory auto-creation works
+- ✓ Valid characters (hyphens, underscores, numbers) supported
+

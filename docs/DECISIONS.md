@@ -648,3 +648,23 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Skip sidebar integration in Phase 37
 **Rationale:** ROADMAP mentions "Display in sidebar under Citations section" but that's UI layer work (ui/sidebar.lua). Phase 37 is infrastructure layer (infra/index/init.lua). Provide `find_nodes_citing()` function, let future phase integrate with sidebar. Respect layer boundaries. One responsibility per phase.
+
+## Phase 38: Jump to Source (`gd`)
+
+### Decision: Create app/citation.lua for business logic
+**Rationale:** Keymaps should be thin - just call commands. Commands should be thin - just call app layer. Business logic (detect citation under cursor, compute paths, handle missing files) belongs in application layer. Follows established pattern: ui/keymaps → ui/commands → app layer → domain/infra layers.
+
+### Decision: Override gd only in markdown buffers
+**Rationale:** `gd` is Vim's built-in "go to definition". We only override it for markdown files using FileType autocmd with buffer-local keymap. Doesn't affect behavior in other file types. Respects user's existing `gd` bindings outside markdown context.
+
+### Decision: Store sources in .lifemode/sources/{key}.yaml
+**Rationale:** Centralized location for bibliography data. Pattern: `.lifemode/` directory is for plugin infrastructure (index, sources, etc.). Each source gets its own file for easy editing/version control. YAML format is human-friendly for manual editing. Future Phase 39 will parse these files for multi-scheme citation support.
+
+### Decision: Use vim.fn.confirm() for user prompt
+**Rationale:** Native Neovim confirmation dialog. Simple, works in all environments (terminal, GUI). Two options: Yes/No, defaults to No (safe choice). User can press Esc to cancel. Alternative (vim.ui.select) is more complex without clear benefit for binary choice.
+
+### Decision: Create template YAML with common fields
+**Rationale:** Provide starting point for users. Common bibliography fields (title, author, year, type, url, notes) cover most use cases. User can add/remove fields as needed. Empty strings for all values - user fills in. Better UX than empty file.
+
+### Decision: Parse line for citations instead of using treesitter
+**Rationale:** Simpler implementation - reuse existing `domain/citation.parse_citations()`. Treesitter would require citation syntax in markdown parser (doesn't exist by default). Line-level parsing is sufficient - citations don't span lines. Performance is fine (single line parse on keypress). Can upgrade to treesitter later if needed.
