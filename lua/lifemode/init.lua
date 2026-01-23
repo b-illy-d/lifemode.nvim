@@ -2,6 +2,7 @@ local config = require("lifemode.config")
 local commands = require("lifemode.ui.commands")
 local keymaps = require("lifemode.ui.keymaps")
 local app_sidebar = require("lifemode.app.sidebar")
+local transclude = require("lifemode.app.transclude")
 
 local M = {}
 
@@ -29,6 +30,7 @@ function M.setup(opts)
 	commands.setup_commands()
 	keymaps.setup_keymaps()
 	app_sidebar.setup_auto_update()
+	transclude.setup_autocommands()
 
 	_initialized = true
 end

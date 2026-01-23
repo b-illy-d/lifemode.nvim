@@ -548,3 +548,29 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Max depth default 10
 **Rationale:** Prevents infinite recursion in pathological cases. 10 levels deep is more than any reasonable document needs. User can override via parameter if they have valid use case. Failing safe is better than stack overflow.
+
+## Phase 33: Render Transclusions in Buffer
+
+### Decision: MVP rendering uses virtual text, not replace
+**Rationale:** SPEC mentions concealing tokens and showing expanded content, but actually replacing buffer text is complex (shifts positions, breaks undo, confuses user). For MVP, use Neovim's concealment + virtual text: hide {{uuid}} token, show expansion as virtual text at that position. Simpler, non-destructive, reversible. Multi-line transclusions will look ugly but that's acceptable for MVP. Future phase can improve rendering.
+
+### Decision: Separate namespace for transclusion extmarks
+**Rationale:** Use `lifemode_transclusions` namespace distinct from `lifemode_nodes`. This keeps node tracking (Phase 14/15) separate from transclusion rendering. Makes it easy to clear/refresh transclusions without affecting node boundaries. Clean separation of concerns.
+
+### Decision: No title resolution in Phase 33
+**Rationale:** SPEC shows "Transcluded from <node-title>" but extracting titles from nodes adds complexity (parse frontmatter or content). For MVP, show UUID in virtual text. User can identify which node. Title resolution can be Phase 34 or later. Keep phase atomic.
+
+### Decision: Don't clear existing transclusion extmarks before rendering
+**Rationale:** For MVP, just create new extmarks. If called multiple times, will create duplicates (wasteful but not broken). Phase 34 (caching) will add proper clear-then-render cycle. Premature optimization avoided. Simpler implementation for MVP.
+
+### Decision: BufEnter autocommand, not BufReadPost
+**Rationale:** BufReadPost fires once on file load. BufEnter fires every time user enters buffer. For transclusions, we want fresh rendering when user switches to buffer (in case index changed). BufEnter is correct trigger. Performance impact acceptable (can optimize in Phase 34 with dirty flag).
+
+### Decision: Inline error rendering, no special error extmarks
+**Rationale:** Domain expand() already returns inline error messages (e.g., "⚠️ Cycle detected"). Just render those strings with error highlight. No need for separate error tracking or special extmark types. Simpler, reuses domain logic.
+
+### Decision: Conceallevel=2, not per-extmark conceal
+**Rationale:** Set buffer-wide `conceallevel=2` to enable concealment. Then use extmark `conceal=""` option on {{uuid}} tokens. This is standard Neovim pattern (like markdown link concealment). Alternative (manual text replacement) is fragile. Trust the platform.
+
+### Decision: Gutter sign on token line, not on expansion
+**Rationale:** Place sign `»` on the line where {{uuid}} token appears, not on expanded content lines. Token line is source of transclusion. Sign indicates "transclusion here". Consistent with how folding signs work. Clear visual indicator.

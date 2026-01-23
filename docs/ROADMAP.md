@@ -657,7 +657,7 @@ Recursively expand transclusions.
 
 ---
 
-### Phase 33: Render Transclusions in Buffer TODO
+### Phase 33: Render Transclusions in Buffer REVIEW
 **~140 lines | `lua/lifemode/app/transclude.lua`**
 
 Display transcluded content inline.
