@@ -69,6 +69,8 @@ end
 
 function M.refresh_transclusions()
 	local bufnr = vim.api.nvim_get_current_buf()
+	transclude.clear_cache(bufnr)
+
 	local result = transclude.render_transclusions(bufnr)
 
 	if not result.ok then

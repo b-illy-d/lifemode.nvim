@@ -574,3 +574,23 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Gutter sign on token line, not on expansion
 **Rationale:** Place sign `»` on the line where {{uuid}} token appears, not on expanded content lines. Token line is source of transclusion. Sign indicates "transclusion here". Consistent with how folding signs work. Clear visual indicator.
+
+## Phase 34: Transclusion Cache
+
+### Decision: Buffer-local cache, not global
+**Rationale:** Use `vim.b[bufnr].lifemode_transclusion_cache` for per-buffer caching. Each buffer has independent cache. Benefits: (1) Automatic cleanup when buffer deleted, (2) No cross-buffer pollution, (3) Simple API. Alternative (global cache keyed by bufnr) would require manual cleanup and buffer tracking. Buffer-local is idiomatic Neovim pattern.
+
+### Decision: Simple dict cache, no LRU or size limits
+**Rationale:** Typical buffer has <100 transclusions. Cache memory footprint is tiny (<10KB). No need for eviction policy. YAGNI principle - premature optimization. If memory becomes issue, can add size limits later. For MVP, simplest implementation.
+
+### Decision: No automatic invalidation on mtime changes
+**Rationale:** ROADMAP mentions "invalidate on source node change (check mtime)" but this adds significant complexity: (1) Need file watchers or polling, (2) Need mtime tracking per cached UUID, (3) Node files may not correspond 1:1 with UUIDs. For MVP, manual invalidation via :LifeModeRefreshTransclusions is sufficient. User triggers refresh when they know content changed. Can add automatic invalidation in future phase if needed.
+
+### Decision: Cache key includes depth field (future-proofing)
+**Rationale:** Phase 32 doesn't use depth yet (always expands fully), but cache key format is "uuid:depth" to support future subtree expansion. When Phase X adds depth support, cache will work correctly - "uuid:2" and "uuid:5" will be different cache entries. Small addition now saves refactoring later.
+
+### Decision: Refresh command clears cache then renders
+**Rationale:** :LifeModeRefreshTransclusions becomes explicit cache invalidation + re-render. User action signals "I know content changed, re-expand everything". Pattern: clear cache → render (which repopulates cache). Simple, predictable behavior.
+
+### Decision: Cache persists for buffer lifetime
+**Rationale:** Cache not cleared on BufEnter or other events. Lives as long as buffer exists. Invalidation is explicit (via refresh command) or implicit (buffer delete). Maximizes cache hit rate. Conservative strategy - only invalidate when necessary.

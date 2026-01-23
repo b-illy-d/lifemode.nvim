@@ -24,6 +24,25 @@ local function is_error_content(content)
 	return content:match("⚠️") ~= nil
 end
 
+local function get_cache(bufnr)
+	if not vim.b[bufnr].lifemode_transclusion_cache then
+		vim.b[bufnr].lifemode_transclusion_cache = {}
+	end
+	return vim.b[bufnr].lifemode_transclusion_cache
+end
+
+local function clear_cache(bufnr)
+	vim.b[bufnr].lifemode_transclusion_cache = {}
+end
+
+local function get_cache_key(uuid, depth)
+	if depth then
+		return uuid .. ":" .. tostring(depth)
+	else
+		return uuid
+	end
+end
+
 local function position_from_offset(lines, offset)
 	local pos = 0
 	for i, line in ipairs(lines) do
@@ -82,6 +101,8 @@ function M.render_transclusions(bufnr)
 
 	define_highlight_groups()
 
+	local cache = get_cache(bufnr)
+
 	local success, lines = pcall(function()
 		return vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 	end)
@@ -99,15 +120,23 @@ function M.render_transclusions(bufnr)
 	end
 
 	for _, token in ipairs(tokens) do
-		local token_text = content:sub(token.start_pos, token.end_pos)
-
-		local expand_result = domain_transclude.expand(token_text, {}, 0, 10, fetch_fn)
+		local cache_key = get_cache_key(token.uuid, token.depth)
 
 		local expanded_content
-		if expand_result.ok then
-			expanded_content = expand_result.value
+		if cache[cache_key] then
+			expanded_content = cache[cache_key]
 		else
-			expanded_content = "⚠️ Error: " .. expand_result.error
+			local token_text = content:sub(token.start_pos, token.end_pos)
+			local expand_result = domain_transclude.expand(token_text, {}, 0, 10, fetch_fn)
+
+			if expand_result.ok then
+				expanded_content = expand_result.value
+			else
+				expanded_content = "⚠️ Error: " .. expand_result.error
+			end
+
+			cache[cache_key] = expanded_content
+			vim.b[bufnr].lifemode_transclusion_cache = cache
 		end
 
 		local line_num, col_offset = position_from_offset(lines, token.start_pos)
@@ -130,6 +159,10 @@ function M.render_transclusions(bufnr)
 	end
 
 	return util.Ok(nil)
+end
+
+function M.clear_cache(bufnr)
+	clear_cache(bufnr)
 end
 
 function M.setup_autocommands()

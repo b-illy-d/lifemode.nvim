@@ -679,7 +679,7 @@ Display transcluded content inline.
 
 ---
 
-### Phase 34: Transclusion Cache **[MVP]** TODO
+### Phase 34: Transclusion Cache **[MVP]** REVIEW
 **~90 lines | `lua/lifemode/app/transclude.lua`**
 
 Cache expanded transclusions for performance.
