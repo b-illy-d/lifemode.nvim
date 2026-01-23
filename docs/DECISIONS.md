@@ -631,3 +631,20 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Follow transclude.parse() pattern exactly
 **Rationale:** Both are domain-layer parsers extracting tokens from text. Same structure: type guard → pattern → while loop → string.find → capture groups → construct object → append → advance. Consistency across codebase. Easy to understand if you've seen one parser.
+
+## Phase 37: Citation Edges in Index
+
+### Decision: Repurpose to_uuid field for citation keys
+**Rationale:** Citations reference external sources (e.g., "smith2020") not nodes in vault. Current edges table has `(from_uuid, to_uuid, edge_type)` schema. Rather than add new table, repurpose `to_uuid` field: for citation edges, it stores source key (not UUID). This is pragmatic - reuses existing infrastructure (INSERT OR IGNORE idempotency, delete cascades, query patterns). Trade-off: field name is misleading for citations, but code is simpler. Alternative (new citations table) adds complexity without clear benefit for MVP.
+
+### Decision: insert_citation_edge() bypasses insert_edge()
+**Rationale:** Cannot reuse `insert_edge()` because it validates `edge.to` must be UUID, but for citations it's a source key. Two options: (1) modify insert_edge to skip UUID validation for citations, or (2) insert directly in insert_citation_edge. Chose option 2 - cleaner separation, no special cases in insert_edge. Citation edge insertion is simple (INSERT OR IGNORE), acceptable duplication for clearer semantics.
+
+### Decision: find_nodes_citing() returns full Node objects
+**Rationale:** Callers (sidebar) need node content to display titles/excerpts. Query edges for UUIDs, then fetch each node via `find_by_id()`. Alternative (return just UUIDs) forces every caller to do the lookup. Trading query efficiency for API convenience. For MVP (small vaults), N+1 queries acceptable. Can optimize later with JOIN if needed.
+
+### Decision: No citation-specific edge deletion function
+**Rationale:** Existing `delete_edges_from(uuid)` already handles all edge types. When re-parsing node content, delete all outgoing edges (wikilinks, transclusions, citations) then re-insert. No special case for citations. Simpler API. Consistent with Phase 28 pattern.
+
+### Decision: Skip sidebar integration in Phase 37
+**Rationale:** ROADMAP mentions "Display in sidebar under Citations section" but that's UI layer work (ui/sidebar.lua). Phase 37 is infrastructure layer (infra/index/init.lua). Provide `find_nodes_citing()` function, let future phase integrate with sidebar. Respect layer boundaries. One responsibility per phase.

@@ -418,4 +418,84 @@ function M.find_edges(uuid, direction, kind)
 	return util.Ok(edges)
 end
 
+function M.insert_citation_edge(node_uuid, source_key)
+	if not node_uuid or node_uuid == "" then
+		return util.Err("insert_citation_edge: node_uuid is required")
+	end
+
+	if not validate_uuid(node_uuid) then
+		return util.Err("insert_citation_edge: invalid node UUID: " .. node_uuid)
+	end
+
+	if type(source_key) ~= "string" or source_key == "" then
+		return util.Err("insert_citation_edge: source_key must be non-empty string")
+	end
+
+	local db_result = get_db()
+	if not db_result.ok then
+		return util.Err("insert_citation_edge: " .. db_result.error)
+	end
+
+	local db = db_result.value
+
+	local insert_sql = [[
+		INSERT OR IGNORE INTO edges (from_uuid, to_uuid, edge_type)
+		VALUES (?, ?, 'citation')
+	]]
+
+	local exec_result = adapter.exec(db, insert_sql, { node_uuid, source_key })
+
+	adapter.close(db)
+
+	if not exec_result.ok then
+		return util.Err("insert_citation_edge: " .. exec_result.error)
+	end
+
+	return util.Ok(nil)
+end
+
+function M.find_nodes_citing(source_key)
+	if type(source_key) ~= "string" or source_key == "" then
+		return util.Err("find_nodes_citing: source_key must be non-empty string")
+	end
+
+	local db_result = get_db()
+	if not db_result.ok then
+		return util.Err("find_nodes_citing: " .. db_result.error)
+	end
+
+	local db = db_result.value
+
+	local query_sql = [[
+		SELECT from_uuid
+		FROM edges
+		WHERE to_uuid = ? AND edge_type = 'citation'
+	]]
+
+	local query_result = adapter.query(db, query_sql, { source_key })
+
+	adapter.close(db)
+
+	if not query_result.ok then
+		return util.Err("find_nodes_citing: " .. query_result.error)
+	end
+
+	local rows = query_result.value
+	local nodes = {}
+
+	for _, row in ipairs(rows) do
+		local node_result = M.find_by_id(row.from_uuid)
+
+		if not node_result.ok then
+			return util.Err("find_nodes_citing: failed to fetch node " .. row.from_uuid .. ": " .. node_result.error)
+		end
+
+		if node_result.value then
+			table.insert(nodes, node_result.value)
+		end
+	end
+
+	return util.Ok(nodes)
+end
+
 return M

@@ -733,7 +733,7 @@ Support one simple scheme (BibTeX-style).
 
 ---
 
-### Phase 37: Citation Edges in Index **[MVP]** TODO
+### Phase 37: Citation Edges in Index **[MVP]** REVIEW
 **~80 lines | `lua/lifemode/infra/index/init.lua`**
 
 Store citation relationships.
