@@ -12,9 +12,7 @@ Before testing, ensure you have:
 
 ## Phase 12: NewNode Command
 
-### Basic Command Execution
-
-**Test: Create new node via command**
+### Test: Create new node via command
 ```vim
 " Setup test vault
 :lua vim.fn.mkdir("/tmp/qa_vault", "p")
@@ -23,17 +21,16 @@ Before testing, ensure you have:
 " Execute command
 :LifeModeNewNode
 ```
-
-**Expected:**
+#### Expected
 - New buffer opens
-- Frontmatter visible on lines 1-3:
+- Frontmatter visible on lines 1-4:
   ```
   ---
   id: <uuid>
   created: <timestamp>
   ---
   ```
-- Cursor positioned on line 4, column 0
+- Cursor positioned on line 5, column 0
 - Success notification: "[LifeMode] Created new node"
 - File created at `/tmp/qa_vault/YYYY/MM-Mmm/DD/<uuid>.md`
 
@@ -44,16 +41,15 @@ Before testing, ensure you have:
 
 " Should match pattern: /tmp/qa_vault/2026/01-Jan/22/<uuid>.md
 ```
-
-**Test: Type content and save**
+### Test: Type content and save
 ```vim
-" With cursor on line 4, type some content
+" With cursor on line 5, type some content
 iThis is my first captured thought.
 <Esc>
 :w
 ```
 
-**Expected:**
+#### Expected
 - Content saves to file
 - File contains frontmatter + content
 - No errors
@@ -65,22 +61,21 @@ iThis is my first captured thought.
 
 ### Error Handling
 
-**Test: Command with invalid vault**
+### Test: Command with invalid vault
 ```vim
 :lua require("lifemode.config")._config = nil
 :LifeModeNewNode
 ```
 
-**Expected:**
+#### Expected
 - Error notification shown
 - Message mentions vault_path or configuration
 - No file created
 - Original buffer unchanged
 
-
 ## Phase 24: Full-Text Search (FTS5)
 
-### Manual QA Steps
+### Before ALl
 
 1. **Setup:**
    ```vim
@@ -110,112 +105,47 @@ iThis is my first captured thought.
    :lua local builder = require('lifemode.infra.index.builder'); builder.rebuild_index()
    ```
 
-4. **Test search:**
-   ```vim
-   :lua local search = require('lifemode.infra.index.search')
-   :lua local results = search.search('quick')
-   :lua print(vim.inspect(results))
+### Test search
+   ```lua
+   local search = require('lifemode.infra.index.search')
+   local results = search.search('quick')
+   print(vim.inspect(results))
    ```
+#### Expected
    - Should return 2 nodes (both contain "quick")
    - test2.md should rank higher (more occurrences of "quick")
 
-5. **Test phrase search:**
-   ```vim
-   :lua local results = search.search('"lazy dog"')
-   :lua print(vim.inspect(results))
+### Test phrase search
+   ```lua
+   local search = require('lifemode.infra.index.search')
+   local results = search.search('"lazy dog"')
+   print(vim.inspect(results))
    ```
+#### Expected
    - Should return 1 node (test1.md only)
 
-6. **Test prefix search:**
-   ```vim
-   :lua local results = search.search('qui*')
-   :lua print(vim.inspect(results))
+### Test prefix search
+   ```lua
+   local search = require('lifemode.infra.index.search')
+   local results = search.search('qui*')
+   print(vim.inspect(results))
    ```
+#### Expected
    - Should return 2 nodes (matches "quick")
 
-7. **Test FTS updates on node change:**
+### Test FTS updates on node change
    - Edit `~/test_vault/test1.md`, change "fox" to "cat"
    - Save file (triggers incremental index update)
-   ```vim
-   :lua local results = search.search('fox')
-   :lua print(#results.value) -- should be 0
-   :lua local results = search.search('cat')
-   :lua print(#results.value) -- should be 1
+   ```lua
+   local search = require('lifemode.infra.index.search')
+   local results = search.search('fox')
+   print(#results.value) -- should be 0
+
+   results = search.search('cat')
+   print(#results.value) -- should be 1
    ```
 
-### Expected Results
-
-- All searches return correct, ranked results
-- FTS index updates automatically on file save
-- No errors in `:messages`
-
-
-## Phase 24: Full-Text Search (FTS5)
-
-### Manual QA Steps
-
-1. **Setup:**
-   ```vim
-   :lua require('lifemode.config').validate_config({vault_path = '~/test_vault'})
-   ```
-
-2. **Create test nodes:**
-   - Create file `~/test_vault/test1.md`:
-     ```markdown
-     ---
-     id: aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa
-     created: 1234567890
-     ---
-     The quick brown fox jumps over the lazy dog
-     ```
-   - Create file `~/test_vault/test2.md`:
-     ```markdown
-     ---
-     id: bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb
-     created: 1234567891
-     ---
-     Quick thinking leads to quick solutions
-     ```
-
-3. **Rebuild index:**
-   ```vim
-   :lua local builder = require('lifemode.infra.index.builder'); builder.rebuild_index()
-   ```
-
-4. **Test search:**
-   ```vim
-   :lua local search = require('lifemode.infra.index.search')
-   :lua local results = search.search('quick')
-   :lua print(vim.inspect(results))
-   ```
-   - Should return 2 nodes (both contain "quick")
-   - test2.md should rank higher (more occurrences of "quick")
-
-5. **Test phrase search:**
-   ```vim
-   :lua local results = search.search('"lazy dog"')
-   :lua print(vim.inspect(results))
-   ```
-   - Should return 1 node (test1.md only)
-
-6. **Test prefix search:**
-   ```vim
-   :lua local results = search.search('qui*')
-   :lua print(vim.inspect(results))
-   ```
-   - Should return 2 nodes (matches "quick")
-
-7. **Test FTS updates on node change:**
-   - Edit `~/test_vault/test1.md`, change "fox" to "cat"
-   - Save file (triggers incremental index update)
-   ```vim
-   :lua local results = search.search('fox')
-   :lua print(#results.value) -- should be 0
-   :lua local results = search.search('cat')
-   :lua print(#results.value) -- should be 1
-   ```
-
-### Expected Results
+#### Expected
 
 - All searches return correct, ranked results
 - FTS index updates automatically on file save
@@ -311,46 +241,46 @@ print("✓ All manual tests passed")
    - Open a markdown file with nodes
    - Position cursor on a node
    - Run `:LifeModeSidebar` or press `<leader>ns`
-   - **Expected:** Floating window appears on right side (30% width)
-   - **Expected:** Shows "# Relations" header
+   - #### Expected Floating window appears on right side (30% width)
+   - #### Expected Shows "# Relations" header
 
 2. **View backlinks**
    - Sidebar should show "## Backlinks (N)" section
    - If node has incoming edges, should list file paths
    - If no backlinks, should show "(none)"
-   - **Expected:** Count matches number of nodes linking to current node
+   - #### Expected Count matches number of nodes linking to current node
 
 3. **View outgoing links**
    - Sidebar should show "## Outgoing (N)" section
    - Should list file paths of linked nodes
    - If no outgoing links, should show "(none)"
-   - **Expected:** Count matches number of wikilinks in current node
+   - #### Expected Count matches number of wikilinks in current node
 
 4. **Jump to linked node**
    - Move cursor to a line with a file path (- /path/to/file.md)
    - Press `<CR>`
-   - **Expected:** Opens that file in main window
-   - **Expected:** Cursor moves to main window
-   - **Expected:** Sidebar remains open
+   - #### Expected Opens that file in main window
+   - #### Expected Cursor moves to main window
+   - #### Expected Sidebar remains open
 
 5. **Toggle close sidebar**
    - Run `:LifeModeSidebar` again or press `<leader>ns`
-   - **Expected:** Sidebar closes
-   - **Expected:** No errors
+   - #### Expected Sidebar closes
+   - #### Expected No errors
 
 6. **Reopen sidebar**
    - Press `<leader>ns` again
-   - **Expected:** Sidebar reopens with info for node at cursor
-   - **Expected:** Content reflects current node
+   - #### Expected Sidebar reopens with info for node at cursor
+   - #### Expected Content reflects current node
 
 7. **Close with 'q'**
    - With sidebar open, press `q` in sidebar buffer
-   - **Expected:** Sidebar closes
+   - #### Expected Sidebar closes
 
 8. **No node at cursor**
    - Move cursor to empty area (no node)
    - Try to open sidebar with `<leader>ns`
-   - **Expected:** Error message "cursor not within any node"
+   - #### Expected Error message "cursor not within any node"
 
 **Edge Cases:**
 
@@ -381,44 +311,44 @@ print("✓ All manual tests passed")
    - Open markdown file with multiple nodes
    - Position cursor on Node A
    - Open sidebar with `<leader>ns`
-   - **Expected:** Sidebar shows relations for Node A
+   - #### Expected Sidebar shows relations for Node A
    - Move cursor to Node B
    - Wait for updatetime milliseconds (or trigger with `:doautocmd CursorHold`)
-   - **Expected:** Sidebar automatically updates to show Node B relations
-   - **Expected:** No manual refresh needed
+   - #### Expected Sidebar automatically updates to show Node B relations
+   - #### Expected No manual refresh needed
 
 3. **No-op when staying on same node**
    - Sidebar open on Node A
    - Move cursor within Node A (different lines, same node)
    - Wait for CursorHold
-   - **Expected:** Sidebar doesn't flicker or re-render
-   - **Expected:** Content stays same
+   - #### Expected Sidebar doesn't flicker or re-render
+   - #### Expected Content stays same
 
 4. **Works when sidebar initially closed**
    - Close sidebar
    - Move to Node A, open sidebar with `<leader>ns`
    - Shows Node A
    - Move to Node B, wait for CursorHold
-   - **Expected:** Sidebar updates to Node B
+   - #### Expected Sidebar updates to Node B
 
 5. **No errors when cursor not in node**
    - Sidebar open on Node A
    - Move cursor to empty area (no node boundaries)
    - Wait for CursorHold
-   - **Expected:** No errors in `:messages`
-   - **Expected:** Sidebar still shows Node A (last valid state)
+   - #### Expected No errors in `:messages`
+   - #### Expected Sidebar still shows Node A (last valid state)
 
 6. **No auto-update in non-markdown files**
    - Open sidebar in markdown file
    - Switch to .lua or .txt file
    - Move cursor around
    - Wait for CursorHold
-   - **Expected:** Sidebar doesn't update (stays on last markdown node)
-   - **Expected:** No errors
+   - #### Expected Sidebar doesn't update (stays on last markdown node)
+   - #### Expected No errors
 
 7. **Manual trigger works**
    - Run `:doautocmd CursorHold` to manually trigger
-   - **Expected:** Same behavior as waiting for updatetime
+   - #### Expected Same behavior as waiting for updatetime
 
 **Edge Cases:**
 
@@ -450,7 +380,7 @@ print("✓ All manual tests passed")
 4. Move cursor to the `@testkey` citation (anywhere within `@testkey`)
 5. Press `gd` in normal mode
 
-**Expected:**
+#### Expected
 - Source file `testkey.yaml` opens in current window
 - No error messages
 
@@ -461,7 +391,7 @@ print("✓ All manual tests passed")
 2. Move cursor to `@newkey`
 3. Press `gd`
 
-**Expected:**
+#### Expected
 - Confirmation dialog: "Source file not found: newkey.yaml\nCreate it?"
 - Two options: "Yes" and "No", default is "No"
 
@@ -491,7 +421,7 @@ print("✓ All manual tests passed")
 2. Move cursor to "plain" (not a citation)
 3. Press `gd`
 
-**Expected:**
+#### Expected
 - Error notification: "No citation under cursor"
 - No file operations
 
@@ -502,7 +432,7 @@ print("✓ All manual tests passed")
 2. Move cursor to `@second`
 3. Press `gd`
 
-**Expected:**
+#### Expected
 - Confirmation dialog for `second.yaml` (not first or third)
 - Correct source key detected based on cursor position
 
@@ -513,7 +443,7 @@ print("✓ All manual tests passed")
 2. Move cursor to `@cmdtest`
 3. Run `:LifeModeEditSource`
 
-**Expected:**
+#### Expected
 - Same behavior as `gd` keymap
 - Works identically
 
@@ -524,7 +454,7 @@ print("✓ All manual tests passed")
 2. Write: `Reference ends with @endkey`
 3. Test both citations with `gd`
 
-**Expected:**
+#### Expected
 - Both work correctly (edge cases)
 
 ### Test 7: `gd` in non-markdown files
@@ -533,7 +463,7 @@ print("✓ All manual tests passed")
 1. Open a `.lua` file
 2. Press `gd`
 
-**Expected:**
+#### Expected
 - Vim's default `gd` behavior (go to local definition)
 - LifeMode does NOT override it
 - Buffer-local keymap only applies to markdown
@@ -546,7 +476,7 @@ print("✓ All manual tests passed")
 3. Move cursor to `@testcreate`, press `gd`
 4. Choose "Yes"
 
-**Expected:**
+#### Expected
 - Directory `.lifemode/sources/` created automatically
 - Source file created inside it
 - No permission errors
@@ -558,7 +488,7 @@ print("✓ All manual tests passed")
 2. Write: `@test_key_ABC` (underscores, uppercase)
 3. Test both with `gd`
 
-**Expected:**
+#### Expected
 - Both work correctly
 - Source files `test-key-123.yaml` and `test_key_ABC.yaml` created/opened
 
