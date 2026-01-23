@@ -611,3 +611,23 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Raw text stored unchanged
 **Rationale:** Preserve original citation text for debugging, display, and potential re-parsing. Normalized form lives in scheme+key, but raw text is useful for user-facing features (hover tooltips, error messages). Small memory cost, high utility.
+
+## Phase 36: Parse Basic Citations
+
+### Decision: Pattern allows underscores and hyphens in keys
+**Rationale:** BibTeX citation keys often use conventions like `smith_jones-2020` or `acm-survey-2019`. Pattern `@([a-zA-Z0-9_-]+)` matches alphanumeric plus underscore/hyphen. More permissive than strict BibTeX spec but covers real-world usage. Follows principle: be liberal in what you accept.
+
+### Decision: Scheme hardcoded to "bibtex" for MVP
+**Rationale:** Phase 36 is basic citation support - one scheme only. Multi-scheme (Bible, Summa, custom) comes in Phase 39. Hardcoding "bibtex" keeps implementation simple and focused. Citation_new accepts any scheme string, but parser always uses "bibtex". Clean separation: parser decides scheme, value object validates.
+
+### Decision: Return empty array for invalid input
+**Rationale:** Follow same pattern as link.parse_wikilinks() and transclude.parse(). If content is nil, wrong type, or empty, return `{}` not error. Makes API forgiving - callers don't need defensive type checks. Only errors would be Lua pattern failures (shouldn't happen). Defensive programming.
+
+### Decision: No location tracking in simple parser
+**Rationale:** Simple parse_citations() creates citations without location metadata. Location tracking requires buffer context (buffer number, line numbers). This parser is pure string processing - can be used on any text. Future: parse_citations_from_buffer() can add location tracking for buffer-specific use cases.
+
+### Decision: Skip citations that fail validation
+**Rationale:** If Citation_new returns Err (shouldn't happen with valid pattern, but defensive), skip that citation and continue. Don't halt entire parse. Collect citations that succeed. Makes parser resilient. User sees which citations worked. Alternative (fail entire parse on first error) is too brittle.
+
+### Decision: Follow transclude.parse() pattern exactly
+**Rationale:** Both are domain-layer parsers extracting tokens from text. Same structure: type guard → pattern → while loop → string.find → capture groups → construct object → append → advance. Consistency across codebase. Easy to understand if you've seen one parser.

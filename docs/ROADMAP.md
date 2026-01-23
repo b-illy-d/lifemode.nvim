@@ -717,7 +717,7 @@ Citation = {
 
 ---
 
-### Phase 36: Parse Basic Citations **[MVP]** TODO
+### Phase 36: Parse Basic Citations **[MVP]** REVIEW
 **~110 lines | `lua/lifemode/domain/citation.lua`**
 
 Support one simple scheme (BibTeX-style).
