@@ -697,7 +697,7 @@ Cache expanded transclusions for performance.
 
 ## Citations (Basic)
 
-### Phase 35: Citation Value Object **[MVP]** TODO
+### Phase 35: Citation Value Object **[MVP]** REVIEW
 **~70 lines | `lua/lifemode/domain/types.lua`**
 
 ```lua

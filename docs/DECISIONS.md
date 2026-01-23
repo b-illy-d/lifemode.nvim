@@ -594,3 +594,20 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Cache persists for buffer lifetime
 **Rationale:** Cache not cleared on BufEnter or other events. Lives as long as buffer exists. Invalidation is explicit (via refresh command) or implicit (buffer delete). Maximizes cache hit rate. Conservative strategy - only invalidate when necessary.
+
+## Phase 35: Citation Value Object
+
+### Decision: Citation as immutable value object
+**Rationale:** Follow same pattern as Node and Edge - immutable value objects with validation in constructor. Deep copy location to prevent mutation. Pure domain types with no behavior, just data + validation. Consistent with existing architecture.
+
+### Decision: Scheme is free-form string, not enum
+**Rationale:** ROADMAP mentions multiple schemes (BibTeX, Bible, Summa, custom). Rather than hardcode enum, use string to allow extensibility. Future phases will define schemes via config/YAML. Type system can't capture all possible schemes. Free-form string is flexible, validation happens at parser level.
+
+### Decision: Location is optional
+**Rationale:** Citations may be created without position tracking (e.g., from index queries, bibliography generation). Location is metadata about where citation appears in source, not intrinsic to citation itself. Optional field makes API flexible - parser can provide location, other consumers can omit it.
+
+### Decision: Validate location UUID if provided
+**Rationale:** If location is given, enforce data integrity - node_id must be valid UUID. Prevents corrupted data in domain layer. Fail fast with clear errors. Optional fields still have validation when present.
+
+### Decision: Raw text stored unchanged
+**Rationale:** Preserve original citation text for debugging, display, and potential re-parsing. Normalized form lives in scheme+key, but raw text is useful for user-facing features (hover tooltips, error messages). Small memory cost, high utility.

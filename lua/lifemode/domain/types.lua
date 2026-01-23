@@ -113,4 +113,45 @@ function M.Edge_new(from, to, kind, context)
 	return util.Ok(edge)
 end
 
+function M.Citation_new(scheme, key, raw, location)
+	if type(scheme) ~= "string" or scheme == "" then
+		return util.Err("Citation scheme must be non-empty string")
+	end
+
+	if type(key) ~= "string" or key == "" then
+		return util.Err("Citation key must be non-empty string")
+	end
+
+	if type(raw) ~= "string" or raw == "" then
+		return util.Err("Citation raw must be non-empty string")
+	end
+
+	if location ~= nil then
+		if type(location) ~= "table" then
+			return util.Err("Citation location must be table or nil")
+		end
+
+		if type(location.node_id) ~= "string" or not is_valid_uuid(location.node_id) then
+			return util.Err("Citation location.node_id must be valid UUID")
+		end
+
+		if type(location.line) ~= "number" then
+			return util.Err("Citation location.line must be number")
+		end
+
+		if type(location.col) ~= "number" then
+			return util.Err("Citation location.col must be number")
+		end
+	end
+
+	local citation = {
+		scheme = scheme,
+		key = key,
+		raw = raw,
+		location = location and deep_copy(location) or nil,
+	}
+
+	return util.Ok(citation)
+end
+
 return M
