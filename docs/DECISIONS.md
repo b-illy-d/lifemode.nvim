@@ -525,3 +525,26 @@ That's future optimization (Phase 23: incremental updates). Phase 15: simple pat
 
 ### Decision: Pattern uses optional depth with `:?(%d*)`
 **Rationale:** Lua pattern `{{([a-zA-Z0-9%-]+):?(%d*)}}` captures UUID and optional depth. `:?` makes colon optional. `(%d*)` captures zero or more digits. If no colon, depth_str is empty string. If colon but no digits (e.g., `{{uuid:}}`), depth_str is empty, depth = nil. This handles all variants gracefully.
+
+## Phase 32: Transclusion Expansion
+
+### Decision: Dependency injection for node fetching
+**Rationale:** The expand() function takes a fetch_fn parameter instead of directly importing infra/index. This keeps the domain layer pure - no I/O dependencies. In tests, pass mock function. In production, pass index.find_by_id. Functional approach, testable, respects layer boundaries.
+
+### Decision: Inline error replacement not Result<T> failure
+**Rationale:** When expansion encounters cycle, max depth, or missing node, replace token with warning text (e.g., "⚠️ Cycle detected: {{uuid}}") and continue. Don't return Err() which would halt entire expansion. This makes expansion resilient - one bad transclusion doesn't break the whole document. User sees which tokens failed and why.
+
+### Decision: Path-local visited set with backtracking
+**Rationale:** Copy visited set when recursing, remove UUID after expansion completes. This allows same node to be transcluded in different branches of the tree (A includes B and C, both B and C include D - D appears twice, which is fine). Only cycles in a single path are blocked. Alternative (global visited) would be too restrictive.
+
+### Decision: Ignore token depth field in Phase 32
+**Rationale:** ROADMAP says this phase is ~160 lines and focuses on core recursive algorithm. Respecting depth (subtree slicing) adds complexity. Parse depth from token, store it, but just expand full node content for now. Subtree expansion can be future phase. Keep phase atomic and focused on cycle detection + recursion.
+
+### Decision: Multiple passes over content
+**Rationale:** Simple algorithm: parse tokens → expand each token → replace in content → repeat until no tokens remain. Alternative (single-pass streaming) is complex and error-prone (positions shift during replacement). Multiple passes is clear, correct, and plenty fast for typical content (<10KB). Premature optimization avoided.
+
+### Decision: string.sub for token replacement
+**Rationale:** Lua string manipulation is simple: splice before + replacement + after. No need for regex-based substitution or complex offset tracking. Token has start_pos/end_pos from parser, use those directly. Works for tokens of any length, including nested expansions.
+
+### Decision: Max depth default 10
+**Rationale:** Prevents infinite recursion in pathological cases. 10 levels deep is more than any reasonable document needs. User can override via parameter if they have valid use case. Failing safe is better than stack overflow.

@@ -636,7 +636,7 @@ Extract `{{uuid}}` tokens from content.
 
 ---
 
-### Phase 32: Transclusion Expansion **[MVP]** TODO
+### Phase 32: Transclusion Expansion **[MVP]** REVIEW
 **~160 lines | `lua/lifemode/domain/transclude.lua`**
 
 Recursively expand transclusions.
