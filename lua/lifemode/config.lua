@@ -112,4 +112,8 @@ function M.get(key)
 	return value
 end
 
+function M._reset_for_testing()
+	_config = nil
+end
+
 return M

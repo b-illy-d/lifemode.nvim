@@ -20,7 +20,7 @@ Built on immutable value objects with a deep, composable API. Small interface, m
 - **Narrowing**: True narrowing to focus on single nodes (org-mode style)
 - **Transclusion**: Recursive node embedding with cycle detection
 - **Citations**: Extensible citation schemes (BibTeX, Bible, custom)
-- **SQLite indexing**: Fast graph queries and backlink tracking
+- **SQLite indexing**: Fast graph queries and backlink tracking (requires kkharji/sqlite.lua)
 - **Sidebar context**: Passive accordion showing citations, backlinks, relations
 - **Extmarks**: Buffer-local node tracking with frontmatter persistence
 - **YAML sources**: Human-editable source files auto-generate `.bib` for LaTeX
@@ -65,6 +65,47 @@ Then in your `init.lua`:
 require('lifemode').setup({
   vault_path = "~/vault"
 })
+```
+
+### Dependencies
+
+LifeMode requires the `kkharji/sqlite.lua` plugin for indexing and full-text search.
+
+#### lazy.nvim
+
+```lua
+{
+  "billy/lifemode.nvim",
+  dependencies = {
+    "kkharji/sqlite.lua"
+  },
+  config = function()
+    require("lifemode").setup({
+      vault_path = "~/vault"
+    })
+  end
+}
+```
+
+#### packer.nvim
+
+```lua
+use {
+  'billy/lifemode.nvim',
+  requires = { 'kkharji/sqlite.lua' },
+  config = function()
+    require('lifemode').setup({
+      vault_path = "~/vault"
+    })
+  end
+}
+```
+
+#### vim-plug
+
+```vim
+Plug 'kkharji/sqlite.lua'
+Plug 'billy/lifemode.nvim'
 ```
 
 ## Development

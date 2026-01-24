@@ -11,7 +11,7 @@ describe("node.create", function()
 			assert.equals("test content", n.content)
 			assert.is_not_nil(n.id)
 			assert.is_not_nil(n.meta.created)
-			assert.equals(n.meta.created, n.meta.modified)
+			assert.is_nil(n.meta.modified)
 		end)
 
 		it("generates valid UUID v4", function()
@@ -48,7 +48,7 @@ describe("node.create", function()
 
 			assert.is_true(result.ok)
 			assert.equals(1234567890, result.value.meta.created)
-			assert.equals(1234567890, result.value.meta.modified)
+			assert.is_nil(result.value.meta.modified)
 		end)
 
 		it("preserves provided modified timestamp", function()

@@ -13,9 +13,9 @@ function M.capture_node(initial_content)
 		return util.Err("initial_content must be a string")
 	end
 
-	local vault_path = config.get("vault_path")
-	if not vault_path then
-		return util.Err("vault_path not configured")
+	local ok, vault_path = pcall(config.get, "vault_path")
+	if not ok then
+		return util.Err("LifeMode not initialized. Call setup() first.")
 	end
 
 	local date_dir = path.date_path(vault_path)

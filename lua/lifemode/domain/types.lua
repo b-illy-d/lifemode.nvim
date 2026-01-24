@@ -50,11 +50,7 @@ function M.Node_new(content, meta, bounds)
 
 	local node_meta = deep_copy(meta)
 
-	if not node_meta.modified then
-		node_meta.modified = node_meta.created
-	end
-
-	if type(node_meta.modified) ~= "number" then
+	if node_meta.modified and type(node_meta.modified) ~= "number" then
 		return util.Err("Node meta.modified must be a timestamp (number)")
 	end
 

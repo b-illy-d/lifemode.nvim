@@ -25,7 +25,7 @@ describe("Node_new", function()
 			local result = types.Node_new("test content", meta)
 
 			assert.is_true(result.ok)
-			assert.equals(1234567890, result.value.meta.modified)
+			assert.is_nil(result.value.meta.modified)
 		end)
 
 		it("preserves modified when provided", function()

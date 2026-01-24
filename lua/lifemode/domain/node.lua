@@ -55,10 +55,6 @@ function M.create(content, meta)
 		node_meta.created = os.time()
 	end
 
-	if not node_meta.modified then
-		node_meta.modified = node_meta.created
-	end
-
 	return types.Node_new(content, node_meta)
 end
 

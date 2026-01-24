@@ -23,7 +23,22 @@ function M.new_node()
 		return
 	end
 
-	vim.api.nvim_win_set_cursor(0, { 4, 0 })
+	local bufnr = vim.api.nvim_get_current_buf()
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local content_start_line = 5
+
+	for i = 2, #lines do
+		if lines[i]:match("^%-%-%-$") then
+			content_start_line = i + 1
+			break
+		end
+	end
+
+	if content_start_line > #lines then
+		vim.api.nvim_buf_set_lines(bufnr, #lines, #lines, false, { "" })
+	end
+
+	vim.api.nvim_win_set_cursor(0, { content_start_line, 0 })
 
 	vim.notify("[LifeMode] Created new node", vim.log.levels.INFO)
 end
